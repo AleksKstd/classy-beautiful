@@ -131,8 +131,8 @@ export function CarouselManager({ images: initialImages }: CarouselManagerProps)
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Управление на снимки</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h2 className="text-xl sm:text-2xl font-bold">Управление на снимки</h2>
         <div>
           <input
             type="file"
@@ -142,8 +142,8 @@ export function CarouselManager({ images: initialImages }: CarouselManagerProps)
             className="hidden"
             disabled={uploading}
           />
-          <Button asChild disabled={uploading}>
-            <label htmlFor="upload-image" className="cursor-pointer">
+          <Button asChild disabled={uploading} className="w-full sm:w-auto">
+            <label htmlFor="upload-image" className="cursor-pointer flex items-center justify-center">
               {uploading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -162,7 +162,7 @@ export function CarouselManager({ images: initialImages }: CarouselManagerProps)
 
       {/* Show warning if some images failed to load */}
       {failedImages.size > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <ImageOff className="w-5 h-5 text-amber-600" />
             <p className="text-sm text-amber-800">

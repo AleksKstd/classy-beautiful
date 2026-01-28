@@ -132,7 +132,7 @@ export default function EditProcedurePage({ params }: EditProcedurePageProps) {
             <ArrowLeft className="w-4 h-4" />
             Назад към панела
           </Link>
-          <h1 className="text-2xl font-bold">Редактиране на процедура</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Редактиране на процедура</h1>
         </div>
 
         {/* Error */}
@@ -143,7 +143,7 @@ export default function EditProcedurePage({ params }: EditProcedurePageProps) {
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 space-y-6">
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-200 space-y-6">
           <div>
             <Label htmlFor="name">Име на процедурата *</Label>
             <Input
@@ -167,7 +167,7 @@ export default function EditProcedurePage({ params }: EditProcedurePageProps) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="type">Категория *</Label>
               <Input
@@ -191,7 +191,7 @@ export default function EditProcedurePage({ params }: EditProcedurePageProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="duration">Продължителност (мин) *</Label>
               <Input
@@ -235,13 +235,13 @@ export default function EditProcedurePage({ params }: EditProcedurePageProps) {
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-between pt-4 border-t">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between pt-4 border-t gap-4">
             <Button
               type="button"
               variant="outline"
               onClick={handleDelete}
               disabled={deleting}
-              className="text-red-600 border-red-200 hover:bg-red-50"
+              className="text-red-600 border-red-200 hover:bg-red-50 w-full sm:w-auto"
             >
               {deleting ? (
                 <>
@@ -253,11 +253,11 @@ export default function EditProcedurePage({ params }: EditProcedurePageProps) {
               )}
             </Button>
 
-            <div className="flex gap-3">
-              <Button type="button" variant="outline" asChild>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button type="button" variant="outline" asChild className="w-full sm:w-auto">
                 <Link href="/admin/dashboard">Отказ</Link>
               </Button>
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" disabled={saving} className="w-full sm:w-auto">
                 {saving ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />

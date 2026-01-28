@@ -147,9 +147,9 @@ export function ProceduresManager({ procedures: initialProcedures }: ProceduresM
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Управление на процедури</h2>
-        <Button onClick={() => setShowForm(!showForm)}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h2 className="text-xl sm:text-2xl font-bold">Управление на процедури</h2>
+        <Button onClick={() => setShowForm(!showForm)} className="w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
           Нова процедура
         </Button>
@@ -329,13 +329,13 @@ export function ProceduresManager({ procedures: initialProcedures }: ProceduresM
               {procs.map((proc) => (
                 <div
                   key={proc.id}
-                  className={`flex items-center justify-between p-4 rounded-lg border ${
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border gap-3 ${
                     proc.is_active ? "border-gray-200" : "border-gray-300 bg-gray-50"
                   }`}
                 >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <h4 className="font-medium">{proc.name}</h4>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="font-medium truncate">{proc.name}</h4>
                       {proc.discount_percentage && proc.discount_percentage > 0 && (
                         <span className="bg-red-100 text-red-600 text-xs font-semibold px-2 py-1 rounded">
                           -{proc.discount_percentage}%
@@ -347,18 +347,18 @@ export function ProceduresManager({ procedures: initialProcedures }: ProceduresM
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-1 text-sm text-gray-600">
                       <span>{formatDuration(proc.duration_minutes)}</span>
-                      <span>•</span>
+                      <span className="hidden sm:inline">•</span>
                       <span className="font-semibold text-gold">
                         {formatPrice(proc.price)}
                       </span>
-                      <span>•</span>
+                      <span className="hidden sm:inline">•</span>
                       <span>{proc.technician}</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 self-end sm:self-center">
                     <Button
                       size="sm"
                       variant="outline"

@@ -106,8 +106,8 @@ export function StatisticsManager({ procedures, reservationLogs }: StatisticsMan
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Статистика на процедурите</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <h2 className="text-xl sm:text-2xl font-bold">Статистика на процедурите</h2>
         <div className="text-sm text-gray-500">
           Общо резервации: <span className="font-semibold text-brand-black">{totalReservations}</span>
         </div>
@@ -135,8 +135,8 @@ export function StatisticsManager({ procedures, reservationLogs }: StatisticsMan
           <p className="text-gray-500">Няма процедури</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
+          <table className="w-full min-w-[600px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Процедура</th>

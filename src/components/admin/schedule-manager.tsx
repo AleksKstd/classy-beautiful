@@ -85,9 +85,9 @@ export function ScheduleManager({ schedules: initialSchedules }: ScheduleManager
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Управление на график</h2>
-        <Button onClick={() => setShowForm(!showForm)}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h2 className="text-xl sm:text-2xl font-bold">Управление на график</h2>
+        <Button onClick={() => setShowForm(!showForm)} className="w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
           Затвори период
         </Button>
@@ -186,16 +186,16 @@ export function ScheduleManager({ schedules: initialSchedules }: ScheduleManager
                   return (
                     <div
                       key={schedule.id}
-                      className={`flex items-center justify-between p-4 rounded-lg border ${
+                      className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border gap-3 ${
                         isPast ? "border-gray-300 bg-gray-50" : "border-gray-200"
                       }`}
                     >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">
-                            {format(startDate, "d MMMM yyyy, HH:mm", { locale: bg })}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-medium text-sm sm:text-base">
+                            {format(startDate, "d MMM yyyy, HH:mm", { locale: bg })}
                             {" → "}
-                            {format(endDate, "d MMMM yyyy, HH:mm", { locale: bg })}
+                            {format(endDate, "d MMM yyyy, HH:mm", { locale: bg })}
                           </p>
                           {isPast && (
                             <span className="bg-gray-200 text-gray-600 text-xs font-semibold px-2 py-1 rounded">
