@@ -206,7 +206,7 @@ export default function EditProcedurePage({ params }: EditProcedurePageProps) {
             </div>
 
             <div>
-              <Label htmlFor="price">Цена (EUR) *</Label>
+              <Label htmlFor="price">Цена (eur) *</Label>
               <Input
                 id="price"
                 type="number"

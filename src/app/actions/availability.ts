@@ -75,23 +75,15 @@ export async function getAvailableSlots(
     return [];
   }
 
-  const { data: reservations, error: resError } = await supabase
-    .from("reservations")
-    .select("*")
-    .eq("office_name", officeName)
-    .gte("start_at", dayStart.toISOString())
-    .lt("start_at", dayEnd.toISOString());
-
-  if (resError) {
-    console.error("Error fetching reservations:", resError);
-    return [];
-  }
+  // Note: Actual reservations are handled by external API
+  // Pass empty array for reservations - availability is managed externally
+  const existingReservations: Reservation[] = [];
 
   const slots = generateTimeSlots(
     date,
     procedure.duration_minutes,
     (schedules as Schedule[]) || [],
-    (reservations as Reservation[]) || []
+    existingReservations
   );
 
   return slots;

@@ -73,9 +73,15 @@ export function DiscountsSection({ procedures }: DiscountsSectionProps) {
                   </span>
                 </div>
 
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 mb-4">
                   Спестявате {formatPrice(procedure.price - discountedPrice)}
                 </p>
+
+                <Button asChild size="sm" className="w-full">
+                  <Link href={`/rezervacii?procedureId=${procedure.id}`}>
+                    ЗАПАЗИ ЧАС
+                  </Link>
+                </Button>
               </div>
             );
           })}

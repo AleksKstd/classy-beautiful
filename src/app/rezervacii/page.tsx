@@ -1,11 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { ReservationWizard } from "@/components/reservation-wizard";
 import { ReservationSuccess } from "@/components/reservation-success";
 import type { CreateReservationResult } from "@/app/actions/reservations";
 
-export default function ReservationsPage() {
+function ReservationContent() {
+  const searchParams = useSearchParams();
+  const procedureId = searchParams.get("procedureId");
+  
   const [completedReservation, setCompletedReservation] =
     useState<CreateReservationResult["reservation"] | null>(null);
 
@@ -36,8 +41,16 @@ export default function ReservationsPage() {
           </p>
         </div>
 
-        <ReservationWizard onComplete={handleComplete} />
+        <ReservationWizard onComplete={handleComplete} preSelectedProcedureId={procedureId} />
       </div>
     </section>
+  );
+}
+
+export default function ReservationsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Зареждане...</div>}>
+      <ReservationContent />
+    </Suspense>
   );
 }

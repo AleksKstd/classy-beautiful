@@ -19,8 +19,9 @@ import {
   Loader2,
   ChevronRight,
   ArrowLeft,
+  Percent,
 } from "lucide-react";
-import { getProcedures, getAvailableSlots } from "@/app/actions/availability";
+import { getProcedures, getAvailableSlots, getScheduleClosures } from "@/app/actions/availability";
 import { createReservation, CreateReservationResult } from "@/app/actions/reservations";
 import { reservationFormSchema, type ReservationFormData } from "@/lib/validation";
 import type { Procedure } from "@/types/database";
@@ -28,6 +29,7 @@ import type { TimeSlot } from "@/lib/availability";
 
 interface ReservationWizardProps {
   onComplete: (reservation: CreateReservationResult["reservation"]) => void;
+  preSelectedProcedureId?: string | null;
 }
 
 type OfficeName = "София" | "Лом";
@@ -59,6 +61,7 @@ const steps = [
 
 // Category hierarchy for better organization
 const categoryHierarchy: Record<string, string[]> = {
+  "Промоции": [], // Special category for discounted procedures
   "Нокти": ["Нокти"],
   "Лице": ["Вежди", "Мигли", "Терапии за лице", "Естетични процедури - лице"],
   "Епилация": ["Епилация жени", "Епилация мъже"],
@@ -71,7 +74,7 @@ const subCategoryMap: Record<string, string[]> = {
   "Епилация мъже": ["Лазерна епилация - мъже", "Кола маска - мъже"],
 };
 
-export function ReservationWizard({ onComplete }: ReservationWizardProps) {
+export function ReservationWizard({ onComplete, preSelectedProcedureId }: ReservationWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [state, setState] = useState<WizardState>({
     office: null,
@@ -87,19 +90,58 @@ export function ReservationWizard({ onComplete }: ReservationWizardProps) {
   const [timeSlots, setTimeSlots] = useState<{ time: string; available: boolean }[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [scheduleClosures, setScheduleClosures] = useState<{ closed_date_start: string; closed_date_end: string }[]>([]);
+  const [preSelectHandled, setPreSelectHandled] = useState(false);
 
   useEffect(() => {
     getProcedures().then(setProcedures);
   }, []);
 
-  // Generate time slots from 9:00 to 19:00 with 30 min intervals (for testing - no checks)
+  // Handle pre-selected procedure from URL
+  useEffect(() => {
+    if (preSelectedProcedureId && procedures.length > 0 && !preSelectHandled) {
+      const procedure = procedures.find(p => p.id === preSelectedProcedureId);
+      if (procedure) {
+        setState(prev => ({ ...prev, procedure }));
+        // Start at step 1 (office selection) with procedure pre-loaded
+        setCurrentStep(1);
+        setPreSelectHandled(true);
+      }
+    }
+  }, [preSelectedProcedureId, procedures, preSelectHandled]);
+
+  // Fetch schedule closures when office is selected
+  useEffect(() => {
+    if (state.office) {
+      getScheduleClosures(state.office).then(setScheduleClosures);
+    }
+  }, [state.office]);
+
+  // Check if a specific time on the selected date falls within a schedule closure
+  const isTimeSlotClosed = (time: string): boolean => {
+    if (!state.date || scheduleClosures.length === 0) return false;
+    
+    const [hours, minutes] = time.split(':').map(Number);
+    const slotDateTime = new Date(state.date);
+    slotDateTime.setHours(hours, minutes, 0, 0);
+    
+    return scheduleClosures.some(closure => {
+      const closureStart = new Date(closure.closed_date_start);
+      const closureEnd = new Date(closure.closed_date_end);
+      return slotDateTime >= closureStart && slotDateTime < closureEnd;
+    });
+  };
+
+  // Generate time slots from 9:00 to 19:00 with 30 min intervals
   const generateTimeSlots = () => {
     const slots: { time: string; available: boolean }[] = [];
     for (let hour = 9; hour < 19; hour++) {
-      slots.push({ time: `${hour.toString().padStart(2, '0')}:00`, available: true });
-      slots.push({ time: `${hour.toString().padStart(2, '0')}:30`, available: true });
+      const time1 = `${hour.toString().padStart(2, '0')}:00`;
+      const time2 = `${hour.toString().padStart(2, '0')}:30`;
+      slots.push({ time: time1, available: !isTimeSlotClosed(time1) });
+      slots.push({ time: time2, available: !isTimeSlotClosed(time2) });
     }
-    slots.push({ time: '19:00', available: true });
+    slots.push({ time: '19:00', available: !isTimeSlotClosed('19:00') });
     return slots;
   };
 
@@ -107,11 +149,16 @@ export function ReservationWizard({ onComplete }: ReservationWizardProps) {
     if (state.date) {
       setTimeSlots(generateTimeSlots());
     }
-  }, [state.date]);
+  }, [state.date, scheduleClosures]);
 
   const selectOffice = (office: OfficeName) => {
     setState((prev) => ({ ...prev, office }));
-    setCurrentStep(2);
+    // If procedure is pre-selected, skip to step 3 (date selection)
+    if (state.procedure) {
+      setCurrentStep(3);
+    } else {
+      setCurrentStep(2);
+    }
   };
 
   const selectCategory = (category: string) => {
@@ -202,9 +249,19 @@ export function ReservationWizard({ onComplete }: ReservationWizardProps) {
     }
   };
 
+  // Get discounted procedures
+  const getDiscountedProcedures = () => {
+    return procedures.filter(p => p.discount_percentage && p.discount_percentage > 0);
+  };
+
   // Get procedures for current selection
   const getFilteredProcedures = () => {
     if (!state.selectedCategory) return [];
+    
+    // Special handling for Промоции category
+    if (state.selectedCategory === "Промоции") {
+      return getDiscountedProcedures();
+    }
     
     const subCategories = categoryHierarchy[state.selectedCategory] || [];
     let typesToShow: string[] = [];
@@ -338,21 +395,43 @@ export function ReservationWizard({ onComplete }: ReservationWizardProps) {
           {/* Main Categories */}
           {!state.selectedCategory && (
             <div className="grid grid-cols-2 gap-4">
-              {Object.keys(categoryHierarchy).map((category) => (
-                <button
-                  key={category}
-                  onClick={() => selectCategory(category)}
-                  className="p-6 rounded-2xl border-2 border-gray-200 text-left font-medium transition-all duration-300 hover:border-gold/50 hover:shadow-md hover:scale-[1.02] group"
-                >
-                  <span className="text-lg">{category}</span>
-                  <ChevronRight className="w-5 h-5 float-right mt-1 text-gray-400 group-hover:text-gold transition-colors" />
-                </button>
-              ))}
+              {Object.keys(categoryHierarchy).map((category) => {
+                const isPromo = category === "Промоции";
+                const hasDiscounts = isPromo && getDiscountedProcedures().length > 0;
+                
+                // Hide promo category if no discounts
+                if (isPromo && !hasDiscounts) return null;
+                
+                return (
+                  <button
+                    key={category}
+                    onClick={() => selectCategory(category)}
+                    className={cn(
+                      "p-6 rounded-2xl border-2 text-left font-medium transition-all duration-300 hover:shadow-md hover:scale-[1.02] group",
+                      isPromo 
+                        ? "border-gold bg-gold/10 hover:border-gold hover:bg-gold/20 col-span-2" 
+                        : "border-gray-200 hover:border-gold/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      {isPromo && <Percent className="w-5 h-5 text-gold" />}
+                      <span className={cn("text-lg", isPromo && "text-gold font-semibold")}>{category}</span>
+                      {isPromo && (
+                        <span className="ml-1 text-sm text-gold/70">({getDiscountedProcedures().length} оферти)</span>
+                      )}
+                    </div>
+                    <ChevronRight className={cn(
+                      "w-5 h-5 float-right -mt-5 transition-colors",
+                      isPromo ? "text-gold group-hover:text-gold" : "text-gray-400 group-hover:text-gold"
+                    )} />
+                  </button>
+                );
+              })}
             </div>
           )}
 
-          {/* Sub Categories (for Епилация) */}
-          {state.selectedCategory && !state.selectedSubCategory && categoryHierarchy[state.selectedCategory]?.some(sub => subCategoryMap[sub]) && (
+          {/* Sub Categories (for Епилация) - skip for Промоции which goes directly to procedure list */}
+          {state.selectedCategory && state.selectedCategory !== "Промоции" && !state.selectedSubCategory && categoryHierarchy[state.selectedCategory]?.some(sub => subCategoryMap[sub]) && (
             <div className="space-y-4">
               <button
                 onClick={() => setState(prev => ({ ...prev, selectedCategory: null }))}
@@ -376,7 +455,7 @@ export function ReservationWizard({ onComplete }: ReservationWizardProps) {
           )}
 
           {/* Procedure List */}
-          {state.selectedCategory && (state.selectedSubCategory || !categoryHierarchy[state.selectedCategory]?.some(sub => subCategoryMap[sub])) && (
+          {state.selectedCategory && (state.selectedCategory === "Промоции" || state.selectedSubCategory || !categoryHierarchy[state.selectedCategory]?.some(sub => subCategoryMap[sub])) && (
             <div className="space-y-4">
               <button
                 onClick={() => setState(prev => ({ 
@@ -389,30 +468,56 @@ export function ReservationWizard({ onComplete }: ReservationWizardProps) {
                 <ArrowLeft className="w-4 h-4" /> {state.selectedSubCategory || state.selectedCategory}
               </button>
               <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
-                {getFilteredProcedures().map((proc) => (
-                  <button
-                    key={proc.id}
-                    onClick={() => selectProcedure(proc)}
-                    className={cn(
-                      "w-full p-4 rounded-xl border-2 text-left transition-all duration-300 hover:scale-[1.01]",
-                      state.procedure?.id === proc.id
-                        ? "border-gold bg-gold/10 shadow-md"
-                        : "border-gray-200 hover:border-gold/50 hover:shadow-sm"
-                    )}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-medium">{proc.name}</p>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {formatDuration(proc.duration_minutes)}
-                        </p>
+                {getFilteredProcedures().map((proc) => {
+                  const hasDiscount = proc.discount_percentage && proc.discount_percentage > 0;
+                  const discountedPrice = hasDiscount
+                    ? proc.price - (proc.price * proc.discount_percentage!) / 100
+                    : proc.price;
+                  
+                  return (
+                    <button
+                      key={proc.id}
+                      onClick={() => selectProcedure(proc)}
+                      className={cn(
+                        "w-full p-4 rounded-xl border-2 text-left transition-all duration-300 hover:scale-[1.01] relative",
+                        state.procedure?.id === proc.id
+                          ? "border-gold bg-gold/10 shadow-md"
+                          : "border-gray-200 hover:border-gold/50 hover:shadow-sm",
+                        hasDiscount && "border-red-200 bg-red-50/50"
+                      )}
+                    >
+                      {hasDiscount && (
+                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                          -{proc.discount_percentage}%
+                        </span>
+                      )}
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-medium">{proc.name}</p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {formatDuration(proc.duration_minutes)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          {hasDiscount ? (
+                            <>
+                              <p className="text-sm text-gray-400 line-through">
+                                {formatPrice(proc.price)}
+                              </p>
+                              <p className="font-semibold text-red-500 text-lg">
+                                {formatPrice(discountedPrice)}
+                              </p>
+                            </>
+                          ) : (
+                            <p className="font-semibold text-gold text-lg">
+                              {formatPrice(proc.price)}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      <p className="font-semibold text-gold text-lg">
-                        {formatPrice(proc.price)}
-                      </p>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -428,13 +533,32 @@ export function ReservationWizard({ onComplete }: ReservationWizardProps) {
           </h2>
           
           {/* Selected procedure summary */}
-          {state.procedure && (
-            <div className="mb-6 p-4 bg-gold/5 rounded-xl border border-gold/20">
-              <p className="text-sm text-gray-500">Избрана процедура:</p>
-              <p className="font-medium">{state.procedure.name}</p>
-              <p className="text-sm text-gold">{formatPrice(state.procedure.price)} • {formatDuration(state.procedure.duration_minutes)}</p>
-            </div>
-          )}
+          {state.procedure && (() => {
+            const hasDiscount = state.procedure.discount_percentage && state.procedure.discount_percentage > 0;
+            const discountedPrice = hasDiscount
+              ? state.procedure.price - (state.procedure.price * state.procedure.discount_percentage!) / 100
+              : state.procedure.price;
+            
+            return (
+              <div className={cn(
+                "mb-6 p-4 rounded-xl border",
+                hasDiscount ? "bg-red-50/50 border-red-200" : "bg-gold/5 border-gold/20"
+              )}>
+                <p className="text-sm text-gray-500">Избрана процедура:</p>
+                <p className="font-medium">{state.procedure.name}</p>
+                {hasDiscount ? (
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-sm text-gray-400 line-through">{formatPrice(state.procedure.price)}</span>
+                    <span className="text-sm font-semibold text-red-500">{formatPrice(discountedPrice)}</span>
+                    <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">-{state.procedure.discount_percentage}%</span>
+                    <span className="text-sm text-gray-500">• {formatDuration(state.procedure.duration_minutes)}</span>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gold">{formatPrice(state.procedure.price)} • {formatDuration(state.procedure.duration_minutes)}</p>
+                )}
+              </div>
+            );
+          })()}
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Calendar - 3D style */}
@@ -474,12 +598,15 @@ export function ReservationWizard({ onComplete }: ReservationWizardProps) {
                     {timeSlots.map((slot) => (
                       <button
                         key={slot.time}
-                        onClick={() => selectTimeSlot(slot.time)}
+                        onClick={() => slot.available && selectTimeSlot(slot.time)}
+                        disabled={!slot.available}
                         className={cn(
                           "py-3 px-2 rounded-xl text-sm font-medium transition-all duration-300",
                           state.timeSlot === slot.time
                             ? "bg-gold text-white shadow-lg shadow-gold/30 scale-105"
-                            : "bg-gray-100 hover:bg-gold/20 hover:text-gold hover:scale-105"
+                            : slot.available
+                              ? "bg-gray-100 hover:bg-gold/20 hover:text-gold hover:scale-105"
+                              : "bg-gray-200 text-gray-400 cursor-not-allowed line-through"
                         )}
                       >
                         {slot.time}

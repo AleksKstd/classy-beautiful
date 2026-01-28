@@ -38,6 +38,7 @@ export type Database = {
           technician?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
       schedules: {
         Row: {
@@ -61,6 +62,7 @@ export type Database = {
           closed_date_end?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
       reservation_logs: {
         Row: {
@@ -84,6 +86,7 @@ export type Database = {
           booked_at?: string;
           source?: string;
         };
+        Relationships: [];
       };
       carousel_images: {
         Row: {
@@ -107,7 +110,20 @@ export type Database = {
           is_active?: boolean;
           created_at?: string;
         };
+        Relationships: [];
       };
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      [_ in never]: never;
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
     };
   };
 };
@@ -118,3 +134,15 @@ export type ReservationLog = Database["public"]["Tables"]["reservation_logs"]["R
 export type ReservationLogInsert = Database["public"]["Tables"]["reservation_logs"]["Insert"];
 export type CarouselImage = Database["public"]["Tables"]["carousel_images"]["Row"];
 export type CarouselImageInsert = Database["public"]["Tables"]["carousel_images"]["Insert"];
+
+// Virtual type for reservation checking (actual reservations handled by external API)
+export type Reservation = {
+  id: string;
+  procedure_id: string;
+  office_name: string;
+  start_at: string;
+  end_at: string;
+  client_name?: string;
+  client_phone?: string;
+  created_at: string;
+};

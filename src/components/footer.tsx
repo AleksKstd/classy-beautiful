@@ -9,7 +9,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Brand */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Classy & Beautiful</h3>
+            <h3 className="text-lg font-semibold mb-4">Cb Classy & Beautiful</h3>
             <p className="text-gray-600 text-sm">
               Елегантен салон за красота с професионални процедури за лице, тяло и нокти.
             </p>
@@ -72,13 +72,13 @@ export function Footer() {
 
         <div className="mt-8 pt-8 border-t border-gray-200 text-center text-sm text-gray-500">
           <p>
-            © {new Date().getFullYear()} Classy & Beautiful. Всички права запазени.
+            © {new Date().getFullYear()} CB Classy & Beautiful. Всички права запазени.
           </p>
           <Link 
             href="/admin" 
             className="inline-block mt-2 text-xs text-gray-400 hover:text-gold transition-colors"
           >
-            Админ панел
+            Админ портал
           </Link>
         </div>
       </div>

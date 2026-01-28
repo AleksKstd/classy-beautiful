@@ -1,8 +1,13 @@
+import { unstable_noStore as noStore } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ProceduresGrid } from "@/components/procedures-grid";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function ProceduresPage() {
-  const supabase = await createClient();
+  noStore();
+  const supabase = createClient();
 
   const { data: procedures } = await supabase
     .from("procedures")

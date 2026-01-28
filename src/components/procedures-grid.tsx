@@ -234,7 +234,7 @@ export function ProceduresGrid({ procedures }: ProceduresGridProps) {
                     {/* Footer */}
                     <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
                       <Button asChild className="w-full" size="sm">
-                        <Link href="/rezervacii">
+                        <Link href={`/rezervacii?procedureId=${procedure.id}`}>
                           ЗАПАЗИ ЧАС
                         </Link>
                       </Button>

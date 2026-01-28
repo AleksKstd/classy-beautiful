@@ -256,7 +256,7 @@ export function ProceduresManager({ procedures: initialProcedures }: ProceduresM
               </div>
 
               <div>
-                <Label htmlFor="price">Цена (лв) *</Label>
+                <Label htmlFor="price">Цена (eur) *</Label>
                 <Input
                   id="price"
                   type="number"

@@ -7,6 +7,7 @@ import {
   uploadCarouselImage,
   deleteCarouselImage,
   updateCarouselImageOrder,
+  deleteStaleCarouselEntry,
 } from "@/app/actions/admin";
 
 interface CarouselImage {
@@ -23,6 +24,7 @@ interface CarouselManagerProps {
 
 export function CarouselManager({ images: initialImages }: CarouselManagerProps) {
   const [uploading, setUploading] = useState(false);
+  const [cleaningUp, setCleaningUp] = useState(false);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
   const handleImageError = (imageId: string) => {
@@ -31,6 +33,24 @@ export function CarouselManager({ images: initialImages }: CarouselManagerProps)
 
   // Filter out images that failed to load
   const validImages = initialImages.filter(img => !failedImages.has(img.id));
+  
+  // Get failed images data for cleanup
+  const failedImagesList = initialImages.filter(img => failedImages.has(img.id));
+
+  const handleCleanupStaleEntries = async () => {
+    if (!confirm(`Сигурни ли сте, че искате да изтриете ${failedImages.size} невалидни записа?`)) {
+      return;
+    }
+    
+    setCleaningUp(true);
+    
+    for (const img of failedImagesList) {
+      await deleteStaleCarouselEntry(img.id);
+    }
+    
+    setCleaningUp(false);
+    window.location.reload();
+  };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -142,11 +162,32 @@ export function CarouselManager({ images: initialImages }: CarouselManagerProps)
 
       {/* Show warning if some images failed to load */}
       {failedImages.size > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-3">
-          <ImageOff className="w-5 h-5 text-amber-600" />
-          <p className="text-sm text-amber-800">
-            <strong>{failedImages.size} снимки</strong> не могат да бъдат заредени (липсват в хранилището).
-          </p>
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <ImageOff className="w-5 h-5 text-amber-600" />
+            <p className="text-sm text-amber-800">
+              <strong>{failedImages.size} снимки</strong> не могат да бъдат заредени (липсват в хранилището).
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleCleanupStaleEntries}
+            disabled={cleaningUp}
+            className="border-amber-300 text-amber-700 hover:bg-amber-100"
+          >
+            {cleaningUp ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Изчистване...
+              </>
+            ) : (
+              <>
+                <Trash2 className="w-4 h-4 mr-2" />
+                Изчисти записите
+              </>
+            )}
+          </Button>
         </div>
       )}
 

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   verifyAdminCredentials,
   createAdminSession,
@@ -65,7 +65,7 @@ export async function createProcedure(data: {
   await checkAdminAuth();
 
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     const { error } = await supabase.from("procedures").insert({
       name: data.name,
@@ -81,6 +81,8 @@ export async function createProcedure(data: {
 
     revalidatePath("/admin/dashboard");
     revalidatePath("/");
+    revalidatePath("/proceduri");
+    revalidatePath("/rezervacii");
     return { success: true };
   } catch (error) {
     console.error("Error creating procedure:", error);
@@ -98,7 +100,7 @@ export async function updateProcedure(
   await checkAdminAuth();
 
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     const { error } = await supabase
       .from("procedures")
@@ -109,6 +111,8 @@ export async function updateProcedure(
 
     revalidatePath("/admin/dashboard");
     revalidatePath("/");
+    revalidatePath("/proceduri");
+    revalidatePath("/rezervacii");
     return { success: true };
   } catch (error) {
     console.error("Error updating procedure:", error);
@@ -123,7 +127,7 @@ export async function deleteProcedure(id: string) {
   await checkAdminAuth();
 
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     const { error } = await supabase
       .from("procedures")
@@ -134,6 +138,8 @@ export async function deleteProcedure(id: string) {
 
     revalidatePath("/admin/dashboard");
     revalidatePath("/");
+    revalidatePath("/proceduri");
+    revalidatePath("/rezervacii");
     return { success: true };
   } catch (error) {
     console.error("Error deleting procedure:", error);
@@ -148,7 +154,7 @@ export async function toggleProcedureActive(id: string, isActive: boolean) {
   await checkAdminAuth();
 
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     const { error } = await supabase
       .from("procedures")
@@ -181,7 +187,7 @@ export async function createScheduleClosure(data: {
   await checkAdminAuth();
 
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     const { error } = await supabase.from("schedules").insert(data);
 
@@ -202,7 +208,7 @@ export async function deleteScheduleClosure(id: string) {
   await checkAdminAuth();
 
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     const { error } = await supabase
       .from("schedules")
@@ -226,7 +232,7 @@ export async function getScheduleClosures() {
   await checkAdminAuth();
 
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     const { data, error } = await supabase
       .from("schedules")
@@ -250,7 +256,7 @@ export async function uploadCarouselImage(formData: FormData) {
   await checkAdminAuth();
 
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     const file = formData.get("file") as File;
 
     if (!file) {
@@ -306,7 +312,7 @@ export async function deleteCarouselImage(id: string, storagePath: string) {
   await checkAdminAuth();
 
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     // Handle legacy paths that include "carousel/" prefix
     const cleanPath = storagePath.startsWith("carousel/") 
@@ -347,7 +353,7 @@ export async function updateCarouselImageOrder(
   await checkAdminAuth();
 
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     const { error } = await supabase
       .from("carousel_images")
@@ -372,7 +378,7 @@ export async function getCarouselImages() {
   await checkAdminAuth();
 
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     const { data, error } = await supabase
       .from("carousel_images")
@@ -385,5 +391,32 @@ export async function getCarouselImages() {
   } catch (error) {
     console.error("Error fetching carousel images:", error);
     return { success: false, data: [] };
+  }
+}
+
+// Delete stale carousel entries (database records without storage files)
+export async function deleteStaleCarouselEntry(id: string) {
+  await checkAdminAuth();
+
+  try {
+    const supabase = createAdminClient();
+
+    // Only delete from database (storage file doesn't exist)
+    const { error: dbError } = await supabase
+      .from("carousel_images")
+      .delete()
+      .eq("id", id);
+
+    if (dbError) throw dbError;
+
+    revalidatePath("/admin/dashboard");
+    revalidatePath("/");
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting stale carousel entry:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Грешка при изтриване",
+    };
   }
 }
