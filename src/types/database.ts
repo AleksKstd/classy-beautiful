@@ -1,3 +1,5 @@
+export type ReservationStatus = 'pending' | 'confirmed' | 'cancelled';
+
 export type Database = {
   public: {
     Tables: {
@@ -112,6 +114,96 @@ export type Database = {
         };
         Relationships: [];
       };
+      reservations: {
+        Row: {
+          id: string;
+          procedure_id: string;
+          office_name: string;
+          start_at: string;
+          end_at: string;
+          customer_first_name: string;
+          customer_last_name: string;
+          customer_phone: string;
+          customer_email: string;
+          customer_note: string | null;
+          status: ReservationStatus;
+          original_start_at: string | null;
+          rescheduled_at: string | null;
+          cancelled_at: string | null;
+          cancellation_reason: string | null;
+          confirmed_at: string | null;
+          confirmation_email_sent: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          procedure_id: string;
+          office_name: string;
+          start_at: string;
+          end_at: string;
+          customer_first_name: string;
+          customer_last_name: string;
+          customer_phone: string;
+          customer_email: string;
+          customer_note?: string | null;
+          status?: ReservationStatus;
+          original_start_at?: string | null;
+          rescheduled_at?: string | null;
+          cancelled_at?: string | null;
+          cancellation_reason?: string | null;
+          confirmed_at?: string | null;
+          confirmation_email_sent?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          procedure_id?: string;
+          office_name?: string;
+          start_at?: string;
+          end_at?: string;
+          customer_first_name?: string;
+          customer_last_name?: string;
+          customer_phone?: string;
+          customer_email?: string;
+          customer_note?: string | null;
+          status?: ReservationStatus;
+          original_start_at?: string | null;
+          rescheduled_at?: string | null;
+          cancelled_at?: string | null;
+          cancellation_reason?: string | null;
+          confirmed_at?: string | null;
+          confirmation_email_sent?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      admin_settings: {
+        Row: {
+          id: string;
+          setting_key: string;
+          setting_value: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          setting_key: string;
+          setting_value?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          setting_key?: string;
+          setting_value?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -135,14 +227,15 @@ export type ReservationLogInsert = Database["public"]["Tables"]["reservation_log
 export type CarouselImage = Database["public"]["Tables"]["carousel_images"]["Row"];
 export type CarouselImageInsert = Database["public"]["Tables"]["carousel_images"]["Insert"];
 
-// Virtual type for reservation checking (actual reservations handled by external API)
-export type Reservation = {
-  id: string;
-  procedure_id: string;
-  office_name: string;
-  start_at: string;
-  end_at: string;
-  client_name?: string;
-  client_phone?: string;
-  created_at: string;
+// Reservation types
+export type Reservation = Database["public"]["Tables"]["reservations"]["Row"];
+export type ReservationInsert = Database["public"]["Tables"]["reservations"]["Insert"];
+export type ReservationUpdate = Database["public"]["Tables"]["reservations"]["Update"];
+
+// Admin settings types
+export type AdminSetting = Database["public"]["Tables"]["admin_settings"]["Row"];
+
+// Extended reservation with procedure info for display
+export type ReservationWithProcedure = Reservation & {
+  procedure: Procedure;
 };

@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { adminLogout } from "@/app/actions/admin";
 import { Button } from "@/components/ui/button";
-import { LogOut, Settings, Image, Calendar, Scissors, BarChart3 } from "lucide-react";
+import { LogOut, Settings, Image, Calendar, Scissors, BarChart3, CalendarCheck } from "lucide-react";
 import { ProceduresManager } from "./procedures-manager";
 import { CarouselManager } from "./carousel-manager";
 import { ScheduleManager } from "./schedule-manager";
 import { StatisticsManager } from "./statistics-manager";
-import type { Procedure, Schedule } from "@/types/database";
+import { BookingsManager } from "./bookings-manager";
+import type { Procedure, Schedule, ReservationStatus } from "@/types/database";
 
 interface CarouselImage {
   id: string;
@@ -25,24 +26,59 @@ interface ReservationLog {
   booked_at: string;
 }
 
+interface ReservationWithProcedure {
+  id: string;
+  procedure_id: string;
+  office_name: string;
+  start_at: string;
+  end_at: string;
+  customer_first_name: string;
+  customer_last_name: string;
+  customer_phone: string;
+  customer_email: string;
+  customer_note: string | null;
+  status: ReservationStatus;
+  original_start_at: string | null;
+  rescheduled_at: string | null;
+  cancelled_at: string | null;
+  cancellation_reason: string | null;
+  confirmed_at: string | null;
+  confirmation_email_sent: boolean;
+  created_at: string;
+  updated_at: string;
+  procedure: {
+    id: string;
+    name: string;
+    duration_minutes: number;
+    price: number;
+    technician: string;
+  };
+}
+
 interface AdminDashboardProps {
   procedures: Procedure[];
   schedules: Schedule[];
   carouselImages: CarouselImage[];
   reservationLogs: ReservationLog[];
+  reservations: ReservationWithProcedure[];
 }
 
-type Tab = "procedures" | "carousel" | "schedule" | "statistics";
+type Tab = "bookings" | "procedures" | "carousel" | "schedule" | "statistics";
 
 export function AdminDashboard({
   procedures,
   schedules,
   carouselImages,
   reservationLogs,
+  reservations,
 }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<Tab>("procedures");
+  const [activeTab, setActiveTab] = useState<Tab>("bookings");
+
+  // Count pending reservations
+  const pendingCount = reservations.filter(r => r.status === "pending").length;
 
   const tabs = [
+    { id: "bookings" as Tab, label: "Резервации", icon: CalendarCheck, badge: pendingCount },
     { id: "procedures" as Tab, label: "Процедури", icon: Scissors },
     { id: "carousel" as Tab, label: "Снимки", icon: Image },
     { id: "schedule" as Tab, label: "График", icon: Calendar },
@@ -94,6 +130,11 @@ export function AdminDashboard({
                 >
                   <Icon className="w-4 h-4" aria-hidden="true" />
                   <span className="hidden sm:inline">{tab.label}</span>
+                  {"badge" in tab && (tab as any).badge > 0 && (
+                    <span className="bg-yellow-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                      {(tab as any).badge}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -103,6 +144,9 @@ export function AdminDashboard({
 
       {/* Content */}
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {activeTab === "bookings" && (
+          <BookingsManager reservations={reservations} />
+        )}
         {activeTab === "procedures" && (
           <ProceduresManager procedures={procedures} />
         )}

@@ -13,11 +13,15 @@ export default async function DashboardPage() {
   const supabase = await createClient();
 
   // Fetch all data needed for dashboard
-  const [proceduresResult, schedulesResult, carouselResult, reservationLogsResult] = await Promise.all([
+  const [proceduresResult, schedulesResult, carouselResult, reservationLogsResult, reservationsResult] = await Promise.all([
     supabase.from("procedures").select("*").order("type", { ascending: true }),
     supabase.from("schedules").select("*").order("closed_date_start", { ascending: true }),
     supabase.from("carousel_images").select("*").order("display_order", { ascending: true }),
     supabase.from("reservation_logs").select("*").order("booked_at", { ascending: false }),
+    supabase.from("reservations").select(`
+      *,
+      procedure:procedures(id, name, duration_minutes, price, technician)
+    `).order("start_at", { ascending: true }),
   ]);
 
   return (
@@ -26,6 +30,7 @@ export default async function DashboardPage() {
       schedules={schedulesResult.data || []}
       carouselImages={carouselResult.data || []}
       reservationLogs={reservationLogsResult.data || []}
+      reservations={(reservationsResult.data || []) as any}
     />
   );
 }

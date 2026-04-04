@@ -29,6 +29,11 @@ export const nameSchema = z
 
 export const emailSchema = z
   .string()
+  .min(1, "Имейлът е задължителен")
+  .email("Невалиден имейл адрес");
+
+export const optionalEmailSchema = z
+  .string()
   .email("Невалиден имейл адрес")
   .optional()
   .or(z.literal(""));

@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { formatPrice, formatDuration } from "@/lib/utils";
-import { format, addDays } from "date-fns";
+import { format, addDays, addMinutes } from "date-fns";
 import { bg } from "date-fns/locale";
 import {
   MapPin,
@@ -22,7 +22,7 @@ import {
   Percent,
 } from "lucide-react";
 import { getProcedures, getAvailableSlots, getScheduleClosures } from "@/app/actions/availability";
-import { createReservation, CreateReservationResult } from "@/app/actions/reservations";
+import { createReservation, CreateReservationResult, getBookedSlots } from "@/app/actions/reservations";
 import { reservationFormSchema, type ReservationFormData } from "@/lib/validation";
 import type { Procedure } from "@/types/database";
 import type { TimeSlot } from "@/lib/availability";
@@ -87,10 +87,12 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
   });
 
   const [procedures, setProcedures] = useState<Procedure[]>([]);
-  const [timeSlots, setTimeSlots] = useState<{ time: string; available: boolean }[]>([]);
+  const [timeSlots, setTimeSlots] = useState<{ time: string; available: boolean; booked: boolean }[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [scheduleClosures, setScheduleClosures] = useState<{ closed_date_start: string; closed_date_end: string }[]>([]);
+  const [bookedSlots, setBookedSlots] = useState<{ start: string; end: string }[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
   const [preSelectHandled, setPreSelectHandled] = useState(false);
 
   useEffect(() => {
@@ -132,24 +134,57 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
     });
   };
 
+  // Check if a specific time slot is booked
+  const isTimeSlotBooked = (time: string): boolean => {
+    if (!state.date || !state.procedure || bookedSlots.length === 0) return false;
+    
+    const [hours, minutes] = time.split(':').map(Number);
+    const slotStart = new Date(state.date);
+    slotStart.setHours(hours, minutes, 0, 0);
+    const slotEnd = addMinutes(slotStart, state.procedure.duration_minutes);
+    
+    return bookedSlots.some(booked => {
+      const bookedStart = new Date(booked.start);
+      const bookedEnd = new Date(booked.end);
+      return (slotStart < bookedEnd && slotEnd > bookedStart);
+    });
+  };
+
   // Generate time slots from 9:00 to 19:00 with 30 min intervals
   const generateTimeSlots = () => {
-    const slots: { time: string; available: boolean }[] = [];
+    const slots: { time: string; available: boolean; booked: boolean }[] = [];
     for (let hour = 9; hour < 19; hour++) {
       const time1 = `${hour.toString().padStart(2, '0')}:00`;
       const time2 = `${hour.toString().padStart(2, '0')}:30`;
-      slots.push({ time: time1, available: !isTimeSlotClosed(time1) });
-      slots.push({ time: time2, available: !isTimeSlotClosed(time2) });
+      const isClosed1 = isTimeSlotClosed(time1);
+      const isClosed2 = isTimeSlotClosed(time2);
+      const isBooked1 = isTimeSlotBooked(time1);
+      const isBooked2 = isTimeSlotBooked(time2);
+      slots.push({ time: time1, available: !isClosed1 && !isBooked1, booked: isBooked1 });
+      slots.push({ time: time2, available: !isClosed2 && !isBooked2, booked: isBooked2 });
     }
-    slots.push({ time: '19:00', available: !isTimeSlotClosed('19:00') });
+    const isClosed19 = isTimeSlotClosed('19:00');
+    const isBooked19 = isTimeSlotBooked('19:00');
+    slots.push({ time: '19:00', available: !isClosed19 && !isBooked19, booked: isBooked19 });
     return slots;
   };
+
+  // Fetch booked slots when date or office changes
+  useEffect(() => {
+    if (state.date && state.office) {
+      setLoadingSlots(true);
+      getBookedSlots(state.office, state.date).then((slots) => {
+        setBookedSlots(slots);
+        setLoadingSlots(false);
+      });
+    }
+  }, [state.date, state.office]);
 
   useEffect(() => {
     if (state.date) {
       setTimeSlots(generateTimeSlots());
     }
-  }, [state.date, scheduleClosures]);
+  }, [state.date, scheduleClosures, bookedSlots, state.procedure]);
 
   const selectOffice = (office: OfficeName) => {
     setState((prev) => ({ ...prev, office }));
@@ -594,25 +629,35 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                       {format(state.date, "d MMMM yyyy", { locale: bg })}
                     </span>
                   </p>
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-80 overflow-y-auto pr-2">
-                    {timeSlots.map((slot) => (
-                      <button
-                        key={slot.time}
-                        onClick={() => slot.available && selectTimeSlot(slot.time)}
-                        disabled={!slot.available}
-                        className={cn(
-                          "py-3 px-2 rounded-xl text-sm font-medium transition-all duration-300",
-                          state.timeSlot === slot.time
-                            ? "bg-gold text-white shadow-lg shadow-gold/30 scale-105"
-                            : slot.available
-                              ? "bg-gray-100 hover:bg-gold/20 hover:text-gold hover:scale-105"
-                              : "bg-gray-200 text-gray-400 cursor-not-allowed line-through"
-                        )}
-                      >
-                        {slot.time}
-                      </button>
-                    ))}
-                  </div>
+                  {loadingSlots ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-gold" />
+                      <span className="ml-2 text-gray-500">Зареждане...</span>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-80 overflow-y-auto pr-2">
+                      {timeSlots.map((slot) => (
+                        <button
+                          key={slot.time}
+                          onClick={() => slot.available && selectTimeSlot(slot.time)}
+                          disabled={!slot.available}
+                          className={cn(
+                            "py-3 px-2 rounded-xl text-sm font-medium transition-all duration-300",
+                            state.timeSlot === slot.time
+                              ? "bg-gold text-white shadow-lg shadow-gold/30 scale-105"
+                              : slot.available
+                                ? "bg-gray-100 hover:bg-gold/20 hover:text-gold hover:scale-105"
+                                : slot.booked
+                                  ? "bg-red-100 text-red-400 cursor-not-allowed line-through"
+                                  : "bg-gray-200 text-gray-400 cursor-not-allowed line-through"
+                          )}
+                          title={slot.booked ? "Заето" : !slot.available ? "Недостъпно" : ""}
+                        >
+                          {slot.time}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -692,7 +737,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
               )}
             </div>
             <div>
-              <Label htmlFor="email">Имейл (по избор)</Label>
+              <Label htmlFor="email">Имейл *</Label>
               <Input
                 id="email"
                 type="email"
@@ -701,6 +746,9 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                 placeholder="email@example.com"
                 className="rounded-xl h-12"
               />
+              {errors.email && (
+                <p className="text-sm text-red-500 mt-1">{errors.email}</p>
+              )}
             </div>
             <div>
               <Label htmlFor="note">Бележка (по избор)</Label>
