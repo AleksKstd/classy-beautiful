@@ -27,14 +27,22 @@ export const nameSchema = z
     "Позволени са само букви (кирилица или латиница), тире и интервал"
   );
 
+// Permissive email regex that accepts:
+// - Multiple dots in local part (john.doe.smith@example.com)
+// - Subdomains (user@mail.abv.bg)
+// - Various TLDs including Bulgarian ones (.bg, .com, etc.)
+// - Plus addressing (user+tag@example.com)
+// - Underscores and hyphens
+const permissiveEmailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+
 export const emailSchema = z
   .string()
   .min(1, "Имейлът е задължителен")
-  .email("Невалиден имейл адрес");
+  .regex(permissiveEmailRegex, "Невалиден имейл адрес");
 
 export const optionalEmailSchema = z
   .string()
-  .email("Невалиден имейл адрес")
+  .regex(permissiveEmailRegex, "Невалиден имейл адрес")
   .optional()
   .or(z.literal(""));
 

@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { adminLogout } from "@/app/actions/admin";
 import { Button } from "@/components/ui/button";
-import { LogOut, Settings, Image, Calendar, Scissors, BarChart3, CalendarCheck } from "lucide-react";
+import { LogOut, Settings, Image, Calendar, Scissors, BarChart3, CalendarCheck, Cog } from "lucide-react";
 import { ProceduresManager } from "./procedures-manager";
 import { CarouselManager } from "./carousel-manager";
 import { ScheduleManager } from "./schedule-manager";
 import { StatisticsManager } from "./statistics-manager";
 import { BookingsManager } from "./bookings-manager";
+import { AdminSettings } from "./admin-settings";
+import { saveAdminSettings } from "@/app/actions/admin-settings";
 import type { Procedure, Schedule, ReservationStatus } from "@/types/database";
 
 interface CarouselImage {
@@ -55,15 +57,21 @@ interface ReservationWithProcedure {
   };
 }
 
+interface AdminSettingsData {
+  adminEmail: string;
+  notificationEnabled: boolean;
+}
+
 interface AdminDashboardProps {
   procedures: Procedure[];
   schedules: Schedule[];
   carouselImages: CarouselImage[];
   reservationLogs: ReservationLog[];
   reservations: ReservationWithProcedure[];
+  adminSettings: AdminSettingsData;
 }
 
-type Tab = "bookings" | "procedures" | "carousel" | "schedule" | "statistics";
+type Tab = "bookings" | "procedures" | "carousel" | "schedule" | "statistics" | "settings";
 
 export function AdminDashboard({
   procedures,
@@ -71,6 +79,7 @@ export function AdminDashboard({
   carouselImages,
   reservationLogs,
   reservations,
+  adminSettings,
 }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>("bookings");
 
@@ -83,6 +92,7 @@ export function AdminDashboard({
     { id: "carousel" as Tab, label: "Снимки", icon: Image },
     { id: "schedule" as Tab, label: "График", icon: Calendar },
     { id: "statistics" as Tab, label: "Статистика", icon: BarChart3 },
+    { id: "settings" as Tab, label: "Настройки", icon: Cog },
   ];
 
   return (
@@ -158,6 +168,13 @@ export function AdminDashboard({
         )}
         {activeTab === "statistics" && (
           <StatisticsManager procedures={procedures} reservationLogs={reservationLogs} />
+        )}
+        {activeTab === "settings" && (
+          <AdminSettings 
+            adminEmail={adminSettings.adminEmail}
+            notificationEnabled={adminSettings.notificationEnabled}
+            onSave={saveAdminSettings}
+          />
         )}
       </main>
     </div>

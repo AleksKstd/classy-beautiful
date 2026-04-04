@@ -147,17 +147,25 @@ export async function createReservation(
 // Get booked time slots for a specific date and office
 export async function getBookedSlots(
   officeName: string,
-  date: Date
+  date: Date | string
 ): Promise<{ start: string; end: string }[]> {
   const supabase = createServerClient();
 
-  const { data: reservations } = await supabase
+  // Handle date being passed as string (serialized by Next.js server actions)
+  const dateObj = typeof date === "string" ? new Date(date) : date;
+
+  const { data: reservations, error } = await supabase
     .from("reservations")
     .select("start_at, end_at")
     .eq("office_name", officeName)
     .in("status", ["pending", "confirmed"])
-    .gte("start_at", startOfDay(date).toISOString())
-    .lte("start_at", endOfDay(date).toISOString());
+    .gte("start_at", startOfDay(dateObj).toISOString())
+    .lte("start_at", endOfDay(dateObj).toISOString());
+
+  if (error) {
+    console.error("Error fetching booked slots:", error);
+    return [];
+  }
 
   if (!reservations) return [];
 
