@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { ReservationWizard } from "@/components/reservation-wizard";
 import { ReservationSuccess } from "@/components/reservation-success";
-import type { CreateReservationResult } from "@/app/actions/reservations";
+import type { CreateReservationResult } from "@/app/actions/booking";
 
 function ReservationContent() {
   const searchParams = useSearchParams();

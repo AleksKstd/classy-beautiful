@@ -1,10 +1,18 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { HeroCarouselWrapper } from "@/components/hero-carousel-wrapper";
 import { ServicesSection } from "@/components/services-section";
 import { PopularProcedures } from "@/components/popular-procedures";
 import { DiscountsSection } from "@/components/discounts-section";
-import { getPopularProcedures, getDiscountedProcedures } from "@/app/actions/external-api";
+import { getPopularProcedures, getDiscountedProcedures } from "@/lib/data/procedures";
+
+// Refresh popular procedures / discounts at least every 10 minutes.
+export const revalidate = 600;
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 export default async function HomePage() {
   const [popularProcedures, discountedProcedures] = await Promise.all([

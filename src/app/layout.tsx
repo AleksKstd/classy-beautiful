@@ -3,8 +3,7 @@ import "./globals.css";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { LocalBusinessSchema, WebsiteSchema } from "@/components/seo/structured-data";
-
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://classybeautiful.bg";
+import { SITE_URL as siteUrl } from "@/config/site";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -42,20 +41,12 @@ export const metadata: Metadata = {
     siteName: "Classy & Beautiful",
     title: "Classy & Beautiful - Елегантен салон за красота",
     description: "Професионални козметични процедури в София и Лом. Маникюр, педикюр, лазерна епилация, мигли и още. Резервирайте онлайн!",
-    images: [
-      {
-        url: "/og-image.jpg",
-        width: 1200,
-        height: 630,
-        alt: "Classy & Beautiful - Салон за красота",
-      },
-    ],
+    // Add `images: [{ url: "/og-image.jpg", width: 1200, height: 630 }]` once public/og-image.jpg exists.
   },
   twitter: {
     card: "summary_large_image",
     title: "Classy & Beautiful - Елегантен салон за красота",
     description: "Професионални козметични процедури в София и Лом. Резервирайте онлайн!",
-    images: ["/og-image.jpg"],
   },
   robots: {
     index: true,

@@ -1,20 +1,18 @@
-import { unstable_noStore as noStore } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import type { Metadata } from "next";
 import { ProceduresGrid } from "@/components/procedures-grid";
+import { getActiveProcedures } from "@/lib/data/procedures";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
+
+export const metadata: Metadata = {
+  title: "Процедури и цени",
+  description:
+    "Всички процедури на Classy & Beautiful с цени и продължителност - нокти, мигли и вежди, терапии за лице, лазерна епилация и кола маска.",
+  alternates: { canonical: "/proceduri" },
+};
 
 export default async function ProceduresPage() {
-  noStore();
-  const supabase = createClient();
-
-  const { data: procedures } = await supabase
-    .from("procedures")
-    .select("*")
-    .eq("is_active", true)
-    .order("type", { ascending: true })
-    .order("name", { ascending: true });
+  const procedures = await getActiveProcedures();
 
   return (
     <div className="min-h-screen bg-white">
@@ -36,7 +34,7 @@ export default async function ProceduresPage() {
       {/* Procedures Grid */}
       <section className="pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <ProceduresGrid procedures={procedures || []} />
+          <ProceduresGrid procedures={procedures} />
         </div>
       </section>
     </div>

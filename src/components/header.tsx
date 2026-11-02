@@ -21,6 +21,7 @@ export function Header() {
             href="/" 
             className="flex-shrink-0 group" 
             aria-label="Начало"
+            onClick={() => setMobileMenuOpen(false)}
           >
             <div className="w-28 h-16 relative transition-all duration-300 group-hover:animate-gold-shine-continuous">
               <Image

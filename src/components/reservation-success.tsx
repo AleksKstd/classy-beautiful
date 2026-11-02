@@ -4,7 +4,8 @@ import { CheckCircle, MapPin, Scissors, CalendarDays, Clock, User } from "lucide
 import { format, parseISO } from "date-fns";
 import { bg } from "date-fns/locale";
 import { formatPrice, formatDuration } from "@/lib/utils";
-import type { CreateReservationResult } from "@/app/actions/reservations";
+import { toTimeOfDay } from "@/lib/time";
+import type { CreateReservationResult } from "@/app/actions/booking";
 
 interface ReservationSuccessProps {
   reservation: NonNullable<CreateReservationResult["reservation"]>;
@@ -92,8 +93,8 @@ export function ReservationSuccess({
               <div>
                 <p className="text-sm text-gray-500">Час</p>
                 <p className="font-medium">
-                  {format(startDate, "HH:mm", { locale: bg })} -{" "}
-                  {format(parseISO(reservation.endAt), "HH:mm", { locale: bg })}
+                  {toTimeOfDay(startDate)} -{" "}
+                  {toTimeOfDay(parseISO(reservation.endAt))}
                 </p>
                 <p className="text-sm text-gray-500">
                   ({formatDuration(reservation.durationMinutes)})

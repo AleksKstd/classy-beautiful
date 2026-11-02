@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Tag, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPrice, formatDuration } from "@/lib/utils";
+import { getFinalPrice } from "@/lib/pricing";
 import type { Procedure } from "@/types/database";
 
 interface DiscountsSectionProps {
@@ -12,10 +13,6 @@ export function DiscountsSection({ procedures }: DiscountsSectionProps) {
   if (procedures.length === 0) {
     return null;
   }
-
-  const calculateDiscountedPrice = (price: number, discount: number) => {
-    return price - (price * discount) / 100;
-  };
 
   return (
     <section className="py-16 bg-white">
@@ -37,10 +34,7 @@ export function DiscountsSection({ procedures }: DiscountsSectionProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {procedures.map((procedure) => {
-            const discountedPrice = calculateDiscountedPrice(
-              procedure.price,
-              procedure.discount_percentage || 0
-            );
+            const discountedPrice = getFinalPrice(procedure);
 
             return (
               <div

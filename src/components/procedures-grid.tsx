@@ -13,6 +13,8 @@ import {
   HandMetal
 } from "lucide-react";
 import { formatPrice, formatDuration } from "@/lib/utils";
+import { getFinalPrice, hasDiscount as procedureHasDiscount } from "@/lib/pricing";
+import { BUSINESS } from "@/config/site";
 import type { Procedure } from "@/types/database";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -106,17 +108,15 @@ export function ProceduresGrid({ procedures }: ProceduresGridProps) {
     return indexA - indexB;
   });
 
-  // Group by sections with hierarchy
-  let currentMainSection = "";
-  let currentSubSection = "";
-  const categoriesWithSections = sortedCategories.map(category => {
+  // Group by sections with hierarchy: show a section header only when it changes
+  const categoriesWithSections = sortedCategories.map((category, index) => {
     const sectionInfo = getSectionInfo(category);
-    const showMainSection = sectionInfo.main !== currentMainSection;
-    const showSubSection = sectionInfo.sub ? sectionInfo.sub !== currentSubSection : false;
-    
-    if (showMainSection) currentMainSection = sectionInfo.main;
-    if (sectionInfo.sub && showSubSection) currentSubSection = sectionInfo.sub;
-    
+    const previous = sortedCategories.slice(0, index).map(getSectionInfo);
+    const lastMain = previous.length ? previous[previous.length - 1].main : "";
+    const lastSub = [...previous].reverse().find((info) => info.sub)?.sub ?? "";
+    const showMainSection = sectionInfo.main !== lastMain;
+    const showSubSection = sectionInfo.sub ? sectionInfo.sub !== lastSub : false;
+
     return { 
       category, 
       mainSection: sectionInfo.main, 
@@ -166,10 +166,8 @@ export function ProceduresGrid({ procedures }: ProceduresGridProps) {
             {/* Procedures Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 ml-4">
               {procs.map((procedure) => {
-                const hasDiscount = procedure.discount_percentage && procedure.discount_percentage > 0;
-                const discountedPrice = hasDiscount
-                  ? procedure.price - (procedure.price * procedure.discount_percentage!) / 100
-                  : procedure.price;
+                const hasDiscount = procedureHasDiscount(procedure);
+                const discountedPrice = getFinalPrice(procedure);
 
                 return (
                   <div
@@ -258,7 +256,7 @@ export function ProceduresGrid({ procedures }: ProceduresGridProps) {
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Button asChild size="lg">
-            <a href="tel:+359123456789">ОБАДЕТЕ СЕ</a>
+            <a href={`tel:${BUSINESS.phone}`}>ОБАДЕТЕ СЕ</a>
           </Button>
           <Button asChild variant="outline" size="lg">
             <Link href="/rezervacii">ЗАПАЗИ ЧАС</Link>

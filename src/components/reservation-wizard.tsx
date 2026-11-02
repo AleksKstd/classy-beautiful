@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
-import { formatPrice, formatDuration } from "@/lib/utils";
-import { format, addDays, addMinutes } from "date-fns";
+import { cn, formatPrice, formatDuration } from "@/lib/utils";
+import { format, startOfDay } from "date-fns";
 import { bg } from "date-fns/locale";
 import {
   MapPin,
@@ -21,18 +20,23 @@ import {
   ArrowLeft,
   Percent,
 } from "lucide-react";
-import { getProcedures, getAvailableSlots, getScheduleClosures } from "@/app/actions/availability";
-import { createReservation, CreateReservationResult, getBookedSlots } from "@/app/actions/reservations";
-import { reservationFormSchema, type ReservationFormData } from "@/lib/validation";
+import {
+  createReservation,
+  getBookedSlots,
+  getBookingProcedures,
+  getOfficeClosures,
+  type CreateReservationResult,
+} from "@/app/actions/booking";
+import { OFFICES, type OfficeName } from "@/config/site";
+import { getFinalPrice, hasDiscount as procedureHasDiscount } from "@/lib/pricing";
+import { buildDaySlots, getBookingWindow, isDayClosed, type DaySlot, type TimeRange } from "@/lib/slots";
+import { fieldErrors, reservationFormSchema, type ReservationFormData } from "@/lib/validation";
 import type { Procedure } from "@/types/database";
-import type { TimeSlot } from "@/lib/availability";
 
 interface ReservationWizardProps {
   onComplete: (reservation: CreateReservationResult["reservation"]) => void;
   preSelectedProcedureId?: string | null;
 }
-
-type OfficeName = "София" | "Лом";
 
 interface WizardState {
   office: OfficeName | null;
@@ -87,104 +91,79 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
   });
 
   const [procedures, setProcedures] = useState<Procedure[]>([]);
-  const [timeSlots, setTimeSlots] = useState<{ time: string; available: boolean; booked: boolean }[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [scheduleClosures, setScheduleClosures] = useState<{ closed_date_start: string; closed_date_end: string }[]>([]);
-  const [bookedSlots, setBookedSlots] = useState<{ start: string; end: string }[]>([]);
-  const [loadingSlots, setLoadingSlots] = useState(false);
-  const [preSelectHandled, setPreSelectHandled] = useState(false);
+  const [scheduleClosures, setScheduleClosures] = useState<TimeRange[]>([]);
+  // Booked ranges tagged with the office/day they were loaded for
+  const [booked, setBooked] = useState<{ key: string; ranges: TimeRange[] } | null>(null);
 
   useEffect(() => {
-    getProcedures().then(setProcedures);
-  }, []);
-
-  // Handle pre-selected procedure from URL
-  useEffect(() => {
-    if (preSelectedProcedureId && procedures.length > 0 && !preSelectHandled) {
-      const procedure = procedures.find(p => p.id === preSelectedProcedureId);
-      if (procedure) {
-        setState(prev => ({ ...prev, procedure }));
-        // Start at step 1 (office selection) with procedure pre-loaded
-        setCurrentStep(1);
-        setPreSelectHandled(true);
-      }
-    }
-  }, [preSelectedProcedureId, procedures, preSelectHandled]);
+    getBookingProcedures()
+      .then((loaded) => {
+        setProcedures(loaded);
+        // Pre-select a procedure passed in the URL (?procedureId=...)
+        const preSelected = preSelectedProcedureId && loaded.find((p) => p.id === preSelectedProcedureId);
+        if (preSelected) {
+          setState((prev) => ({ ...prev, procedure: preSelected }));
+        }
+      })
+      .catch((error) => console.error("Failed to load procedures:", error));
+  }, [preSelectedProcedureId]);
 
   // Fetch schedule closures when office is selected
   useEffect(() => {
     if (state.office) {
-      getScheduleClosures(state.office).then(setScheduleClosures);
+      getOfficeClosures(state.office)
+        .then(setScheduleClosures)
+        .catch((error) => console.error("Failed to load closures:", error));
     }
   }, [state.office]);
 
-  // Check if a specific time on the selected date falls within a schedule closure
-  const isTimeSlotClosed = (time: string): boolean => {
-    if (!state.date || scheduleClosures.length === 0) return false;
-    
-    const [hours, minutes] = time.split(':').map(Number);
-    const slotDateTime = new Date(state.date);
-    slotDateTime.setHours(hours, minutes, 0, 0);
-    
-    return scheduleClosures.some(closure => {
-      const closureStart = new Date(closure.closed_date_start);
-      const closureEnd = new Date(closure.closed_date_end);
-      return slotDateTime >= closureStart && slotDateTime < closureEnd;
-    });
-  };
-
-  // Check if a specific time slot is booked
-  const isTimeSlotBooked = (time: string): boolean => {
-    if (!state.date || !state.procedure || bookedSlots.length === 0) return false;
-    
-    const [hours, minutes] = time.split(':').map(Number);
-    const slotStart = new Date(state.date);
-    slotStart.setHours(hours, minutes, 0, 0);
-    const slotEnd = addMinutes(slotStart, state.procedure.duration_minutes);
-    
-    return bookedSlots.some(booked => {
-      const bookedStart = new Date(booked.start);
-      const bookedEnd = new Date(booked.end);
-      return (slotStart < bookedEnd && slotEnd > bookedStart);
-    });
-  };
-
-  // Generate time slots from 9:00 to 19:00 with 30 min intervals
-  const generateTimeSlots = () => {
-    const slots: { time: string; available: boolean; booked: boolean }[] = [];
-    for (let hour = 9; hour < 19; hour++) {
-      const time1 = `${hour.toString().padStart(2, '0')}:00`;
-      const time2 = `${hour.toString().padStart(2, '0')}:30`;
-      const isClosed1 = isTimeSlotClosed(time1);
-      const isClosed2 = isTimeSlotClosed(time2);
-      const isBooked1 = isTimeSlotBooked(time1);
-      const isBooked2 = isTimeSlotBooked(time2);
-      slots.push({ time: time1, available: !isClosed1 && !isBooked1, booked: isBooked1 });
-      slots.push({ time: time2, available: !isClosed2 && !isBooked2, booked: isBooked2 });
-    }
-    const isClosed19 = isTimeSlotClosed('19:00');
-    const isBooked19 = isTimeSlotBooked('19:00');
-    slots.push({ time: '19:00', available: !isClosed19 && !isBooked19, booked: isBooked19 });
-    return slots;
-  };
+  // Calendar days are converted to "yyyy-MM-dd"; times are always salon (Sofia) time.
+  const dateKey = state.date ? format(state.date, "yyyy-MM-dd") : null;
+  const bookedKey = dateKey && state.office ? `${state.office}|${dateKey}` : null;
+  const loadingSlots = bookedKey !== null && booked?.key !== bookedKey;
 
   // Fetch booked slots when date or office changes
   useEffect(() => {
-    if (state.date && state.office) {
-      setLoadingSlots(true);
-      getBookedSlots(state.office, state.date).then((slots) => {
-        setBookedSlots(slots);
-        setLoadingSlots(false);
+    if (!dateKey || !state.office || !bookedKey) return;
+    let cancelled = false;
+    getBookedSlots(state.office, dateKey)
+      .catch((error) => {
+        console.error("Failed to load booked slots:", error);
+        return [] as TimeRange[];
+      })
+      .then((ranges) => {
+        if (!cancelled) setBooked({ key: bookedKey, ranges });
       });
-    }
-  }, [state.date, state.office]);
+    return () => {
+      cancelled = true;
+    };
+  }, [dateKey, state.office, bookedKey]);
 
-  useEffect(() => {
-    if (state.date) {
-      setTimeSlots(generateTimeSlots());
-    }
-  }, [state.date, scheduleClosures, bookedSlots, state.procedure]);
+  const timeSlots: DaySlot[] = useMemo(
+    () =>
+      dateKey
+        ? buildDaySlots({
+            dateKey,
+            durationMinutes: state.procedure?.duration_minutes ?? 30,
+            closures: scheduleClosures,
+            booked: booked?.key === bookedKey ? booked.ranges : [],
+          })
+        : [],
+    [dateKey, scheduleClosures, booked, bookedKey, state.procedure]
+  );
+
+  const bookingWindow = getBookingWindow();
+  const isDateDisabled = (date: Date) => {
+    const key = format(date, "yyyy-MM-dd");
+    return (
+      date < startOfDay(new Date()) ||
+      key < bookingWindow.first ||
+      key > bookingWindow.last ||
+      isDayClosed(key, scheduleClosures)
+    );
+  };
 
   const selectOffice = (office: OfficeName) => {
     setState((prev) => ({ ...prev, office }));
@@ -236,7 +215,10 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
   };
 
   const goBack = () => {
-    if (currentStep > 1) {
+    // A procedure pre-selected from a link skips step 2, so go straight back to the office.
+    if (currentStep === 3 && !state.selectedCategory) {
+      setCurrentStep(1);
+    } else if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
     }
   };
@@ -244,49 +226,44 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
   const handleSubmit = async () => {
     const result = reservationFormSchema.safeParse(state.formData);
     if (!result.success) {
-      const newErrors: Record<string, string> = {};
-      result.error.errors.forEach((err) => {
-        if (err.path[0]) {
-          newErrors[err.path[0] as string] = err.message;
-        }
-      });
-      setErrors(newErrors);
+      setErrors(fieldErrors(result.error));
       return;
     }
 
-    if (!state.office || !state.procedure || !state.date || !state.timeSlot) {
+    if (!state.office || !state.procedure || !dateKey || !state.timeSlot) {
       return;
     }
 
     setSubmitting(true);
+    try {
+      const response = await createReservation({
+        officeName: state.office,
+        procedureId: state.procedure.id,
+        date: dateKey,
+        time: state.timeSlot,
+        firstName: state.formData.firstName,
+        lastName: state.formData.lastName,
+        phone: state.formData.phone,
+        email: state.formData.email,
+        note: state.formData.note || undefined,
+      });
 
-    const [hours, minutes] = state.timeSlot.split(":").map(Number);
-    const startAt = new Date(state.date);
-    startAt.setHours(hours, minutes, 0, 0);
-
-    const response = await createReservation({
-      officeName: state.office,
-      procedureId: state.procedure.id,
-      startAt: startAt.toISOString(),
-      firstName: state.formData.firstName,
-      lastName: state.formData.lastName,
-      phone: state.formData.phone,
-      email: state.formData.email || undefined,
-      note: state.formData.note || undefined,
-    });
-
-    setSubmitting(false);
-
-    if (response.success && response.reservation) {
-      onComplete(response.reservation);
-    } else {
-      setErrors({ submit: response.error || "Възникна грешка" });
+      if (response.success && response.reservation) {
+        onComplete(response.reservation);
+      } else {
+        setErrors({ ...response.fieldErrors, submit: response.error || "Възникна грешка" });
+      }
+    } catch (error) {
+      console.error("Reservation failed:", error);
+      setErrors({ submit: "Възникна грешка. Моля, опитайте отново или се обадете." });
+    } finally {
+      setSubmitting(false);
     }
   };
 
   // Get discounted procedures
   const getDiscountedProcedures = () => {
-    return procedures.filter(p => p.discount_percentage && p.discount_percentage > 0);
+    return procedures.filter(procedureHasDiscount);
   };
 
   // Get procedures for current selection
@@ -400,7 +377,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
             Изберете локация
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {(["София", "Лом"] as OfficeName[]).map((office) => (
+            {OFFICES.map((office) => (
               <button
                 key={office}
                 onClick={() => selectOffice(office)}
@@ -504,10 +481,8 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
               </button>
               <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
                 {getFilteredProcedures().map((proc) => {
-                  const hasDiscount = proc.discount_percentage && proc.discount_percentage > 0;
-                  const discountedPrice = hasDiscount
-                    ? proc.price - (proc.price * proc.discount_percentage!) / 100
-                    : proc.price;
+                  const hasDiscount = procedureHasDiscount(proc);
+                  const discountedPrice = getFinalPrice(proc);
                   
                   return (
                     <button
@@ -569,10 +544,8 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
           
           {/* Selected procedure summary */}
           {state.procedure && (() => {
-            const hasDiscount = state.procedure.discount_percentage && state.procedure.discount_percentage > 0;
-            const discountedPrice = hasDiscount
-              ? state.procedure.price - (state.procedure.price * state.procedure.discount_percentage!) / 100
-              : state.procedure.price;
+            const hasDiscount = procedureHasDiscount(state.procedure);
+            const discountedPrice = getFinalPrice(state.procedure);
             
             return (
               <div className={cn(
@@ -606,9 +579,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                   mode="single"
                   selected={state.date ?? undefined}
                   onSelect={selectDate}
-                  disabled={(date) =>
-                    date < new Date() || date > addDays(new Date(), 60)
-                  }
+                  disabled={isDateDisabled}
                   className="relative rounded-2xl border-2 border-gold/30 p-4 bg-white shadow-xl"
                   locale={bg}
                 />
@@ -699,6 +670,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                 <Label htmlFor="firstName">Име *</Label>
                 <Input
                   id="firstName"
+                  autoComplete="given-name"
                   value={state.formData.firstName}
                   onChange={(e) => updateFormData("firstName", e.target.value)}
                   placeholder="Въведете име"
@@ -712,6 +684,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                 <Label htmlFor="lastName">Фамилия *</Label>
                 <Input
                   id="lastName"
+                  autoComplete="family-name"
                   value={state.formData.lastName}
                   onChange={(e) => updateFormData("lastName", e.target.value)}
                   placeholder="Въведете фамилия"
@@ -727,6 +700,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
               <Input
                 id="phone"
                 type="tel"
+                autoComplete="tel"
                 value={state.formData.phone}
                 onChange={(e) => updateFormData("phone", e.target.value)}
                 placeholder="0888 123 456"
@@ -741,6 +715,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
               <Input
                 id="email"
                 type="email"
+                autoComplete="email"
                 value={state.formData.email}
                 onChange={(e) => updateFormData("email", e.target.value)}
                 placeholder="email@example.com"
@@ -758,8 +733,12 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                 onChange={(e) => updateFormData("note", e.target.value)}
                 placeholder="Допълнителна информация..."
                 rows={3}
+                maxLength={500}
                 className="rounded-xl"
               />
+              {errors.note && (
+                <p className="text-sm text-red-500 mt-1">{errors.note}</p>
+              )}
             </div>
 
             {errors.submit && (

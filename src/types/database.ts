@@ -73,6 +73,7 @@ export type Database = {
           office_name: string;
           booked_at: string;
           source: string;
+          reservation_id: string | null;
         };
         Insert: {
           id?: string;
@@ -80,6 +81,7 @@ export type Database = {
           office_name: string;
           booked_at?: string;
           source?: string;
+          reservation_id?: string | null;
         };
         Update: {
           id?: string;
@@ -87,6 +89,7 @@ export type Database = {
           office_name?: string;
           booked_at?: string;
           source?: string;
+          reservation_id?: string | null;
         };
         Relationships: [];
       };
@@ -209,7 +212,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      hit_rate_limit: {
+        Args: { p_key: string; p_limit: number; p_window_seconds: number };
+        Returns: boolean;
+      };
     };
     Enums: {
       [_ in never]: never;

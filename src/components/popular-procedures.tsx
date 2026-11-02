@@ -1,5 +1,6 @@
 import { TrendingUp } from "lucide-react";
 import { formatPrice, formatDuration } from "@/lib/utils";
+import { getFinalPrice, hasDiscount } from "@/lib/pricing";
 import type { Procedure } from "@/types/database";
 
 interface PopularProceduresProps {
@@ -41,7 +42,7 @@ export function PopularProcedures({ procedures }: PopularProceduresProps) {
                     {index + 1}
                   </span>
                 </div>
-                {procedure.discount_percentage && procedure.discount_percentage > 0 && (
+                {hasDiscount(procedure) && (
                   <span className="bg-red-100 text-red-600 text-xs font-semibold px-2 py-1 rounded">
                     -{procedure.discount_percentage}%
                   </span>
@@ -58,7 +59,7 @@ export function PopularProcedures({ procedures }: PopularProceduresProps) {
 
               <div className="flex items-center justify-between">
                 <span className="text-2xl font-bold text-gold">
-                  {formatPrice(procedure.price)}
+                  {formatPrice(getFinalPrice(procedure))}
                 </span>
               </div>
             </div>

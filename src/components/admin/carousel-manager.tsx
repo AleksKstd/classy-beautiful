@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, Trash2, ArrowUp, ArrowDown, Loader2, ImageOff } from "lucide-react";
 import {
@@ -8,7 +8,7 @@ import {
   deleteCarouselImage,
   updateCarouselImageOrder,
   deleteStaleCarouselEntry,
-} from "@/app/actions/admin";
+} from "@/app/actions/admin/carousel";
 
 interface CarouselImage {
   id: string;
@@ -79,12 +79,12 @@ export function CarouselManager({ images: initialImages }: CarouselManagerProps)
     e.target.value = "";
   };
 
-  const handleDelete = async (id: string, storagePath: string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm("Сигурни ли сте, че искате да изтриете тази снимка?")) {
       return;
     }
 
-    const result = await deleteCarouselImage(id, storagePath);
+    const result = await deleteCarouselImage(id);
     if (result.success) {
       window.location.reload();
     } else {
@@ -239,7 +239,7 @@ export function CarouselManager({ images: initialImages }: CarouselManagerProps)
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => handleDelete(image.id, image.storage_path)}
+                    onClick={() => handleDelete(image.id)}
                   >
                     <Trash2 className="w-4 h-4 text-red-600" />
                   </Button>

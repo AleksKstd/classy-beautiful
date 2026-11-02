@@ -1,24 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { format, parseISO } from "date-fns";
+import { safeEqual } from "@/lib/auth/session";
+import { buildIcsCalendar, escapeIcsText, formatIcsDate } from "@/lib/ics";
+import { createAdminClient } from "@/lib/supabase/admin";
 
+export const dynamic = "force-dynamic";
+
+/**
+ * Private iCalendar feed of upcoming bookings for the admin's calendar app.
+ * Requires ?token=<CALENDAR_FEED_TOKEN>; anything else gets a 404.
+ */
 export async function GET(request: NextRequest) {
+  const expected = process.env.CALENDAR_FEED_TOKEN;
+  const token = request.nextUrl.searchParams.get("token") ?? "";
+  if (!expected || expected.length < 32 || !safeEqual(token, expected)) {
+    return new NextResponse("Not found", { status: 404 });
+  }
+
   try {
-    const supabase = createClient();
-
-    // Get all confirmed and pending reservations for the next 90 days
     const now = new Date();
-    const futureDate = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+    const until = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
-    const { data: reservations, error } = await supabase
+    const { data: reservations, error } = await createAdminClient()
       .from("reservations")
-      .select(`
-        *,
-        procedure:procedures(name, duration_minutes, technician)
-      `)
+      .select("*, procedure:procedures(name, technician)")
       .in("status", ["pending", "confirmed"])
       .gte("start_at", now.toISOString())
-      .lte("start_at", futureDate.toISOString())
+      .lte("start_at", until.toISOString())
       .order("start_at", { ascending: true });
 
     if (error) {
@@ -26,66 +33,54 @@ export async function GET(request: NextRequest) {
       return new NextResponse("Error fetching reservations", { status: 500 });
     }
 
-    // Generate ICS content
-    const icsEvents = (reservations || []).map((res) => {
-      const procedure = res.procedure as any;
-      const startAt = parseISO(res.start_at);
-      const endAt = parseISO(res.end_at);
-      
-      const statusEmoji = res.status === "pending" ? "⏳" : "✅";
-      const statusText = res.status === "pending" ? "ЧАКАЩА" : "ПОТВЪРДЕНА";
-      
-      // Format dates for ICS (YYYYMMDDTHHMMSS)
-      const formatICSDate = (date: Date) => {
-        return format(date, "yyyyMMdd'T'HHmmss");
-      };
+    const stamp = formatIcsDate(now);
+    const events = (reservations ?? []).map((res) => {
+      const procedure = res.procedure as unknown as { name: string; technician: string } | null;
+      const pending = res.status === "pending";
+      const customer = `${res.customer_first_name} ${res.customer_last_name}`;
 
-      const summary = `${statusEmoji} ${procedure?.name || "Процедура"} - ${res.customer_first_name} ${res.customer_last_name}`;
       const description = [
-        `Статус: ${statusText}`,
-        `Клиент: ${res.customer_first_name} ${res.customer_last_name}`,
+        `Статус: ${pending ? "ЧАКАЩА" : "ПОТВЪРДЕНА"}`,
+        `Клиент: ${customer}`,
         `Телефон: ${res.customer_phone}`,
         `Имейл: ${res.customer_email}`,
         res.customer_note ? `Бележка: ${res.customer_note}` : "",
         `Техник: ${procedure?.technician || "N/A"}`,
-      ].filter(Boolean).join("\\n");
-
-      const location = res.office_name === "София" 
-        ? "Classy & Beautiful - София" 
-        : "Classy & Beautiful - Лом";
+      ]
+        .filter(Boolean)
+        .join("\n");
 
       return [
-        "BEGIN:VEVENT",
         `UID:${res.id}@classybeautiful.bg`,
-        `DTSTAMP:${formatICSDate(new Date())}`,
-        `DTSTART:${formatICSDate(startAt)}`,
-        `DTEND:${formatICSDate(endAt)}`,
-        `SUMMARY:${summary}`,
-        `DESCRIPTION:${description}`,
-        `LOCATION:${location}`,
-        `STATUS:${res.status === "confirmed" ? "CONFIRMED" : "TENTATIVE"}`,
-        "END:VEVENT",
-      ].join("\r\n");
+        `DTSTAMP:${stamp}`,
+        `DTSTART:${formatIcsDate(new Date(res.start_at))}`,
+        `DTEND:${formatIcsDate(new Date(res.end_at))}`,
+        `SUMMARY:${escapeIcsText(`${pending ? "⏳" : "✅"} ${procedure?.name || "Процедура"} - ${customer}`)}`,
+        `DESCRIPTION:${escapeIcsText(description)}`,
+        `LOCATION:${escapeIcsText(`Classy & Beautiful - ${res.office_name}`)}`,
+        `STATUS:${pending ? "TENTATIVE" : "CONFIRMED"}`,
+      ];
     });
 
-    const icsContent = [
-      "BEGIN:VCALENDAR",
-      "VERSION:2.0",
-      "PRODID:-//Classy & Beautiful//Reservations//BG",
-      "CALSCALE:GREGORIAN",
-      "METHOD:PUBLISH",
-      "X-WR-CALNAME:Classy & Beautiful Резервации",
-      "X-WR-TIMEZONE:Europe/Sofia",
-      "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
-      ...icsEvents,
-      "END:VCALENDAR",
-    ].join("\r\n");
+    const ics = buildIcsCalendar(
+      [
+        "VERSION:2.0",
+        "PRODID:-//Classy & Beautiful//Reservations//BG",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "X-WR-CALNAME:Classy & Beautiful Резервации",
+        "X-WR-TIMEZONE:Europe/Sofia",
+        "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
+      ],
+      events
+    );
 
-    return new NextResponse(icsContent, {
+    return new NextResponse(ics, {
       headers: {
         "Content-Type": "text/calendar; charset=utf-8",
         "Content-Disposition": 'attachment; filename="reservations.ics"',
-        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Cache-Control": "no-store",
+        "X-Robots-Tag": "noindex",
       },
     });
   } catch (error) {

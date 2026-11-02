@@ -1,9 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import AutoScroll from "embla-carousel-auto-scroll";
-import { cn } from "@/lib/utils";
 
 interface CarouselImage {
   src: string;
@@ -15,7 +13,7 @@ interface HeroCarouselProps {
 }
 
 export function HeroCarousel({ images }: HeroCarouselProps) {
-  const [emblaRef, emblaApi] = useEmblaCarousel(
+  const [emblaRef] = useEmblaCarousel(
     { 
       loop: true, 
       align: "start",

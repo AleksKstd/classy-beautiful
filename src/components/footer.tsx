@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BUSINESS } from "@/config/site";
 import { Phone, Mail, MapPin, Instagram, Facebook } from "lucide-react";
 
 export function Footer() {
@@ -29,7 +30,7 @@ export function Footer() {
                 <div className="w-8 h-8 rounded-full bg-brand-black flex items-center justify-center">
                   <Phone className="w-4 h-4 text-white" aria-hidden="true" />
                 </div>
-                <a href="tel:+359 87 837 8083" className="hover:text-gold transition-colors">
+                <a href={`tel:${BUSINESS.phone}`} className="hover:text-gold transition-colors">
                   +359 87 837 8083
                 </a>
               </li>

@@ -1,66 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { adminLogout } from "@/app/actions/admin";
+import { adminLogout } from "@/app/actions/admin/auth";
 import { Button } from "@/components/ui/button";
 import { LogOut, Settings, Image, Calendar, Scissors, BarChart3, CalendarCheck, Cog } from "lucide-react";
 import { ProceduresManager } from "./procedures-manager";
 import { CarouselManager } from "./carousel-manager";
 import { ScheduleManager } from "./schedule-manager";
 import { StatisticsManager } from "./statistics-manager";
-import { BookingsManager } from "./bookings-manager";
-import { AdminSettings } from "./admin-settings";
-import { saveAdminSettings } from "@/app/actions/admin-settings";
-import type { Procedure, Schedule, ReservationStatus } from "@/types/database";
-
-interface CarouselImage {
-  id: string;
-  storage_path: string;
-  display_order: number;
-  is_active: boolean;
-  created_at: string;
-}
-
-interface ReservationLog {
-  id: string;
-  procedure_id: string;
-  office_name: string;
-  booked_at: string;
-}
-
-interface ReservationWithProcedure {
-  id: string;
-  procedure_id: string;
-  office_name: string;
-  start_at: string;
-  end_at: string;
-  customer_first_name: string;
-  customer_last_name: string;
-  customer_phone: string;
-  customer_email: string;
-  customer_note: string | null;
-  status: ReservationStatus;
-  original_start_at: string | null;
-  rescheduled_at: string | null;
-  cancelled_at: string | null;
-  cancellation_reason: string | null;
-  confirmed_at: string | null;
-  confirmation_email_sent: boolean;
-  created_at: string;
-  updated_at: string;
-  procedure: {
-    id: string;
-    name: string;
-    duration_minutes: number;
-    price: number;
-    technician: string;
-  };
-}
-
-interface AdminSettingsData {
-  adminEmail: string;
-  notificationEnabled: boolean;
-}
+import { BookingsManager, type ReservationWithProcedure } from "./bookings-manager";
+import { AdminSettings, type CalendarFeedInfo } from "./admin-settings";
+import { saveAdminSettings } from "@/app/actions/admin/settings";
+import type { AdminSettingsData } from "@/lib/validation";
+import type { CarouselImage, Procedure, ReservationLog, Schedule } from "@/types/database";
 
 interface AdminDashboardProps {
   procedures: Procedure[];
@@ -69,6 +21,7 @@ interface AdminDashboardProps {
   reservationLogs: ReservationLog[];
   reservations: ReservationWithProcedure[];
   adminSettings: AdminSettingsData;
+  calendarFeed: CalendarFeedInfo | null;
 }
 
 type Tab = "bookings" | "procedures" | "carousel" | "schedule" | "statistics" | "settings";
@@ -80,13 +33,14 @@ export function AdminDashboard({
   reservationLogs,
   reservations,
   adminSettings,
+  calendarFeed,
 }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>("bookings");
 
   // Count pending reservations
   const pendingCount = reservations.filter(r => r.status === "pending").length;
 
-  const tabs = [
+  const tabs: { id: Tab; label: string; icon: typeof CalendarCheck; badge?: number }[] = [
     { id: "bookings" as Tab, label: "Резервации", icon: CalendarCheck, badge: pendingCount },
     { id: "procedures" as Tab, label: "Процедури", icon: Scissors },
     { id: "carousel" as Tab, label: "Снимки", icon: Image },
@@ -140,9 +94,9 @@ export function AdminDashboard({
                 >
                   <Icon className="w-4 h-4" aria-hidden="true" />
                   <span className="hidden sm:inline">{tab.label}</span>
-                  {"badge" in tab && (tab as any).badge > 0 && (
+                  {!!tab.badge && tab.badge > 0 && (
                     <span className="bg-yellow-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                      {(tab as any).badge}
+                      {tab.badge}
                     </span>
                   )}
                 </button>
@@ -153,7 +107,7 @@ export function AdminDashboard({
       </div>
 
       {/* Content */}
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === "bookings" && (
           <BookingsManager reservations={reservations} />
         )}
@@ -174,9 +128,10 @@ export function AdminDashboard({
             adminEmail={adminSettings.adminEmail}
             notificationEnabled={adminSettings.notificationEnabled}
             onSave={saveAdminSettings}
+            calendarFeed={calendarFeed}
           />
         )}
-      </main>
+      </div>
     </div>
   );
 }
