@@ -104,3 +104,39 @@ export function isDayClosed(dateKey: string, closures: TimeRange[]): boolean {
   const close = zonedToUtc(dateKey, hours.close).getTime();
   return closures.some((c) => ms(c.start) <= open && ms(c.end) >= close);
 }
+
+/**
+ * Share (0..1) of a day's opening hours already taken by bookings and
+ * closures. Overlapping ranges are merged so nothing is counted twice.
+ */
+export function dayOccupancy(dateKey: string, busy: TimeRange[]): number {
+  const hours = getOpeningHours(dateKey);
+  if (!hours) return 1;
+  const open = zonedToUtc(dateKey, hours.open).getTime();
+  const close = zonedToUtc(dateKey, hours.close).getTime();
+  if (close <= open) return 1;
+
+  const clipped = busy
+    .map((r) => [Math.max(ms(r.start), open), Math.min(ms(r.end), close)] as const)
+    .filter(([start, end]) => end > start)
+    .sort((a, b) => a[0] - b[0]);
+
+  let taken = 0;
+  let cursor = open;
+  for (const [start, end] of clipped) {
+    const from = Math.max(start, cursor);
+    if (end > from) {
+      taken += end - from;
+      cursor = end;
+    }
+  }
+  return Math.min(taken / (close - open), 1);
+}
+
+/** All calendar days ("yyyy-MM-dd") of the booking window. */
+export function getBookingWindowDays(now: Date = new Date()): string[] {
+  const { first, last } = getBookingWindow(now);
+  const days: string[] = [];
+  for (let key = first; key <= last; key = addDaysToKey(key, 1)) days.push(key);
+  return days;
+}

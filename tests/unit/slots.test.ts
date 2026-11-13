@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { buildDaySlots, getSlotTimes, isDayClosed, isWithinBookingWindow, overlaps } from "@/lib/slots";
+import {
+  buildDaySlots,
+  dayOccupancy,
+  getBookingWindowDays,
+  getSlotTimes,
+  isDayClosed,
+  isWithinBookingWindow,
+  overlaps,
+} from "@/lib/slots";
 import { zonedToUtc } from "@/lib/time";
 
 const DAY = "2026-11-05";
@@ -64,5 +72,34 @@ describe("day rules", () => {
   it("uses half-open intervals", () => {
     expect(overlaps(0, 10, 10, 20)).toBe(false);
     expect(overlaps(0, 11, 10, 20)).toBe(true);
+  });
+});
+
+describe("dayOccupancy", () => {
+  it("is 0 for an empty day and 1 for a fully booked day", () => {
+    expect(dayOccupancy(DAY, [])).toBe(0);
+    expect(dayOccupancy(DAY, [{ start: at("09:00"), end: at("19:00") }])).toBe(1);
+  });
+
+  it("measures the share of opening hours taken", () => {
+    // 2.5 of 10 opening hours
+    expect(dayOccupancy(DAY, [{ start: at("10:00"), end: at("12:30") }])).toBeCloseTo(0.25);
+  });
+
+  it("does not double count overlaps and ignores time outside opening hours", () => {
+    const busy = [
+      { start: at("10:00"), end: at("12:00") },
+      { start: at("11:00"), end: at("13:00") }, // overlaps the first
+      { start: at("07:00"), end: at("09:30") }, // only 30 min inside opening hours
+    ];
+    expect(dayOccupancy(DAY, busy)).toBeCloseTo(3.5 / 10);
+  });
+});
+
+describe("getBookingWindowDays", () => {
+  it("lists every day of the window", () => {
+    const days = getBookingWindowDays(new Date(at("12:00")));
+    expect(days[0]).toBe(DAY);
+    expect(days).toHaveLength(61);
   });
 });

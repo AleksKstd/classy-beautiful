@@ -4,9 +4,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { buildDaySlots, type TimeRange } from "@/lib/slots";
 import { dayRangeUtc } from "@/lib/time";
 
-/** Active bookings overlapping a salon-local day (times only). */
-export async function fetchBookedRanges(officeName: OfficeName, dateKey: string, excludeId?: string): Promise<TimeRange[]> {
-  const { start, end } = dayRangeUtc(dateKey);
+/** Active bookings overlapping [start, end) for an office (times only, no personal data). */
+export async function fetchBookedRangesBetween(
+  officeName: OfficeName,
+  start: Date,
+  end: Date,
+  excludeId?: string
+): Promise<TimeRange[]> {
   let query = createAdminClient()
     .from("reservations")
     .select("start_at, end_at")
@@ -19,6 +23,12 @@ export async function fetchBookedRanges(officeName: OfficeName, dateKey: string,
   const { data, error } = await query;
   if (error) throw error;
   return (data ?? []).map((r) => ({ start: r.start_at, end: r.end_at }));
+}
+
+/** Active bookings overlapping a salon-local day (times only). */
+export async function fetchBookedRanges(officeName: OfficeName, dateKey: string, excludeId?: string): Promise<TimeRange[]> {
+  const { start, end } = dayRangeUtc(dateKey);
+  return fetchBookedRangesBetween(officeName, start, end, excludeId);
 }
 
 /**

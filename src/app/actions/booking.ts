@@ -7,9 +7,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyAdminNewReservation } from "@/lib/notifications";
 import { getFinalPrice } from "@/lib/pricing";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
-import { fetchBookedRanges, validateSlot } from "@/lib/booking";
-import { isWithinBookingWindow, type TimeRange } from "@/lib/slots";
-import { zonedToUtc } from "@/lib/time";
+import { fetchBookedRanges, fetchBookedRangesBetween, validateSlot } from "@/lib/booking";
+import { getBookingWindow, isWithinBookingWindow, type TimeRange } from "@/lib/slots";
+import { dayRangeUtc, zonedToUtc } from "@/lib/time";
 import {
   dateKeySchema,
   fieldErrors,
@@ -81,6 +81,21 @@ export async function getBookedSlots(officeName: OfficeName, dateKey: string): P
   } catch (error) {
     console.error("Error fetching booked slots:", error);
     throw new Error("Заетите часове не могат да бъдат заредени.");
+  }
+}
+
+/**
+ * Booked time ranges for an office across the whole booking window
+ * (times only, no personal data). Used to show how busy each day is.
+ */
+export async function getBookedRangesForWindow(officeName: OfficeName): Promise<TimeRange[]> {
+  const office = officeSchema.parse(officeName);
+  const { first, last } = getBookingWindow();
+  try {
+    return await fetchBookedRangesBetween(office, dayRangeUtc(first).start, dayRangeUtc(last).end);
+  } catch (error) {
+    console.error("Error fetching booked ranges:", error);
+    throw new Error("Заетостта не може да бъде заредена.");
   }
 }
 

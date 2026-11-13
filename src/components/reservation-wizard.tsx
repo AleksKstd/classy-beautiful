@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import {
   createReservation,
+  getBookedRangesForWindow,
   getBookedSlots,
   getBookingProcedures,
   getOfficeClosures,
@@ -30,7 +31,17 @@ import {
 } from "@/app/actions/booking";
 import { OFFICES, type OfficeName } from "@/config/site";
 import { getFinalPrice, hasDiscount as procedureHasDiscount } from "@/lib/pricing";
-import { buildDaySlots, getBookingWindow, isDayClosed, type DaySlot, type TimeRange } from "@/lib/slots";
+import {
+  buildDaySlots,
+  dayOccupancy,
+  getBookingWindow,
+  getBookingWindowDays,
+  isDayClosed,
+  type DaySlot,
+  type TimeRange,
+} from "@/lib/slots";
+import { DayLoadWave, loadLabel } from "@/components/day-load";
+import type { DayContentProps } from "react-day-picker";
 import { fieldErrors, reservationFormSchema, type ReservationFormData } from "@/lib/validation";
 import type { Procedure } from "@/types/database";
 
@@ -155,6 +166,33 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
     }
   }, [state.office]);
 
+  // Bookings for the whole booking window, used to show how busy each day is
+  const [windowBooked, setWindowBooked] = useState<{ office: OfficeName; ranges: TimeRange[] } | null>(null);
+  useEffect(() => {
+    const office = state.office;
+    if (!office) return;
+    let cancelled = false;
+    getBookedRangesForWindow(office)
+      .then((ranges) => !cancelled && setWindowBooked({ office, ranges }))
+      .catch((error) => console.error("Failed to load day occupancy:", error));
+    return () => {
+      cancelled = true;
+    };
+  }, [state.office]);
+
+  // Per day: share of the day already booked, and whether the chosen procedure still fits anywhere
+  const dayLoad = useMemo(() => {
+    const map = new Map<string, { occupancy: number; full: boolean }>();
+    if (!windowBooked || windowBooked.office !== state.office) return map;
+    const duration = state.procedure?.duration_minutes ?? 30;
+    for (const key of getBookingWindowDays()) {
+      const busy = [...windowBooked.ranges, ...scheduleClosures];
+      const slots = buildDaySlots({ dateKey: key, durationMinutes: duration, closures: scheduleClosures, booked: windowBooked.ranges });
+      map.set(key, { occupancy: dayOccupancy(key, busy), full: !slots.some((slot) => slot.available) });
+    }
+    return map;
+  }, [windowBooked, state.office, state.procedure, scheduleClosures]);
+
   // Calendar days are converted to "yyyy-MM-dd"; times are always salon (Sofia) time.
   const dateKey = state.date ? format(state.date, "yyyy-MM-dd") : null;
   const bookedKey = dateKey && state.office ? `${state.office}|${dateKey}` : null;
@@ -197,7 +235,27 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
       date < startOfDay(new Date()) ||
       key < bookingWindow.first ||
       key > bookingWindow.last ||
-      isDayClosed(key, scheduleClosures)
+      isDayClosed(key, scheduleClosures) ||
+      dayLoad.get(key)?.full === true
+    );
+  };
+
+  // Calendar day: the date with a small wave showing how busy the day is
+  const DayWithLoad = ({ date, activeModifiers }: DayContentProps) => {
+    const info = dayLoad.get(format(date, "yyyy-MM-dd"));
+    const showWave = info && !activeModifiers.disabled && !activeModifiers.outside;
+    return (
+      <span className="flex flex-col items-center gap-1">
+        <span>{date.getDate()}</span>
+        {showWave ? (
+          <>
+            <DayLoadWave occupancy={info.occupancy} />
+            <span className="sr-only">, {loadLabel(info.occupancy)}</span>
+          </>
+        ) : (
+          <span className="h-1.5" aria-hidden="true" />
+        )}
+      </span>
     );
   };
 
@@ -599,7 +657,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
           })()}
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Calendar - 3D style */}
+            {/* Calendar with day occupancy */}
             <div className="flex justify-center">
               <div>
                 <Calendar
@@ -609,7 +667,26 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                   disabled={isDateDisabled}
                   className="border border-gray-300 p-4 bg-white"
                   locale={bg}
+                  components={{ DayContent: DayWithLoad }}
+                  classNames={{
+                    head_cell: "text-gray-500 w-10 font-normal text-[0.75rem] uppercase",
+                    day_today: "font-semibold",
+                    cell: "h-12 w-10 text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
+                    day: "inline-flex h-12 w-10 items-center justify-center p-0 text-sm font-normal transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-dark aria-selected:opacity-100",
+                  }}
                 />
+                {/* Legend */}
+                <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-gray-500">
+                  <span className="flex items-center gap-2">
+                    <DayLoadWave occupancy={0.15} className="text-brand-black" /> свободно
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <DayLoadWave occupancy={0.55} className="text-brand-black" /> натоварено
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <DayLoadWave occupancy={0.95} className="text-brand-black" /> почти пълно
+                  </span>
+                </div>
               </div>
             </div>
             
