@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, parseISO } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, parseISO } from "date-fns";
 import { bg } from "date-fns/locale";
 import {
   Calendar as CalendarIcon,
-  ChevronLeft,
   ChevronRight,
   Clock,
   User,
@@ -22,10 +21,10 @@ import {
   MapPin,
   AlertCircle,
 } from "lucide-react";
-import { confirmReservation, cancelReservation, rescheduleReservation } from "@/app/actions/reservations";
-import type { Procedure, ReservationStatus } from "@/types/database";
+import { confirmReservation, cancelReservation, rescheduleReservation } from "@/app/actions/admin/reservations";
+import type { ReservationStatus } from "@/types/database";
 
-interface ReservationWithProcedure {
+export interface ReservationWithProcedure {
   id: string;
   procedure_id: string;
   office_name: string;
@@ -84,10 +83,12 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
   const [isPending, startTransition] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
 
-  // Update reservations when props change
-  useEffect(() => {
+  // Reset local state when the server sends fresh reservations
+  const [prevInitial, setPrevInitial] = useState(initialReservations);
+  if (initialReservations !== prevInitial) {
+    setPrevInitial(initialReservations);
     setReservations(initialReservations);
-  }, [initialReservations]);
+  }
 
   // Filter reservations by office
   const officeReservations = reservations.filter(r => r.office_name === selectedOffice);
@@ -148,6 +149,8 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
   const handleCancel = async (id: string) => {
     setActionError(null);
     const reason = prompt("Причина за отмяна (по избор):");
+    // Pressing "Cancel" in the prompt aborts the cancellation.
+    if (reason === null) return;
     startTransition(async () => {
       const result = await cancelReservation(id, reason || undefined);
       if (result.success) {
@@ -166,18 +169,18 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
     if (!selectedReservation || !rescheduleDate || !rescheduleTime) return;
     
     setActionError(null);
-    const [hours, minutes] = rescheduleTime.split(":").map(Number);
-    const newStartAt = new Date(rescheduleDate);
-    newStartAt.setHours(hours, minutes, 0, 0);
+    const dateKey = format(rescheduleDate, "yyyy-MM-dd");
 
     startTransition(async () => {
-      const result = await rescheduleReservation(selectedReservation.id, newStartAt.toISOString());
-      if (result.success) {
+      const result = await rescheduleReservation(selectedReservation.id, dateKey, rescheduleTime);
+      if (result.success && result.startAt && result.endAt) {
+        const { startAt, endAt } = result;
         setReservations(prev => prev.map(r => 
           r.id === selectedReservation.id 
             ? { 
                 ...r, 
-                start_at: newStartAt.toISOString(),
+                start_at: startAt,
+                end_at: endAt,
                 original_start_at: r.original_start_at || r.start_at,
                 rescheduled_at: new Date().toISOString()
               } 
@@ -236,24 +239,7 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
         {/* Calendar */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <button
-                onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <h3 className="font-semibold">
-                {format(currentMonth, "LLLL yyyy", { locale: bg })}
-              </h3>
-              <button
-                onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-            
+            {/* The calendar's own caption shows the month and the previous/next buttons */}
             <Calendar
               mode="single"
               selected={selectedDate}

@@ -1,56 +1,58 @@
+import { BUSINESS, OPENING_HOURS, SITE_URL as siteUrl } from "@/config/site";
+
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+/** Groups identical opening hours into schema.org OpeningHoursSpecification entries. */
+function openingHoursSpecification() {
+  const groups = new Map<string, string[]>();
+  for (let day = 0; day < 7; day++) {
+    const hours = OPENING_HOURS[day];
+    if (!hours) continue;
+    const key = `${hours.open}-${hours.close}`;
+    groups.set(key, [...(groups.get(key) ?? []), DAY_NAMES[day]]);
+  }
+  return Array.from(groups, ([key, days]) => {
+    const [opens, closes] = key.split("-");
+    return { "@type": "OpeningHoursSpecification", dayOfWeek: days, opens, closes };
+  });
+}
+
+/** Safe JSON for an inline <script>: prevents "</script>" breaking out. */
+function jsonLd(data: unknown) {
+  return { __html: JSON.stringify(data).replace(/</g, "\\u003c") };
+}
+
 export function LocalBusinessSchema() {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://classybeautiful.bg";
   
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "BeautySalon",
     "@id": `${siteUrl}/#organization`,
-    name: "Classy & Beautiful",
-    alternateName: "CB Classy & Beautiful",
+    name: BUSINESS.name,
+    alternateName: BUSINESS.alternateName,
     description: "Професионален козметичен салон предлагащ маникюр, педикюр, лазерна епилация, мигли, вежди и терапии за лице в София и Лом.",
     url: siteUrl,
     logo: `${siteUrl}/logo.svg`,
-    image: `${siteUrl}/og-image.jpg`,
-    telephone: "+359878378083",
-    email: "info@classybeautiful.bg",
+    telephone: BUSINESS.phone,
+    email: BUSINESS.email,
     priceRange: "$$",
-    currenciesAccepted: "BGN",
+    currenciesAccepted: "EUR",
     paymentAccepted: "Cash, Card",
-    openingHoursSpecification: [
-      {
-        "@type": "OpeningHoursSpecification",
-        dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-        opens: "09:00",
-        closes: "19:00",
-      },
-      {
-        "@type": "OpeningHoursSpecification",
-        dayOfWeek: "Saturday",
-        opens: "10:00",
-        closes: "17:00",
-      },
-    ],
+    openingHoursSpecification: openingHoursSpecification(),
     address: [
       {
         "@type": "PostalAddress",
         addressLocality: "София",
         addressRegion: "София-град",
         addressCountry: "BG",
-        streetAddress: "ул. Примерна 1",
       },
       {
         "@type": "PostalAddress",
         addressLocality: "Лом",
         addressRegion: "Монтана",
         addressCountry: "BG",
-        streetAddress: "ул. Примерна 2",
       },
     ],
-    geo: {
-      "@type": "GeoCoordinates",
-      latitude: 42.6977,
-      longitude: 23.3219,
-    },
     areaServed: [
       { "@type": "City", name: "София" },
       { "@type": "City", name: "Лом" },
@@ -86,22 +88,18 @@ export function LocalBusinessSchema() {
         },
       ],
     },
-    sameAs: [
-      "https://www.facebook.com/classybeautiful",
-      "https://www.instagram.com/classybeautiful",
-    ],
+    sameAs: [BUSINESS.facebook, BUSINESS.instagram],
   };
 
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      dangerouslySetInnerHTML={jsonLd(structuredData)}
     />
   );
 }
 
 export function WebsiteSchema() {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://classybeautiful.bg";
   
   const structuredData = {
     "@context": "https://schema.org",
@@ -113,41 +111,13 @@ export function WebsiteSchema() {
     publisher: {
       "@id": `${siteUrl}/#organization`,
     },
-    potentialAction: {
-      "@type": "SearchAction",
-      target: {
-        "@type": "EntryPoint",
-        urlTemplate: `${siteUrl}/reserve?search={search_term_string}`,
-      },
-      "query-input": "required name=search_term_string",
-    },
     inLanguage: "bg-BG",
   };
 
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-    />
-  );
-}
-
-export function BreadcrumbSchema({ items }: { items: { name: string; url: string }[] }) {
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: items.map((item, index) => ({
-      "@type": "ListItem",
-      position: index + 1,
-      name: item.name,
-      item: item.url,
-    })),
-  };
-
-  return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      dangerouslySetInnerHTML={jsonLd(structuredData)}
     />
   );
 }

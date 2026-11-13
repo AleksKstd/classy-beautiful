@@ -3,9 +3,12 @@
 -- Prices are in EUR (from studio24.bg)
 
 -- ============================================
--- RUN THIS FIRST TO DELETE ALL PROCEDURES (removes duplicates)
+-- WARNING: only for a brand-new, empty database.
+-- Deleting procedures on a live database would also delete (or, after
+-- migration 002, block on) the reservations that reference them.
+-- To wipe the catalogue on a fresh project, uncomment the next line:
+-- DELETE FROM procedures;
 -- ============================================
-DELETE FROM procedures;
 
 -- Clear existing data (optional, for fresh start)
 -- TRUNCATE procedures, schedules, reservation_logs, carousel_images RESTART IDENTITY CASCADE;

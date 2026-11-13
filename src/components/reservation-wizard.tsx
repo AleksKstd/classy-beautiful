@@ -1,38 +1,56 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
-import { formatPrice, formatDuration } from "@/lib/utils";
-import { format, addDays, addMinutes } from "date-fns";
+import { cn, formatPrice, formatDuration } from "@/lib/utils";
+import { format, startOfDay } from "date-fns";
 import { bg } from "date-fns/locale";
 import {
   MapPin,
-  Scissors,
   CalendarDays,
   User,
   Check,
   Loader2,
   ChevronRight,
   ArrowLeft,
-  Percent,
+  Search,
+  Sparkles,
+  Clock,
+  X,
 } from "lucide-react";
-import { getProcedures, getAvailableSlots, getScheduleClosures } from "@/app/actions/availability";
-import { createReservation, CreateReservationResult, getBookedSlots } from "@/app/actions/reservations";
-import { reservationFormSchema, type ReservationFormData } from "@/lib/validation";
+import {
+  createReservation,
+  getBookedRangesForWindow,
+  getBookedSlots,
+  getBookingProcedures,
+  getOfficeClosures,
+  type CreateReservationResult,
+} from "@/app/actions/booking";
+import { OFFICES, OPENING_HOURS, type OfficeName } from "@/config/site";
+import { getFinalPrice, hasDiscount as procedureHasDiscount } from "@/lib/pricing";
+import {
+  buildDaySlots,
+  dayOccupancy,
+  getBookingWindow,
+  getBookingWindowDays,
+  isDayClosed,
+  type DaySlot,
+  type TimeRange,
+} from "@/lib/slots";
+import { GlassFill, GlassSample, loadLabel } from "@/components/day-load";
+import type { DayContentProps } from "react-day-picker";
+import { fieldErrors, reservationFormSchema, type ReservationFormData } from "@/lib/validation";
 import type { Procedure } from "@/types/database";
-import type { TimeSlot } from "@/lib/availability";
 
 interface ReservationWizardProps {
   onComplete: (reservation: CreateReservationResult["reservation"]) => void;
   preSelectedProcedureId?: string | null;
 }
-
-type OfficeName = "София" | "Лом";
 
 interface WizardState {
   office: OfficeName | null;
@@ -53,8 +71,8 @@ const initialFormData: ReservationFormData = {
 };
 
 const steps = [
-  { id: 1, title: "Локация", icon: MapPin },
-  { id: 2, title: "Процедура", icon: Scissors },
+  { id: 1, title: "Салон", icon: MapPin },
+  { id: 2, title: "Процедура", icon: Sparkles },
   { id: 3, title: "Дата и час", icon: CalendarDays },
   { id: 4, title: "Данни", icon: User },
 ];
@@ -68,123 +86,242 @@ const categoryHierarchy: Record<string, string[]> = {
   "Тяло": ["Естетични процедури - тяло", "Пилинг на тяло", "Пресотерапия и лимфендренаж"],
 };
 
+// One-line description for each category card
+const categoryDescriptions: Record<string, string> = {
+  "Промоции": "Процедури с отстъпка в момента",
+  "Нокти": "Педикюр и грижа за ноктите",
+  "Лице": "Мигли, вежди, терапии и естетика",
+  "Епилация": "Лазер и кола маска за жени и мъже",
+  "Тяло": "Пилинг, лимфодренаж и оформяне",
+};
+
+const officeTaglines: Record<OfficeName, string> = {
+  "София": "Салонът в столицата",
+  "Лом": "Салонът в Лом",
+};
+
+/** "Всеки ден 09:00 - 19:00" when every day has the same hours. */
+function openingHoursText(): string {
+  const days = Object.values(OPENING_HOURS).filter(Boolean) as { open: string; close: string }[];
+  const first = days[0];
+  if (days.length === 7 && days.every((d) => d.open === first.open && d.close === first.close)) {
+    return `Всеки ден ${first.open} - ${first.close}`;
+  }
+  return "Вижте свободните часове в календара";
+}
+
+const timeGroups = [
+  { label: "Сутрин", test: (t: string) => t < "12:00" },
+  { label: "Следобед", test: (t: string) => t >= "12:00" && t < "17:00" },
+  { label: "Вечер", test: (t: string) => t >= "17:00" },
+];
+
+/** Local calendar Date for a "yyyy-MM-dd" key (the calendar works in local days). */
+function dateFromKey(key: string): Date {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
 // Sub-categories for epilation
 const subCategoryMap: Record<string, string[]> = {
   "Епилация жени": ["Лазерна епилация - жени", "Кола маска - жени"],
   "Епилация мъже": ["Лазерна епилация - мъже", "Кола маска - мъже"],
 };
 
+// "Запомни ме": customer details kept only in this browser (localStorage), never in a cookie.
+const REMEMBER_KEY = "cb_customer_details";
+
+function loadRememberedDetails(): ReservationFormData | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(REMEMBER_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    return {
+      firstName: String(saved.firstName ?? ""),
+      lastName: String(saved.lastName ?? ""),
+      phone: String(saved.phone ?? ""),
+      email: String(saved.email ?? ""),
+      note: "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveRememberedDetails(details: ReservationFormData | null) {
+  try {
+    if (details) {
+      const { firstName, lastName, phone, email } = details;
+      window.localStorage.setItem(REMEMBER_KEY, JSON.stringify({ firstName, lastName, phone, email }));
+    } else {
+      window.localStorage.removeItem(REMEMBER_KEY);
+    }
+  } catch {
+    // Storage blocked (private mode etc.) - remembering is optional.
+  }
+}
+
 export function ReservationWizard({ onComplete, preSelectedProcedureId }: ReservationWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
-  const [state, setState] = useState<WizardState>({
+  const [state, setState] = useState<WizardState>(() => ({
     office: null,
     selectedCategory: null,
     selectedSubCategory: null,
     procedure: null,
     date: null,
     timeSlot: null,
-    formData: initialFormData,
-  });
+    formData: loadRememberedDetails() ?? initialFormData,
+  }));
+  const [remember, setRemember] = useState(() => loadRememberedDetails() !== null);
 
   const [procedures, setProcedures] = useState<Procedure[]>([]);
-  const [timeSlots, setTimeSlots] = useState<{ time: string; available: boolean; booked: boolean }[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [scheduleClosures, setScheduleClosures] = useState<{ closed_date_start: string; closed_date_end: string }[]>([]);
-  const [bookedSlots, setBookedSlots] = useState<{ start: string; end: string }[]>([]);
-  const [loadingSlots, setLoadingSlots] = useState(false);
-  const [preSelectHandled, setPreSelectHandled] = useState(false);
+  const [scheduleClosures, setScheduleClosures] = useState<TimeRange[]>([]);
+  // Booked ranges tagged with the office/day they were loaded for
+  const [booked, setBooked] = useState<{ key: string; ranges: TimeRange[] } | null>(null);
 
   useEffect(() => {
-    getProcedures().then(setProcedures);
-  }, []);
-
-  // Handle pre-selected procedure from URL
-  useEffect(() => {
-    if (preSelectedProcedureId && procedures.length > 0 && !preSelectHandled) {
-      const procedure = procedures.find(p => p.id === preSelectedProcedureId);
-      if (procedure) {
-        setState(prev => ({ ...prev, procedure }));
-        // Start at step 1 (office selection) with procedure pre-loaded
-        setCurrentStep(1);
-        setPreSelectHandled(true);
-      }
-    }
-  }, [preSelectedProcedureId, procedures, preSelectHandled]);
+    getBookingProcedures()
+      .then((loaded) => {
+        setProcedures(loaded);
+        // Pre-select a procedure passed in the URL (?procedureId=...)
+        const preSelected = preSelectedProcedureId && loaded.find((p) => p.id === preSelectedProcedureId);
+        if (preSelected) {
+          setState((prev) => ({ ...prev, procedure: preSelected }));
+        }
+      })
+      .catch((error) => console.error("Failed to load procedures:", error));
+  }, [preSelectedProcedureId]);
 
   // Fetch schedule closures when office is selected
   useEffect(() => {
     if (state.office) {
-      getScheduleClosures(state.office).then(setScheduleClosures);
+      getOfficeClosures(state.office)
+        .then(setScheduleClosures)
+        .catch((error) => console.error("Failed to load closures:", error));
     }
   }, [state.office]);
 
-  // Check if a specific time on the selected date falls within a schedule closure
-  const isTimeSlotClosed = (time: string): boolean => {
-    if (!state.date || scheduleClosures.length === 0) return false;
-    
-    const [hours, minutes] = time.split(':').map(Number);
-    const slotDateTime = new Date(state.date);
-    slotDateTime.setHours(hours, minutes, 0, 0);
-    
-    return scheduleClosures.some(closure => {
-      const closureStart = new Date(closure.closed_date_start);
-      const closureEnd = new Date(closure.closed_date_end);
-      return slotDateTime >= closureStart && slotDateTime < closureEnd;
-    });
-  };
+  // Bookings for the whole booking window, used to show how busy each day is
+  const [windowBooked, setWindowBooked] = useState<{ office: OfficeName; ranges: TimeRange[] } | null>(null);
+  useEffect(() => {
+    const office = state.office;
+    if (!office) return;
+    let cancelled = false;
+    getBookedRangesForWindow(office)
+      .then((ranges) => !cancelled && setWindowBooked({ office, ranges }))
+      .catch((error) => console.error("Failed to load day occupancy:", error));
+    return () => {
+      cancelled = true;
+    };
+  }, [state.office]);
 
-  // Check if a specific time slot is booked
-  const isTimeSlotBooked = (time: string): boolean => {
-    if (!state.date || !state.procedure || bookedSlots.length === 0) return false;
-    
-    const [hours, minutes] = time.split(':').map(Number);
-    const slotStart = new Date(state.date);
-    slotStart.setHours(hours, minutes, 0, 0);
-    const slotEnd = addMinutes(slotStart, state.procedure.duration_minutes);
-    
-    return bookedSlots.some(booked => {
-      const bookedStart = new Date(booked.start);
-      const bookedEnd = new Date(booked.end);
-      return (slotStart < bookedEnd && slotEnd > bookedStart);
-    });
-  };
-
-  // Generate time slots from 9:00 to 19:00 with 30 min intervals
-  const generateTimeSlots = () => {
-    const slots: { time: string; available: boolean; booked: boolean }[] = [];
-    for (let hour = 9; hour < 19; hour++) {
-      const time1 = `${hour.toString().padStart(2, '0')}:00`;
-      const time2 = `${hour.toString().padStart(2, '0')}:30`;
-      const isClosed1 = isTimeSlotClosed(time1);
-      const isClosed2 = isTimeSlotClosed(time2);
-      const isBooked1 = isTimeSlotBooked(time1);
-      const isBooked2 = isTimeSlotBooked(time2);
-      slots.push({ time: time1, available: !isClosed1 && !isBooked1, booked: isBooked1 });
-      slots.push({ time: time2, available: !isClosed2 && !isBooked2, booked: isBooked2 });
+  // Per day: share of the day already booked, and whether the chosen procedure still fits anywhere
+  const dayLoad = useMemo(() => {
+    const map = new Map<string, { occupancy: number; full: boolean; fewLeft: boolean }>();
+    if (!windowBooked || windowBooked.office !== state.office) return map;
+    const duration = state.procedure?.duration_minutes ?? 30;
+    for (const key of getBookingWindowDays()) {
+      const busy = [...windowBooked.ranges, ...scheduleClosures];
+      const slots = buildDaySlots({ dateKey: key, durationMinutes: duration, closures: scheduleClosures, booked: windowBooked.ranges });
+      const freeCount = slots.filter((slot) => slot.available).length;
+      map.set(key, {
+        occupancy: dayOccupancy(key, busy),
+        full: freeCount === 0,
+        // Only a handful of start times left: outline the day in gold
+        fewLeft: freeCount > 0 && freeCount <= 3,
+      });
     }
-    const isClosed19 = isTimeSlotClosed('19:00');
-    const isBooked19 = isTimeSlotBooked('19:00');
-    slots.push({ time: '19:00', available: !isClosed19 && !isBooked19, booked: isBooked19 });
-    return slots;
-  };
+    return map;
+  }, [windowBooked, state.office, state.procedure, scheduleClosures]);
+
+  // Calendar days are converted to "yyyy-MM-dd"; times are always salon (Sofia) time.
+  const dateKey = state.date ? format(state.date, "yyyy-MM-dd") : null;
+  const bookedKey = dateKey && state.office ? `${state.office}|${dateKey}` : null;
+  const loadingSlots = bookedKey !== null && booked?.key !== bookedKey;
 
   // Fetch booked slots when date or office changes
   useEffect(() => {
-    if (state.date && state.office) {
-      setLoadingSlots(true);
-      getBookedSlots(state.office, state.date).then((slots) => {
-        setBookedSlots(slots);
-        setLoadingSlots(false);
+    if (!dateKey || !state.office || !bookedKey) return;
+    let cancelled = false;
+    getBookedSlots(state.office, dateKey)
+      .catch((error) => {
+        console.error("Failed to load booked slots:", error);
+        return [] as TimeRange[];
+      })
+      .then((ranges) => {
+        if (!cancelled) setBooked({ key: bookedKey, ranges });
       });
-    }
-  }, [state.date, state.office]);
+    return () => {
+      cancelled = true;
+    };
+  }, [dateKey, state.office, bookedKey]);
 
-  useEffect(() => {
-    if (state.date) {
-      setTimeSlots(generateTimeSlots());
+  const timeSlots: DaySlot[] = useMemo(
+    () =>
+      dateKey
+        ? buildDaySlots({
+            dateKey,
+            durationMinutes: state.procedure?.duration_minutes ?? 30,
+            closures: scheduleClosures,
+            booked: booked?.key === bookedKey ? booked.ranges : [],
+          })
+        : [],
+    [dateKey, scheduleClosures, booked, bookedKey, state.procedure]
+  );
+
+  const bookingWindow = getBookingWindow();
+  const isDateDisabled = (date: Date) => {
+    const key = format(date, "yyyy-MM-dd");
+    return (
+      date < startOfDay(new Date()) ||
+      key < bookingWindow.first ||
+      key > bookingWindow.last ||
+      isDayClosed(key, scheduleClosures) ||
+      dayLoad.get(key)?.full === true
+    );
+  };
+
+  // Calendar day: a box that fills up like a glass with the day's bookings
+  const DayWithLoad = ({ date, activeModifiers }: DayContentProps) => {
+    const info = dayLoad.get(format(date, "yyyy-MM-dd"));
+    const show = info && !activeModifiers.disabled && !activeModifiers.outside;
+    return (
+      <>
+        {show && <GlassFill occupancy={info.occupancy} />}
+        <span className="relative">{date.getDate()}</span>
+        {show && <span className="sr-only">, {loadLabel(info.occupancy, info.fewLeft)}</span>}
+      </>
+    );
+  };
+
+  // First free time for the chosen procedure across the booking window (cheap: ~60 days)
+  const findEarliest = (): { dateKey: string; time: string } | null => {
+    if (!state.procedure || !windowBooked || windowBooked.office !== state.office) return null;
+    for (const key of getBookingWindowDays()) {
+      const slot = buildDaySlots({
+        dateKey: key,
+        durationMinutes: state.procedure.duration_minutes,
+        closures: scheduleClosures,
+        booked: windowBooked.ranges,
+      }).find((candidate) => candidate.available);
+      if (slot) return { dateKey: key, time: slot.time };
     }
-  }, [state.date, scheduleClosures, bookedSlots, state.procedure]);
+    return null;
+  };
+  const earliest = currentStep === 3 ? findEarliest() : null;
+
+  // Search across all procedures (step 2)
+  const [query, setQuery] = useState("");
+  const searchResults = useMemo(() => {
+    const q = query.trim().toLocaleLowerCase("bg");
+    if (q.length < 2) return [];
+    return procedures
+      .filter((p) => p.name.toLocaleLowerCase("bg").includes(q) || p.type.toLocaleLowerCase("bg").includes(q))
+      .slice(0, 30);
+  }, [query, procedures]);
 
   const selectOffice = (office: OfficeName) => {
     setState((prev) => ({ ...prev, office }));
@@ -225,6 +362,18 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
     setCurrentStep(4);
   };
 
+  const pickEarliest = () => {
+    const earliest = findEarliest();
+    if (!earliest) return;
+    setState((prev) => ({ ...prev, date: dateFromKey(earliest.dateKey), timeSlot: earliest.time }));
+    setCurrentStep(4);
+  };
+
+  // Completed steps can be reopened from the stepper or the summary
+  const goToStep = (step: number) => {
+    if (step < currentStep) setCurrentStep(step);
+  };
+
   const updateFormData = (field: keyof ReservationFormData, value: string) => {
     setState((prev) => ({
       ...prev,
@@ -236,7 +385,10 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
   };
 
   const goBack = () => {
-    if (currentStep > 1) {
+    // A procedure pre-selected from a link skips step 2, so go straight back to the office.
+    if (currentStep === 3 && !state.selectedCategory) {
+      setCurrentStep(1);
+    } else if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
     }
   };
@@ -244,49 +396,45 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
   const handleSubmit = async () => {
     const result = reservationFormSchema.safeParse(state.formData);
     if (!result.success) {
-      const newErrors: Record<string, string> = {};
-      result.error.errors.forEach((err) => {
-        if (err.path[0]) {
-          newErrors[err.path[0] as string] = err.message;
-        }
-      });
-      setErrors(newErrors);
+      setErrors(fieldErrors(result.error));
       return;
     }
 
-    if (!state.office || !state.procedure || !state.date || !state.timeSlot) {
+    if (!state.office || !state.procedure || !dateKey || !state.timeSlot) {
       return;
     }
 
     setSubmitting(true);
+    try {
+      const response = await createReservation({
+        officeName: state.office,
+        procedureId: state.procedure.id,
+        date: dateKey,
+        time: state.timeSlot,
+        firstName: state.formData.firstName,
+        lastName: state.formData.lastName,
+        phone: state.formData.phone,
+        email: state.formData.email,
+        note: state.formData.note || undefined,
+      });
 
-    const [hours, minutes] = state.timeSlot.split(":").map(Number);
-    const startAt = new Date(state.date);
-    startAt.setHours(hours, minutes, 0, 0);
-
-    const response = await createReservation({
-      officeName: state.office,
-      procedureId: state.procedure.id,
-      startAt: startAt.toISOString(),
-      firstName: state.formData.firstName,
-      lastName: state.formData.lastName,
-      phone: state.formData.phone,
-      email: state.formData.email || undefined,
-      note: state.formData.note || undefined,
-    });
-
-    setSubmitting(false);
-
-    if (response.success && response.reservation) {
-      onComplete(response.reservation);
-    } else {
-      setErrors({ submit: response.error || "Възникна грешка" });
+      if (response.success && response.reservation) {
+        saveRememberedDetails(remember ? state.formData : null);
+        onComplete(response.reservation);
+      } else {
+        setErrors({ ...response.fieldErrors, submit: response.error || "Възникна грешка" });
+      }
+    } catch (error) {
+      console.error("Reservation failed:", error);
+      setErrors({ submit: "Възникна грешка. Моля, опитайте отново или се обадете." });
+    } finally {
+      setSubmitting(false);
     }
   };
 
   // Get discounted procedures
   const getDiscountedProcedures = () => {
-    return procedures.filter(p => p.discount_percentage && p.discount_percentage > 0);
+    return procedures.filter(procedureHasDiscount);
   };
 
   // Get procedures for current selection
@@ -330,395 +478,430 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
     return "upcoming";
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Progress indicator */}
-      <nav aria-label="Напредък" className="mb-8">
-        <ol className="flex items-center justify-between">
-          {steps.map((step, index) => {
-            const status = getStepStatus(step.id);
-            const Icon = step.icon;
-            return (
-              <li key={step.id} className="flex items-center flex-1">
-                <div
-                  className={cn(
-                    "flex flex-col items-center gap-2 transition-all duration-300",
-                    status === "completed" && "text-gold",
-                    status === "current" && "text-brand-black",
-                    status === "upcoming" && "text-gray-300"
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300",
-                      status === "completed" && "bg-gold border-gold text-white scale-90",
-                      status === "current" && "border-gold text-gold scale-110 shadow-lg shadow-gold/20",
-                      status === "upcoming" && "border-gray-200 text-gray-300"
-                    )}
-                  >
-                    {status === "completed" ? (
-                      <Check className="w-5 h-5" aria-hidden="true" />
-                    ) : (
-                      <Icon className="w-5 h-5" aria-hidden="true" />
-                    )}
-                  </div>
-                  <span className="text-xs font-medium hidden sm:block">
-                    {step.title}
-                  </span>
-                </div>
-                {index < steps.length - 1 && (
-                  <div
-                    className={cn(
-                      "flex-1 h-0.5 mx-2 sm:mx-4 transition-all duration-500",
-                      status === "completed" ? "bg-gold" : "bg-gray-200"
-                    )}
-                    aria-hidden="true"
-                  />
-                )}
-              </li>
-            );
-          })}
-        </ol>
-      </nav>
+  const finalPrice = state.procedure ? getFinalPrice(state.procedure) : null;
+  const dateLabel = state.date ? format(state.date, "EEEE, d MMMM", { locale: bg }) : null;
 
-      {/* Back button */}
-      {currentStep > 1 && (
-        <button
-          onClick={goBack}
-          className="flex items-center gap-2 text-gray-500 hover:text-gold transition-colors mb-4"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span className="text-sm">Назад</span>
-        </button>
-      )}
+  const summaryRows = [
+    { step: 1, label: "Салон", value: state.office },
+    { step: 2, label: "Процедура", value: state.procedure?.name ?? null },
+    {
+      step: 3,
+      label: "Дата и час",
+      value: dateLabel && state.timeSlot ? `${dateLabel}, ${state.timeSlot}` : dateLabel,
+    },
+  ];
 
-      {/* Step 1: Office selection */}
-      {currentStep === 1 && (
-        <div className="animate-fade-in-up">
-          <h2 className="text-xl font-semibold mb-6 flex items-center gap-3">
-            <MapPin className="w-6 h-6 text-gold" aria-hidden="true" />
-            Изберете локация
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {(["София", "Лом"] as OfficeName[]).map((office) => (
-              <button
-                key={office}
-                onClick={() => selectOffice(office)}
-                className={cn(
-                  "p-6 rounded-2xl border-2 text-center font-medium transition-all duration-300 hover:scale-[1.02]",
-                  state.office === office
-                    ? "border-gold bg-gold/10 text-gold shadow-lg shadow-gold/10"
-                    : "border-gray-200 hover:border-gold/50 hover:shadow-md"
-                )}
-              >
-                <MapPin className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <span className="text-lg">{office}</span>
-              </button>
-            ))}
+  const renderProcedureButton = (proc: Procedure) => {
+    const hasDiscount = procedureHasDiscount(proc);
+    return (
+      <button
+        key={proc.id}
+        onClick={() => selectProcedure(proc)}
+        className={cn(
+          "group w-full rounded-md border bg-white p-4 text-left transition-colors duration-200",
+          state.procedure?.id === proc.id ? "border-cocoa" : hasDiscount ? "border-gold" : "border-taupe-200 hover:border-cocoa/40"
+        )}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="font-medium text-cocoa">{proc.name}</p>
+            <p className="mt-1 flex items-center gap-3 text-sm text-taupe-600">
+              <span className="inline-flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                {formatDuration(proc.duration_minutes)}
+              </span>
+              <span>{proc.technician}</span>
+            </p>
+          </div>
+          <div className="shrink-0 text-right">
+            {hasDiscount && (
+              <p className="text-xs">
+                <span className="mr-1.5 rounded bg-rose-dark px-1.5 py-0.5 font-semibold text-white">−{proc.discount_percentage}%</span>
+                <span className="text-taupe-400 line-through">{formatPrice(proc.price)}</span>
+              </p>
+            )}
+            <p className="font-display text-xl text-cocoa">{formatPrice(getFinalPrice(proc))}</p>
           </div>
         </div>
-      )}
+      </button>
+    );
+  };
 
-      {/* Step 2: Procedure selection - Hierarchical */}
-      {currentStep === 2 && (
-        <div className="animate-fade-in-up">
-          <h2 className="text-xl font-semibold mb-6 flex items-center gap-3">
-            <Scissors className="w-6 h-6 text-gold" aria-hidden="true" />
-            Изберете процедура
-          </h2>
-          
-          {/* Main Categories */}
-          {!state.selectedCategory && (
-            <div className="grid grid-cols-2 gap-4">
-              {Object.keys(categoryHierarchy).map((category) => {
-                const isPromo = category === "Промоции";
-                const hasDiscounts = isPromo && getDiscountedProcedures().length > 0;
-                
-                // Hide promo category if no discounts
-                if (isPromo && !hasDiscounts) return null;
-                
-                return (
+  return (
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-12">
+      <div className="min-w-0">
+        {/* Progress: completed steps can be reopened */}
+        <nav aria-label="Напредък" className="mb-8">
+          <ol className="grid grid-cols-4">
+            {steps.map((step, index) => {
+              const status = getStepStatus(step.id);
+              const Icon = step.icon;
+              const clickable = status === "completed";
+              return (
+                <li key={step.id} className="relative flex justify-center">
                   <button
-                    key={category}
-                    onClick={() => selectCategory(category)}
+                    type="button"
+                    onClick={() => goToStep(step.id)}
+                    disabled={!clickable}
+                    aria-current={status === "current" ? "step" : undefined}
                     className={cn(
-                      "p-6 rounded-2xl border-2 text-left font-medium transition-all duration-300 hover:shadow-md hover:scale-[1.02] group",
-                      isPromo 
-                        ? "border-gold bg-gold/10 hover:border-gold hover:bg-gold/20 col-span-2" 
-                        : "border-gray-200 hover:border-gold/50"
+                      "relative z-10 flex flex-col items-center gap-2 transition-colors duration-300 disabled:cursor-default",
+                      status === "upcoming" ? "text-taupe-400" : "text-cocoa",
+                      clickable && "hover:text-rose-dark"
                     )}
                   >
-                    <div className="flex items-center gap-2">
-                      {isPromo && <Percent className="w-5 h-5 text-gold" />}
-                      <span className={cn("text-lg", isPromo && "text-gold font-semibold")}>{category}</span>
-                      {isPromo && (
-                        <span className="ml-1 text-sm text-gold/70">({getDiscountedProcedures().length} оферти)</span>
-                      )}
-                    </div>
-                    <ChevronRight className={cn(
-                      "w-5 h-5 float-right -mt-5 transition-colors",
-                      isPromo ? "text-gold group-hover:text-gold" : "text-gray-400 group-hover:text-gold"
-                    )} />
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Sub Categories (for Епилация) - skip for Промоции which goes directly to procedure list */}
-          {state.selectedCategory && state.selectedCategory !== "Промоции" && !state.selectedSubCategory && categoryHierarchy[state.selectedCategory]?.some(sub => subCategoryMap[sub]) && (
-            <div className="space-y-4">
-              <button
-                onClick={() => setState(prev => ({ ...prev, selectedCategory: null }))}
-                className="text-sm text-gray-500 hover:text-gold flex items-center gap-1"
-              >
-                <ArrowLeft className="w-4 h-4" /> {state.selectedCategory}
-              </button>
-              <div className="grid grid-cols-2 gap-4">
-                {categoryHierarchy[state.selectedCategory].map((subCat) => (
-                  <button
-                    key={subCat}
-                    onClick={() => selectSubCategory(subCat)}
-                    className="p-5 rounded-2xl border-2 border-gray-200 text-left font-medium transition-all duration-300 hover:border-gold/50 hover:shadow-md hover:scale-[1.02] group"
-                  >
-                    <span>{subCat}</span>
-                    <ChevronRight className="w-5 h-5 float-right text-gray-400 group-hover:text-gold transition-colors" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Procedure List */}
-          {state.selectedCategory && (state.selectedCategory === "Промоции" || state.selectedSubCategory || !categoryHierarchy[state.selectedCategory]?.some(sub => subCategoryMap[sub])) && (
-            <div className="space-y-4">
-              <button
-                onClick={() => setState(prev => ({ 
-                  ...prev, 
-                  selectedSubCategory: null,
-                  selectedCategory: state.selectedSubCategory ? prev.selectedCategory : null 
-                }))}
-                className="text-sm text-gray-500 hover:text-gold flex items-center gap-1"
-              >
-                <ArrowLeft className="w-4 h-4" /> {state.selectedSubCategory || state.selectedCategory}
-              </button>
-              <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
-                {getFilteredProcedures().map((proc) => {
-                  const hasDiscount = proc.discount_percentage && proc.discount_percentage > 0;
-                  const discountedPrice = hasDiscount
-                    ? proc.price - (proc.price * proc.discount_percentage!) / 100
-                    : proc.price;
-                  
-                  return (
-                    <button
-                      key={proc.id}
-                      onClick={() => selectProcedure(proc)}
+                    <span
                       className={cn(
-                        "w-full p-4 rounded-xl border-2 text-left transition-all duration-300 hover:scale-[1.01] relative",
-                        state.procedure?.id === proc.id
-                          ? "border-gold bg-gold/10 shadow-md"
-                          : "border-gray-200 hover:border-gold/50 hover:shadow-sm",
-                        hasDiscount && "border-red-200 bg-red-50/50"
+                        "flex h-11 w-11 items-center justify-center rounded-full border transition-colors duration-300",
+                        status === "completed" && "border-cocoa bg-cocoa text-white",
+                        status === "current" && "border-gold bg-gold text-cocoa ring-4 ring-gold/20",
+                        status === "upcoming" && "border-taupe-300 bg-white text-taupe-400"
                       )}
                     >
-                      {hasDiscount && (
-                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                          -{proc.discount_percentage}%
-                        </span>
+                      {status === "completed" ? <Check className="h-5 w-5" aria-hidden="true" /> : <Icon className="h-5 w-5" aria-hidden="true" />}
+                    </span>
+                    <span className="hidden text-xs font-medium sm:block">{step.title}</span>
+                  </button>
+                  {index < steps.length - 1 && (
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "absolute top-[22px] left-[calc(50%+30px)] right-[calc(-50%+30px)] h-px transition-colors duration-500",
+                        status === "completed" ? "bg-cocoa" : "bg-taupe-200"
                       )}
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium">{proc.name}</p>
-                          <p className="text-sm text-gray-500 mt-1">
-                            {formatDuration(proc.duration_minutes)}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          {hasDiscount ? (
-                            <>
-                              <p className="text-sm text-gray-400 line-through">
-                                {formatPrice(proc.price)}
-                              </p>
-                              <p className="font-semibold text-red-500 text-lg">
-                                {formatPrice(discountedPrice)}
-                              </p>
-                            </>
-                          ) : (
-                            <p className="font-semibold text-gold text-lg">
-                              {formatPrice(proc.price)}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+                    />
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </nav>
 
-      {/* Step 3: Date and time selection - Inline */}
-      {currentStep === 3 && (
-        <div className="animate-fade-in-up">
-          <h2 className="text-xl font-semibold mb-6 flex items-center gap-3">
-            <CalendarDays className="w-6 h-6 text-gold" aria-hidden="true" />
-            Изберете дата и час
-          </h2>
-          
-          {/* Selected procedure summary */}
-          {state.procedure && (() => {
-            const hasDiscount = state.procedure.discount_percentage && state.procedure.discount_percentage > 0;
-            const discountedPrice = hasDiscount
-              ? state.procedure.price - (state.procedure.price * state.procedure.discount_percentage!) / 100
-              : state.procedure.price;
-            
-            return (
-              <div className={cn(
-                "mb-6 p-4 rounded-xl border",
-                hasDiscount ? "bg-red-50/50 border-red-200" : "bg-gold/5 border-gold/20"
-              )}>
-                <p className="text-sm text-gray-500">Избрана процедура:</p>
-                <p className="font-medium">{state.procedure.name}</p>
-                {hasDiscount ? (
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-sm text-gray-400 line-through">{formatPrice(state.procedure.price)}</span>
-                    <span className="text-sm font-semibold text-red-500">{formatPrice(discountedPrice)}</span>
-                    <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">-{state.procedure.discount_percentage}%</span>
-                    <span className="text-sm text-gray-500">• {formatDuration(state.procedure.duration_minutes)}</span>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gold">{formatPrice(state.procedure.price)} • {formatDuration(state.procedure.duration_minutes)}</p>
-                )}
+        {/* Compact summary on small screens */}
+        {currentStep > 1 && (
+          <div className="mb-6 rounded-2xl bg-blush-light px-4 py-3 text-sm text-cocoa lg:hidden">
+            <ul className="space-y-1">
+              {[state.office, state.procedure?.name, dateLabel && (state.timeSlot ? `${dateLabel}, ${state.timeSlot}` : dateLabel)]
+                .filter(Boolean)
+                .map((item, i) => (
+                  <li key={i} className="flex items-baseline gap-2">
+                    <span className="h-px w-3 shrink-0 translate-y-[-3px] bg-gold" aria-hidden="true" />
+                    {item}
+                  </li>
+                ))}
+            </ul>
+            {finalPrice !== null && (
+              <p className="mt-2 border-t border-blush pt-2 text-right font-display text-base">{formatPrice(finalPrice)}</p>
+            )}
+          </div>
+        )}
+
+        {currentStep > 1 && (
+          <button onClick={goBack} className="mb-4 flex items-center gap-2 text-taupe-600 transition-colors hover:text-cocoa">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            <span className="text-sm">Назад</span>
+          </button>
+        )}
+
+        {/* Step 1: Salon */}
+        {currentStep === 1 && (
+          <div key="step-1" className="animate-fade-in-up">
+            <p className="eyebrow mb-2">Стъпка 1 от 4</p>
+            <h2 className="mb-6 text-3xl">Къде ще ви посрещнем?</h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {OFFICES.map((office) => (
+                <button
+                  key={office}
+                  onClick={() => selectOffice(office)}
+                  className={cn(
+                    "group relative overflow-hidden rounded-2xl border bg-white p-6 text-left transition-colors duration-200",
+                    state.office === office ? "border-cocoa" : "border-taupe-200 hover:border-cocoa/40"
+                  )}
+                >
+                  <span aria-hidden="true" className="drop-dots absolute -right-10 -top-10 h-32 w-32 opacity-70" />
+                  <MapPin className="relative h-5 w-5 text-rose-dark" aria-hidden="true" />
+                  <span className="relative mt-4 block font-display text-3xl text-cocoa">{office}</span>
+                  <span className="relative mt-1 block text-sm text-taupe-600">{officeTaglines[office]}</span>
+                  <span className="relative mt-4 flex items-center gap-1.5 text-xs font-medium text-taupe-600">
+                    <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                    {openingHoursText()}
+                  </span>
+                  <ChevronRight className="absolute bottom-6 right-6 h-5 w-5 text-taupe-300 transition-all group-hover:translate-x-0.5 group-hover:text-cocoa" aria-hidden="true" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Procedure */}
+        {currentStep === 2 && (
+          <div key="step-2" className="animate-fade-in-up">
+            <p className="eyebrow mb-2">Стъпка 2 от 4</p>
+            <h2 className="mb-6 text-3xl">Каква процедура желаете?</h2>
+
+            {/* Search */}
+            <div className="relative mb-6">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-taupe-400" aria-hidden="true" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Търсете процедура, напр. педикюр, мигли, лазер…"
+                aria-label="Търсене на процедура"
+                className="h-12 w-full rounded-md border border-taupe-200 bg-white pl-11 pr-10 text-sm placeholder:text-taupe-400 focus:border-cocoa focus:outline-none focus:ring-2 focus:ring-gold/30"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-taupe-400 hover:text-cocoa"
+                  aria-label="Изчисти търсенето"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+              )}
+            </div>
+
+            {query.trim().length >= 2 ? (
+              <div className="space-y-2">
+                <p className="text-sm text-taupe-600" aria-live="polite">
+                  {searchResults.length > 0 ? `Намерени: ${searchResults.length}` : "Няма намерени процедури. Опитайте с друга дума."}
+                </p>
+                {searchResults.map(renderProcedureButton)}
               </div>
-            );
-          })()}
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Calendar - 3D style */}
-            <div className="flex justify-center">
-              <div className="relative">
-                {/* 3D shadow layers */}
-                <div className="absolute inset-0 bg-gold/20 rounded-2xl translate-x-2 translate-y-2" />
-                <div className="absolute inset-0 bg-gold/10 rounded-2xl translate-x-1 translate-y-1" />
+            ) : (
+              <>
+                {/* Main categories */}
+                {!state.selectedCategory && (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {Object.keys(categoryHierarchy).map((category) => {
+                      const isPromo = category === "Промоции";
+                      const count = isPromo
+                        ? getDiscountedProcedures().length
+                        : procedures.filter((p) =>
+                            (categoryHierarchy[category] ?? []).flatMap((sub) => subCategoryMap[sub] ?? [sub]).includes(p.type)
+                          ).length;
+                      if (isPromo && count === 0) return null;
+                      return (
+                        <button
+                          key={category}
+                          onClick={() => selectCategory(category)}
+                          className={cn(
+                            "group flex items-center gap-4 rounded-2xl border p-5 text-left transition-colors duration-200",
+                            isPromo ? "border-gold bg-champagne sm:col-span-2" : "border-taupe-200 bg-white hover:border-cocoa/40"
+                          )}
+                        >
+                          <span className="min-w-0 flex-1">
+                            <span className="block font-display text-xl text-cocoa">{category}</span>
+                            <span className="block text-sm text-taupe-600">{categoryDescriptions[category]}</span>
+                          </span>
+                          <span className="shrink-0 text-right">
+                            <span className="block font-display text-3xl italic leading-none text-gold-dark">{count}</span>
+                            <span className="block text-[0.65rem] uppercase tracking-[0.14em] text-taupe-500">{count === 1 ? "процедура" : "процедури"}</span>
+                          </span>
+                          <ChevronRight className="h-5 w-5 shrink-0 text-taupe-300 transition-all group-hover:translate-x-0.5 group-hover:text-cocoa" aria-hidden="true" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Sub categories (Епилация) */}
+                {state.selectedCategory && state.selectedCategory !== "Промоции" && !state.selectedSubCategory && categoryHierarchy[state.selectedCategory]?.some((sub) => subCategoryMap[sub]) && (
+                  <div className="space-y-4">
+                    <button
+                      onClick={() => setState((prev) => ({ ...prev, selectedCategory: null }))}
+                      className="flex items-center gap-1 text-sm text-taupe-600 hover:text-cocoa"
+                    >
+                      <ArrowLeft className="h-4 w-4" aria-hidden="true" /> {state.selectedCategory}
+                    </button>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {categoryHierarchy[state.selectedCategory].map((subCat) => (
+                        <button
+                          key={subCat}
+                          onClick={() => selectSubCategory(subCat)}
+                          className="group flex items-center justify-between rounded-2xl border border-taupe-200 bg-white p-5 text-left transition-colors duration-200 hover:border-cocoa/40"
+                        >
+                          <span className="font-display text-xl text-cocoa">{subCat}</span>
+                          <ChevronRight className="h-5 w-5 text-taupe-300 group-hover:text-cocoa" aria-hidden="true" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Procedure list */}
+                {state.selectedCategory && (state.selectedCategory === "Промоции" || state.selectedSubCategory || !categoryHierarchy[state.selectedCategory]?.some((sub) => subCategoryMap[sub])) && (
+                  <div className="space-y-4">
+                    <button
+                      onClick={() =>
+                        setState((prev) => ({
+                          ...prev,
+                          selectedSubCategory: null,
+                          selectedCategory: prev.selectedSubCategory ? prev.selectedCategory : null,
+                        }))
+                      }
+                      className="flex items-center gap-1 text-sm text-taupe-600 hover:text-cocoa"
+                    >
+                      <ArrowLeft className="h-4 w-4" aria-hidden="true" /> {state.selectedSubCategory || state.selectedCategory}
+                    </button>
+                    <div className="max-h-[28rem] space-y-2 overflow-y-auto pr-1">{getFilteredProcedures().map(renderProcedureButton)}</div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Step 3: Date and time */}
+        {currentStep === 3 && (
+          <div key="step-3" className="animate-fade-in-up">
+            <p className="eyebrow mb-2">Стъпка 3 от 4</p>
+            <h2 className="mb-6 text-3xl">Кога ви е удобно?</h2>
+
+            {earliest && (
+              <button
+                type="button"
+                onClick={pickEarliest}
+                className="group mb-6 flex w-full items-center gap-4 rounded-2xl border border-gold bg-champagne p-4 text-left transition-colors duration-200"
+              >
+                <span className="h-10 w-px shrink-0 bg-gold" aria-hidden="true" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-rose-dark">Най-бързо</span>
+                  <span className="block text-cocoa">
+                    Първи свободен час: <strong className="font-semibold">{format(dateFromKey(earliest.dateKey), "EEEE, d MMMM", { locale: bg })}, {earliest.time}</strong>
+                  </span>
+                </span>
+                <ChevronRight className="h-5 w-5 shrink-0 text-cocoa/50 transition-all group-hover:translate-x-0.5 group-hover:text-cocoa" aria-hidden="true" />
+              </button>
+            )}
+
+            <div className="grid grid-cols-1 gap-8 xl:grid-cols-[auto_minmax(0,1fr)]">
+              {/* Calendar: each day is a box that fills like a glass with its bookings */}
+              <div className="flex flex-col items-center xl:items-start">
                 <Calendar
                   mode="single"
                   selected={state.date ?? undefined}
                   onSelect={selectDate}
-                  disabled={(date) =>
-                    date < new Date() || date > addDays(new Date(), 60)
-                  }
-                  className="relative rounded-2xl border-2 border-gold/30 p-4 bg-white shadow-xl"
+                  disabled={isDateDisabled}
+                  className="rounded-2xl border border-blush bg-white p-3 sm:p-4 shadow-[0_20px_40px_-30px_rgba(51,36,31,0.35)]"
                   locale={bg}
+                  components={{ DayContent: DayWithLoad }}
+                  modifiers={{ fewLeft: (date) => dayLoad.get(format(date, "yyyy-MM-dd"))?.fewLeft === true }}
+                  modifiersClassNames={{ fewLeft: "!border-gold !border-[1.5px]" }}
+                  classNames={{
+                    head_cell: "w-10 sm:w-11 text-[0.7rem] font-medium uppercase text-taupe-500",
+                    row: "flex w-full mt-1",
+                    cell: "h-12 w-10 sm:h-14 sm:w-11 p-0.5 text-center text-sm relative focus-within:relative focus-within:z-20",
+                    day: "relative flex h-full w-full items-center justify-center overflow-hidden rounded-md border border-blush bg-white text-sm font-medium text-cocoa transition-colors hover:border-cocoa/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-dark aria-selected:opacity-100",
+                    day_selected: "!border-cocoa !bg-cocoa !text-white",
+                    day_today: "font-bold",
+                    day_disabled: "!border-transparent !bg-transparent text-taupe-300 line-through decoration-taupe-300 cursor-default hover:!border-transparent",
+                    day_outside: "invisible",
+                  }}
                 />
+                <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-taupe-600">
+                  <span className="flex items-center gap-2"><GlassSample occupancy={0} /> свободно</span>
+                  <span className="flex items-center gap-2"><GlassSample occupancy={0.5} /> наполовина</span>
+                  <span className="flex items-center gap-2"><GlassSample occupancy={0.9} /> почти пълно</span>
+                  <span className="flex items-center gap-2"><GlassSample occupancy={0.75} fewLeft /> малко свободни часове</span>
+                </div>
+              </div>
+
+              {/* Time slots */}
+              <div>
+                {!state.date ? (
+                  <div className="flex h-full min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-blush p-8 text-center text-taupe-500">
+                    <CalendarDays className="mb-3 h-6 w-6 text-rose-dark" aria-hidden="true" />
+                    <p>Изберете ден от календара, за да видите свободните часове.</p>
+                  </div>
+                ) : (
+                  <div className="animate-fade-in">
+                    <p className="mb-4 text-sm text-taupe-600">
+                      Свободни часове за{" "}
+                      <span className="font-semibold text-cocoa">{format(state.date, "EEEE, d MMMM", { locale: bg })}</span>
+                    </p>
+                    {loadingSlots ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-gold-dark" aria-hidden="true" />
+                        <span className="ml-2 text-taupe-500">Зареждане...</span>
+                      </div>
+                    ) : timeSlots.some((slot) => slot.available) ? (
+                      <div className="space-y-5">
+                        {timeGroups.map((group) => {
+                          const groupSlots = timeSlots.filter((slot) => group.test(slot.time));
+                          if (!groupSlots.some((slot) => slot.available)) return null;
+                          return (
+                            <div key={group.label}>
+                              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-rose-dark">{group.label}</p>
+                              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                                {groupSlots.map((slot) => (
+                                  <button
+                                    key={slot.time}
+                                    onClick={() => slot.available && selectTimeSlot(slot.time)}
+                                    disabled={!slot.available}
+                                    className={cn(
+                                      "rounded-md px-2 py-3 text-sm font-medium tabular-nums transition-colors duration-200",
+                                      state.timeSlot === slot.time
+                                        ? "border border-cocoa bg-cocoa text-white"
+                                        : slot.available
+                                          ? "border border-taupe-200 bg-white text-cocoa hover:border-cocoa hover:bg-blush-light"
+                                          : "cursor-not-allowed border border-transparent bg-ivory text-taupe-400 line-through"
+                                    )}
+                                    title={slot.booked ? "Заето" : !slot.available ? "Недостъпно" : ""}
+                                  >
+                                    {slot.time}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="rounded-2xl bg-blush-light p-6 text-center text-taupe-600">Няма свободни часове този ден. Изберете друг ден.</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
-            
-            {/* Time slots - shown when date selected */}
-            <div>
-              {!state.date ? (
-                <div className="h-full flex items-center justify-center text-gray-400">
-                  <p>Изберете дата от календара</p>
-                </div>
-              ) : (
-                <div className="animate-fade-in">
-                  <p className="text-sm text-gray-600 mb-4">
-                    Налични часове за{" "}
-                    <span className="font-semibold text-brand-black">
-                      {format(state.date, "d MMMM yyyy", { locale: bg })}
-                    </span>
-                  </p>
-                  {loadingSlots ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-6 h-6 animate-spin text-gold" />
-                      <span className="ml-2 text-gray-500">Зареждане...</span>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-80 overflow-y-auto pr-2">
-                      {timeSlots.map((slot) => (
-                        <button
-                          key={slot.time}
-                          onClick={() => slot.available && selectTimeSlot(slot.time)}
-                          disabled={!slot.available}
-                          className={cn(
-                            "py-3 px-2 rounded-xl text-sm font-medium transition-all duration-300",
-                            state.timeSlot === slot.time
-                              ? "bg-gold text-white shadow-lg shadow-gold/30 scale-105"
-                              : slot.available
-                                ? "bg-gray-100 hover:bg-gold/20 hover:text-gold hover:scale-105"
-                                : slot.booked
-                                  ? "bg-red-100 text-red-400 cursor-not-allowed line-through"
-                                  : "bg-gray-200 text-gray-400 cursor-not-allowed line-through"
-                          )}
-                          title={slot.booked ? "Заето" : !slot.available ? "Недостъпно" : ""}
-                        >
-                          {slot.time}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Step 4: Customer details */}
-      {currentStep === 4 && (
-        <div className="animate-fade-in-up">
-          <h2 className="text-xl font-semibold mb-6 flex items-center gap-3">
-            <User className="w-6 h-6 text-gold" aria-hidden="true" />
-            Вашите данни
-          </h2>
-          
-          {/* Reservation summary */}
-          <div className="mb-6 p-4 bg-gold/5 rounded-xl border border-gold/20 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Локация:</span>
-              <span className="font-medium">{state.office}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Процедура:</span>
-              <span className="font-medium">{state.procedure?.name}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Дата:</span>
-              <span className="font-medium">{state.date && format(state.date, "d MMMM yyyy", { locale: bg })}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Час:</span>
-              <span className="font-medium text-gold">{state.timeSlot}</span>
-            </div>
-          </div>
-          
+        {/* Step 4: Details */}
+        {currentStep === 4 && (
+          <div key="step-4" className="animate-fade-in-up">
+            <p className="eyebrow mb-2">Стъпка 4 от 4</p>
+            <h2 className="mb-2 text-3xl">Почти готово</h2>
+            <p className="mb-6 text-taupe-600">Остава само да ни кажете как да се свържем с вас.</p>
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="firstName">Име *</Label>
                 <Input
                   id="firstName"
+                  autoComplete="given-name"
                   value={state.formData.firstName}
                   onChange={(e) => updateFormData("firstName", e.target.value)}
                   placeholder="Въведете име"
-                  className="rounded-xl h-12"
+                  className="h-12"
                 />
                 {errors.firstName && (
-                  <p className="text-sm text-red-500 mt-1">{errors.firstName}</p>
+                  <p className="text-sm text-red-700 mt-1">{errors.firstName}</p>
                 )}
               </div>
               <div>
                 <Label htmlFor="lastName">Фамилия *</Label>
                 <Input
                   id="lastName"
+                  autoComplete="family-name"
                   value={state.formData.lastName}
                   onChange={(e) => updateFormData("lastName", e.target.value)}
                   placeholder="Въведете фамилия"
-                  className="rounded-xl h-12"
+                  className="h-12"
                 />
                 {errors.lastName && (
-                  <p className="text-sm text-red-500 mt-1">{errors.lastName}</p>
+                  <p className="text-sm text-red-700 mt-1">{errors.lastName}</p>
                 )}
               </div>
             </div>
@@ -727,13 +910,14 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
               <Input
                 id="phone"
                 type="tel"
+                autoComplete="tel"
                 value={state.formData.phone}
                 onChange={(e) => updateFormData("phone", e.target.value)}
                 placeholder="0888 123 456"
-                className="rounded-xl h-12"
+                className="h-12"
               />
               {errors.phone && (
-                <p className="text-sm text-red-500 mt-1">{errors.phone}</p>
+                <p className="text-sm text-red-700 mt-1">{errors.phone}</p>
               )}
             </div>
             <div>
@@ -741,13 +925,14 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
               <Input
                 id="email"
                 type="email"
+                autoComplete="email"
                 value={state.formData.email}
                 onChange={(e) => updateFormData("email", e.target.value)}
                 placeholder="email@example.com"
-                className="rounded-xl h-12"
+                className="h-12"
               />
               {errors.email && (
-                <p className="text-sm text-red-500 mt-1">{errors.email}</p>
+                <p className="text-sm text-red-700 mt-1">{errors.email}</p>
               )}
             </div>
             <div>
@@ -758,12 +943,34 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                 onChange={(e) => updateFormData("note", e.target.value)}
                 placeholder="Допълнителна информация..."
                 rows={3}
-                className="rounded-xl"
+                maxLength={500}
+               
               />
+              {errors.note && (
+                <p className="text-sm text-red-700 mt-1">{errors.note}</p>
+              )}
             </div>
 
+            <label className="flex items-start gap-3 text-sm text-taupe-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => {
+                  setRemember(e.target.checked);
+                  if (!e.target.checked) saveRememberedDetails(null);
+                }}
+                className="mt-0.5 h-4 w-4 accent-cocoa"
+              />
+              <span>
+                Запомни ме на това устройство
+                <span className="block text-taupe-500">
+                  Името, телефонът и имейлът ще се попълват автоматично следващия път. Пазят се само във вашия браузър.
+                </span>
+              </span>
+            </label>
+
             {errors.submit && (
-              <div className="p-4 rounded-xl bg-red-50 text-red-600 text-sm">
+              <div className="p-4 rounded-2xl border border-red-200 bg-red-50 text-red-700 text-sm" role="alert">
                 {errors.submit}
               </div>
             )}
@@ -771,7 +978,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
             <Button
               onClick={handleSubmit}
               disabled={submitting}
-              className="w-full h-14 text-base"
+              className="w-full h-14"
               size="lg"
             >
               {submitting ? (
@@ -780,12 +987,54 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                   Изпращане...
                 </>
               ) : (
-                "ПОТВЪРДИ РЕЗЕРВАЦИЯ"
+                "Потвърди резервацията"
               )}
             </Button>
+
+            <p className="text-xs text-taupe-500 text-center">
+              Използваме данните ви само за тази резервация и за връзка с вас.{" "}
+              <Link href="/poveritelnost" className="underline underline-offset-2 hover:text-cocoa">
+                Политика за поверителност
+              </Link>
+            </p>
           </div>
         </div>
-      )}
+        )}
+      </div>
+
+      {/* Booking summary (desktop) */}
+      <aside className="hidden lg:block">
+        <div className="sticky top-28 overflow-hidden rounded-2xl bg-cocoa p-6 text-white">
+          <span aria-hidden="true" className="drop-dots absolute -bottom-16 -right-16 h-48 w-48 opacity-50" />
+          <p className="relative text-xs font-semibold uppercase tracking-[0.2em] text-gold">Вашата резервация</p>
+          <dl className="relative mt-5 space-y-4">
+            {summaryRows.map((row) => (
+              <div key={row.step} className="border-b border-white/10 pb-4 last:border-b-0">
+                <dt className="flex items-center justify-between text-xs text-white/60">
+                  {row.label}
+                  {row.value && row.step < currentStep && (
+                    <button type="button" onClick={() => goToStep(row.step)} className="text-gold hover:text-white">
+                      Промени
+                    </button>
+                  )}
+                </dt>
+                <dd className={cn("mt-1", row.value ? "text-white" : "text-white/35")}>{row.value ?? "—"}</dd>
+              </div>
+            ))}
+          </dl>
+          {state.procedure && finalPrice !== null && (
+            <div className="relative mt-2 flex items-baseline justify-between border-t border-white/15 pt-4">
+              <span className="text-sm text-white/70">{formatDuration(state.procedure.duration_minutes)}</span>
+              <span className="text-right">
+                {procedureHasDiscount(state.procedure) && (
+                  <span className="mr-2 text-sm text-white/50 line-through">{formatPrice(state.procedure.price)}</span>
+                )}
+                <span className="font-display text-2xl text-gold">{formatPrice(finalPrice)}</span>
+              </span>
+            </div>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }

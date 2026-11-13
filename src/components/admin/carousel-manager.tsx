@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, Trash2, ArrowUp, ArrowDown, Loader2, ImageOff } from "lucide-react";
 import {
@@ -8,7 +8,8 @@ import {
   deleteCarouselImage,
   updateCarouselImageOrder,
   deleteStaleCarouselEntry,
-} from "@/app/actions/admin";
+} from "@/app/actions/admin/carousel";
+import { ImageLinkEditor, type ProcedureOption } from "./image-link-editor";
 
 interface CarouselImage {
   id: string;
@@ -16,13 +17,16 @@ interface CarouselImage {
   display_order: number;
   is_active: boolean;
   created_at: string;
+  procedure_id: string | null;
+  caption: string | null;
 }
 
 interface CarouselManagerProps {
   images: CarouselImage[];
+  procedures: ProcedureOption[];
 }
 
-export function CarouselManager({ images: initialImages }: CarouselManagerProps) {
+export function CarouselManager({ images: initialImages, procedures }: CarouselManagerProps) {
   const [uploading, setUploading] = useState(false);
   const [cleaningUp, setCleaningUp] = useState(false);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
@@ -79,12 +83,12 @@ export function CarouselManager({ images: initialImages }: CarouselManagerProps)
     e.target.value = "";
   };
 
-  const handleDelete = async (id: string, storagePath: string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm("Сигурни ли сте, че искате да изтриете тази снимка?")) {
       return;
     }
 
-    const result = await deleteCarouselImage(id, storagePath);
+    const result = await deleteCarouselImage(id);
     if (result.success) {
       window.location.reload();
     } else {
@@ -214,7 +218,13 @@ export function CarouselManager({ images: initialImages }: CarouselManagerProps)
                 </div>
               </div>
 
-              <div className="p-4">
+              <div className="p-4 space-y-4">
+                <ImageLinkEditor
+                  imageId={image.id}
+                  procedureId={image.procedure_id}
+                  caption={image.caption}
+                  procedures={procedures}
+                />
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex gap-2">
                     <Button
@@ -239,7 +249,7 @@ export function CarouselManager({ images: initialImages }: CarouselManagerProps)
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => handleDelete(image.id, image.storage_path)}
+                    onClick={() => handleDelete(image.id)}
                   >
                     <Trash2 className="w-4 h-4 text-red-600" />
                   </Button>
@@ -252,8 +262,9 @@ export function CarouselManager({ images: initialImages }: CarouselManagerProps)
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-sm text-blue-800">
-          <strong>Забележка:</strong> Снимките се показват в каруселата по реда, в който са подредени тук.
-          Използвайте стрелките нагоре/надолу за промяна на реда.
+          <strong>Забележка:</strong> Снимките се показват в каруселата на началната страница и в галерията
+          по реда, в който са подредени тук. Свържете снимка с процедура, за да може клиентът да запази час
+          за нея директно от снимката.
         </p>
       </div>
     </div>

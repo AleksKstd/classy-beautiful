@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,16 +19,25 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+export interface CalendarFeedInfo {
+  feedUrl: string;
+  googleUrl: string;
+  qrDataUrl: string;
+}
+
 interface AdminSettingsProps {
   adminEmail: string;
   notificationEnabled: boolean;
   onSave: (settings: { adminEmail: string; notificationEnabled: boolean }) => Promise<{ success: boolean; error?: string }>;
+  /** null when CALENDAR_FEED_TOKEN is not configured on the server */
+  calendarFeed: CalendarFeedInfo | null;
 }
 
 export function AdminSettings({ 
   adminEmail: initialEmail, 
   notificationEnabled: initialEnabled,
-  onSave 
+  onSave,
+  calendarFeed,
 }: AdminSettingsProps) {
   const [adminEmail, setAdminEmail] = useState(initialEmail);
   const [notificationEnabled, setNotificationEnabled] = useState(initialEnabled);
@@ -36,20 +45,18 @@ export function AdminSettings({
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Google Calendar subscription URL - this creates an ICS feed that Google Calendar can subscribe to
-  const calendarFeedUrl = typeof window !== "undefined" 
-    ? `${window.location.origin}/api/calendar/feed.ics`
-    : "";
-
-  // Google Calendar add URL for subscribing to the calendar
-  const googleCalendarSubscribeUrl = calendarFeedUrl 
-    ? `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(calendarFeedUrl)}`
-    : "";
+  // Private ICS feed (protected by a secret token) that Google Calendar can subscribe to
+  const calendarFeedUrl = calendarFeed?.feedUrl ?? "";
+  const googleCalendarSubscribeUrl = calendarFeed?.googleUrl ?? "";
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave({ adminEmail, notificationEnabled });
+      const result = await onSave({ adminEmail, notificationEnabled });
+      if (!result.success) {
+        alert(result.error || "Грешка при запазване");
+        return;
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } finally {
@@ -175,13 +182,20 @@ export function AdminSettings({
               <span className="font-medium">Сканирайте с телефона</span>
             </div>
             
-            {/* QR Code - using Google Charts API for simplicity */}
+            {/* QR code is generated on the server, so the secret feed URL never leaves the site */}
             <div className="bg-white p-4 rounded-xl shadow-sm mb-4">
-              <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(googleCalendarSubscribeUrl)}`}
-                alt="QR код за Google Calendar"
-                className="w-48 h-48"
-              />
+              {calendarFeed ? (
+                // eslint-disable-next-line @next/next/no-img-element -- data: URL, nothing to optimise
+                <img
+                  src={calendarFeed.qrDataUrl}
+                  alt="QR код за Google Calendar"
+                  className="w-48 h-48"
+                />
+              ) : (
+                <div className="w-48 h-48 flex items-center justify-center text-center text-sm text-gray-500">
+                  Задайте CALENDAR_FEED_TOKEN на сървъра
+                </div>
+              )}
             </div>
             
             <p className="text-sm text-gray-500 text-center max-w-xs">
@@ -201,6 +215,7 @@ export function AdminSettings({
               />
               <Button
                 variant="outline"
+                disabled={!calendarFeed}
                 onClick={() => copyToClipboard(calendarFeedUrl)}
                 className="flex-shrink-0"
               >
@@ -211,7 +226,8 @@ export function AdminSettings({
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => window.open(googleCalendarSubscribeUrl, "_blank")}
+              disabled={!calendarFeed}
+              onClick={() => window.open(googleCalendarSubscribeUrl, "_blank", "noopener,noreferrer")}
             >
               <Calendar className="w-4 h-4 mr-2" />
               Отвори в Google Calendar

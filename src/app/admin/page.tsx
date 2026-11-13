@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { adminLogin } from "@/app/actions/admin";
+import { adminLogin } from "@/app/actions/admin/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,10 +15,17 @@ export default function AdminLoginPage() {
     setLoading(true);
     setError("");
 
-    const result = await adminLogin(formData);
-
-    if (!result.success) {
-      setError(result.error || "Грешка при вход");
+    try {
+      // On success the action redirects to the dashboard and never returns.
+      const result = await adminLogin(formData);
+      if (result && !result.success) {
+        setError(result.error || "Грешка при вход");
+        setLoading(false);
+      }
+    } catch (err) {
+      // Next.js redirects are thrown as special errors - let them through.
+      if (err instanceof Error && err.message === "NEXT_REDIRECT") throw err;
+      setError("Грешка при вход");
       setLoading(false);
     }
   }
@@ -48,6 +55,7 @@ export default function AdminLoginPage() {
                     id="username"
                     name="username"
                     type="text"
+                    autoComplete="username"
                     required
                     className="pl-10"
                     placeholder="Въведете потребителско име"
@@ -67,6 +75,7 @@ export default function AdminLoginPage() {
                     id="password"
                     name="password"
                     type="password"
+                    autoComplete="current-password"
                     required
                     className="pl-10"
                     placeholder="Въведете парола"

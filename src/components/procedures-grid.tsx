@@ -1,51 +1,13 @@
-import { 
-  Footprints,
-  Eye, 
-  Sparkles,
-  Droplet, 
-  Zap, 
-  Scan,
-  User,
-  Users,
-  Heart,
-  Activity,
-  Layers,
-  HandMetal
-} from "lucide-react";
 import { formatPrice, formatDuration } from "@/lib/utils";
+import { getFinalPrice, hasDiscount as procedureHasDiscount } from "@/lib/pricing";
+import { BUSINESS } from "@/config/site";
 import type { Procedure } from "@/types/database";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ProceduresGridProps {
   procedures: Procedure[];
-}
-
-// Map procedure types to icons (lineart style from Lucide)
-const categoryIcons: Record<string, React.ComponentType<{ className?: string }>> = {
-  // Nails
-  "Нокти": Footprints,
-  // Face categories
-  "Вежди": Eye,
-  "Мигли": Sparkles,
-  "Терапии за лице": Droplet,
-  "Естетични процедури - лице": Scan,
-  // Epilation - Women (under Епилация -> Епилация жени)
-  "Лазерна епилация - жени": Zap,
-  "Кола маска - жени": User,
-  // Epilation - Men (under Епилация -> Епилация мъже)
-  "Лазерна епилация - мъже": Zap,
-  "Кола маска - мъже": Users,
-  // Body categories
-  "Естетични процедури - тяло": Activity,
-  "Пилинг на тяло": Layers,
-  "Пресотерапия и лимфендренаж": HandMetal,
-};
-
-// Get icon for category, with fallback
-function getCategoryIcon(type: string) {
-  const Icon = categoryIcons[type] || Heart;
-  return Icon;
 }
 
 // Define category order for better organization
@@ -86,6 +48,15 @@ function getSectionInfo(type: string): { main: string; sub?: string } {
   return sectionGroups[type] || { main: "Други" };
 }
 
+// Anchor ids for the main sections (used by the jump links)
+const sectionIds: Record<string, string> = {
+  "Нокти": "nokti",
+  "Лице": "lice",
+  "Епилация": "epilaciya",
+  "Тяло": "tyalo",
+  "Други": "drugi",
+};
+
 export function ProceduresGrid({ procedures }: ProceduresGridProps) {
   // Group procedures by type
   const groupedProcedures = procedures.reduce((acc, proc) => {
@@ -106,17 +77,15 @@ export function ProceduresGrid({ procedures }: ProceduresGridProps) {
     return indexA - indexB;
   });
 
-  // Group by sections with hierarchy
-  let currentMainSection = "";
-  let currentSubSection = "";
-  const categoriesWithSections = sortedCategories.map(category => {
+  // Group by sections with hierarchy: show a section header only when it changes
+  const categoriesWithSections = sortedCategories.map((category, index) => {
     const sectionInfo = getSectionInfo(category);
-    const showMainSection = sectionInfo.main !== currentMainSection;
-    const showSubSection = sectionInfo.sub ? sectionInfo.sub !== currentSubSection : false;
-    
-    if (showMainSection) currentMainSection = sectionInfo.main;
-    if (sectionInfo.sub && showSubSection) currentSubSection = sectionInfo.sub;
-    
+    const previous = sortedCategories.slice(0, index).map(getSectionInfo);
+    const lastMain = previous.length ? previous[previous.length - 1].main : "";
+    const lastSub = [...previous].reverse().find((info) => info.sub)?.sub ?? "";
+    const showMainSection = sectionInfo.main !== lastMain;
+    const showSubSection = sectionInfo.sub ? sectionInfo.sub !== lastSub : false;
+
     return { 
       category, 
       mainSection: sectionInfo.main, 
@@ -126,142 +95,131 @@ export function ProceduresGrid({ procedures }: ProceduresGridProps) {
     };
   });
 
+  const mainSections = categoriesWithSections.filter((c) => c.showMainSection).map((c) => c.mainSection);
+
   return (
-    <div className="space-y-8">
-      {categoriesWithSections.map(({ category, mainSection, subSection, showMainSection, showSubSection }) => {
-        const procs = groupedProcedures[category];
-        const Icon = getCategoryIcon(category);
-        
-        return (
-          <div key={category} className="animate-fade-in-up">
-            {/* Main Section Header */}
-            {showMainSection && (
-              <div className="mb-6 mt-8 first:mt-0">
-                <h2 className="text-2xl font-bold text-gold tracking-wide">{mainSection}</h2>
-                <div className="h-0.5 w-16 bg-gold/50 mt-2" />
-              </div>
-            )}
-            
-            {/* Sub Section Header (for Епилация жени/мъже) */}
-            {showSubSection && subSection && (
-              <div className="mb-4 mt-6 ml-4 pl-4 border-l-2 border-gold/30">
-                <h3 className="text-lg font-semibold text-gray-700">{subSection}</h3>
-              </div>
-            )}
-            
-            {/* Category Header */}
-            <div 
-              className="flex items-center gap-3 mb-4 ml-4 group cursor-pointer" 
-              id={category.toLowerCase().replace(/\s+/g, "-")}
-            >
-              <div className="w-8 h-8 rounded-full bg-gold/10 flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:bg-gold/20 group-hover:scale-110">
-                <Icon className="w-4 h-4 text-gold" aria-hidden="true" />
-              </div>
-              <div>
-                <h4 className="text-base font-medium text-gray-800">{category}</h4>
-                <p className="text-xs text-gray-400">{procs.length} процедури</p>
-              </div>
-            </div>
+    <div>
+      {/* Jump links */}
+      {mainSections.length > 1 && (
+        <nav
+          aria-label="Категории"
+          className="sticky top-20 z-30 -mx-4 mb-10 overflow-x-auto bg-white/95 px-4 py-3 backdrop-blur sm:mx-0 sm:px-0"
+        >
+          <ul className="flex gap-2 whitespace-nowrap">
+            {mainSections.map((section) => (
+              <li key={section}>
+                <a
+                  href={`#${sectionIds[section] ?? "drugi"}`}
+                  className="inline-block rounded-md bg-blush-light px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-cocoa transition-colors hover:bg-blush"
+                >
+                  {section}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
 
-            {/* Procedures Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 ml-4">
-              {procs.map((procedure) => {
-                const hasDiscount = procedure.discount_percentage && procedure.discount_percentage > 0;
-                const discountedPrice = hasDiscount
-                  ? procedure.price - (procedure.price * procedure.discount_percentage!) / 100
-                  : procedure.price;
+      <div className="space-y-6">
+        {categoriesWithSections.map(({ category, mainSection, subSection, showMainSection, showSubSection }) => {
+          const procs = groupedProcedures[category];
 
-                return (
-                  <div
-                    key={procedure.id}
-                    className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-gold/30 group"
-                  >
-                    <div className="p-6">
-                      {/* Header */}
-                      <div className="flex items-start justify-between mb-3">
-                        <h3 className="font-semibold text-lg flex-1 pr-2">
-                          {procedure.name}
-                        </h3>
-                        {hasDiscount && (
-                          <span className="bg-red-100 text-red-600 text-xs font-semibold px-2 py-1 rounded flex-shrink-0">
-                            -{procedure.discount_percentage}%
+          return (
+            <div key={category}>
+              {/* Main section header */}
+              {showMainSection && (
+                <h2
+                  id={sectionIds[mainSection] ?? "drugi"}
+                  className="scroll-mt-40 pt-10 first:pt-0 mb-6 text-4xl sm:text-5xl text-cocoa border-b border-gold/40 pb-4"
+                >
+                  {mainSection}
+                </h2>
+              )}
+
+              {/* Sub section header (Епилация жени / мъже) */}
+              {showSubSection && subSection && (
+                <p className="eyebrow mt-8 mb-2">{subSection}</p>
+              )}
+
+              {/* Category */}
+              <div className="mt-6">
+                {/* Skip the category title when it just repeats the section title (e.g. "Нокти") */}
+                {category !== mainSection ? (
+                  <h3 className="flex items-baseline justify-between gap-4 mb-1">
+                    <span className="font-display text-2xl">{category}</span>
+                    <span className="text-xs text-taupe-500">
+                      {procs.length} {procs.length === 1 ? "процедура" : "процедури"}
+                    </span>
+                  </h3>
+                ) : (
+                  <p className="mb-1 text-right text-xs text-taupe-500">
+                    {procs.length} {procs.length === 1 ? "процедура" : "процедури"}
+                  </p>
+                )}
+
+                <ul className="mt-3 overflow-hidden rounded-2xl bg-blush-light/60 px-2 sm:px-4 divide-y divide-blush">
+                  {procs.map((procedure) => {
+                    const hasDiscount = procedureHasDiscount(procedure);
+                    const discountedPrice = getFinalPrice(procedure);
+
+                    return (
+                      <li key={procedure.id}>
+                        <Link
+                          href={`/rezervacii?procedureId=${procedure.id}`}
+                          className="group grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_7rem_8rem_6rem] items-baseline gap-x-6 gap-y-1 px-3 py-4 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-dark"
+                        >
+                          <span>
+                            <span className="text-brand-black">{procedure.name}</span>
+                            {hasDiscount && (
+                              <span className="ml-2 rounded bg-rose-dark px-1.5 py-0.5 text-[0.7rem] font-semibold text-white">
+                                −{procedure.discount_percentage}%
+                              </span>
+                            )}
+                            {procedure.description && (
+                              <span className="mt-1 block text-sm text-taupe-600 line-clamp-2">{procedure.description}</span>
+                            )}
+                            <span className="mt-1 block text-sm text-taupe-600 sm:hidden">
+                              {formatDuration(procedure.duration_minutes)} · {procedure.technician}
+                            </span>
                           </span>
-                        )}
-                      </div>
-
-                      {/* Description */}
-                      {procedure.description && (
-                        <p className="text-sm text-gray-600 mb-4 line-clamp-3">
-                          {procedure.description}
-                        </p>
-                      )}
-
-                      {/* Details */}
-                      <div className="space-y-2 mb-4">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-500">Продължителност:</span>
-                          <span className="font-medium">
+                          <span className="hidden sm:block text-sm text-taupe-600">
                             {formatDuration(procedure.duration_minutes)}
                           </span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-500">Специалист:</span>
-                          <span className="font-medium">{procedure.technician}</span>
-                        </div>
-                      </div>
-
-                      {/* Price */}
-                      <div className="pt-4 border-t border-gray-100">
-                        {hasDiscount ? (
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-400 line-through text-sm">
-                              {formatPrice(procedure.price)}
-                            </span>
-                            <span className="text-2xl font-bold text-gold">
-                              {formatPrice(discountedPrice)}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="text-right">
-                            <span className="text-2xl font-bold text-gold">
-                              {formatPrice(procedure.price)}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Footer */}
-                    <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
-                      <Button asChild className="w-full" size="sm">
-                        <Link href={`/rezervacii?procedureId=${procedure.id}`}>
-                          ЗАПАЗИ ЧАС
+                          <span className="text-right whitespace-nowrap">
+                            {hasDiscount && (
+                              <span className="mr-2 text-sm text-taupe-400 line-through">{formatPrice(procedure.price)}</span>
+                            )}
+                            <span className="font-display text-xl text-cocoa">{formatPrice(discountedPrice)}</span>
+                          </span>
+                          <span className="hidden sm:inline-flex items-center justify-end gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-rose-dark opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                            Запази
+                            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                          </span>
                         </Link>
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
 
-      {/* CTA Section */}
-      <div className="bg-gradient-to-br from-gold/10 to-transparent rounded-xl p-8 text-center border-2 border-gold/20">
-        <h3 className="text-2xl font-bold mb-3">
-          Не намирате това, което търсите?
-        </h3>
-        <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-          Свържете се с нас директно и ще се радваме да отговорим на всички ваши въпроси
-          и да ви помогнем да изберете подходящата процедура.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+      {/* Contact */}
+      <div className="mt-20 rounded-2xl bg-champagne p-8 sm:p-12 sm:flex sm:items-center sm:justify-between gap-8">
+        <div className="max-w-xl">
+          <h3 className="font-display text-3xl mb-3">Не сте сигурни коя процедура е за вас?</h3>
+          <p className="text-taupe-600">
+            Обадете ни се и ще ви помогнем да изберете според вашата кожа и желания резултат.
+          </p>
+        </div>
+        <div className="mt-6 sm:mt-0 flex flex-col sm:flex-row gap-3 shrink-0">
           <Button asChild size="lg">
-            <a href="tel:+359123456789">ОБАДЕТЕ СЕ</a>
+            <a href={`tel:${BUSINESS.phone}`}>Обадете се</a>
           </Button>
           <Button asChild variant="outline" size="lg">
-            <Link href="/rezervacii">ЗАПАЗИ ЧАС</Link>
+            <Link href="/rezervacii">Запази час</Link>
           </Button>
         </div>
       </div>

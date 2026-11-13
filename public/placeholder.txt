@@ -1,2 +1,0 @@
-This folder contains public static assets.
-Place images and other static files here.

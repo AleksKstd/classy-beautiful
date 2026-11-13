@@ -1,19 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import Link from "next/link";
-import { updateProcedure, deleteProcedure } from "@/app/actions/admin";
+import { updateProcedure, deleteProcedure, getProcedureForEdit } from "@/app/actions/admin/procedures";
 
-interface EditProcedurePageProps {
-  params: { id: string };
-}
-
-export default function EditProcedurePage({ params }: EditProcedurePageProps) {
+export default function EditProcedurePage() {
+  const params = useParams<{ id: string }>();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -33,9 +30,8 @@ export default function EditProcedurePage({ params }: EditProcedurePageProps) {
     // Fetch the procedure data
     const fetchProcedure = async () => {
       try {
-        const response = await fetch(`/api/procedures/${params.id}`);
-        if (!response.ok) throw new Error("Процедурата не е намерена");
-        const data = await response.json();
+        const data = await getProcedureForEdit(params.id);
+        if (!data) throw new Error("Процедурата не е намерена");
         setFormData({
           name: data.name || "",
           description: data.description || "",

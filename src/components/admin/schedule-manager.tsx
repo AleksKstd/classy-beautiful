@@ -8,7 +8,7 @@ import { Plus, Trash2, Loader2 } from "lucide-react";
 import {
   createScheduleClosure,
   deleteScheduleClosure,
-} from "@/app/actions/admin";
+} from "@/app/actions/admin/schedule";
 import { format, parseISO } from "date-fns";
 import { bg } from "date-fns/locale";
 import type { Schedule } from "@/types/database";

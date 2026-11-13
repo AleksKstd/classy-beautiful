@@ -6,11 +6,11 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Edit, Trash2, Loader2, ChevronDown, PlusCircle } from "lucide-react";
+import { Plus, Edit, Trash2, Loader2, ChevronDown } from "lucide-react";
 import {
   createProcedure,
   deleteProcedure,
-} from "@/app/actions/admin";
+} from "@/app/actions/admin/procedures";
 import { formatPrice, formatDuration } from "@/lib/utils";
 import type { Procedure } from "@/types/database";
 
@@ -132,7 +132,7 @@ export function ProceduresManager({ procedures: initialProcedures }: ProceduresM
       } else {
         alert(result.error || "Грешка при изтриване");
       }
-    } catch (error) {
+    } catch {
       alert("Грешка при изтриване");
     } finally {
       setDeletingId(null);
