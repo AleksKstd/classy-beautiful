@@ -13,7 +13,7 @@ export function SectionHeading({ eyebrow, title, description, className }: Secti
     <div className={cn("mb-12 max-w-2xl", className)}>
       <p className="eyebrow mb-4">{eyebrow}</p>
       <h2 className="text-4xl sm:text-5xl leading-tight">{title}</h2>
-      {description && <p className="mt-4 text-gray-600 leading-relaxed">{description}</p>}
+      {description && <p className="mt-4 text-taupe-600 leading-relaxed">{description}</p>}
     </div>
   );
 }

@@ -7,7 +7,7 @@ export default function NotFound() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-xl text-center">
         <p className="eyebrow mb-4">404</p>
         <h1 className="text-4xl sm:text-5xl mb-4">Страницата не е намерена</h1>
-        <p className="text-gray-600 mb-10">Възможно е адресът да е грешен или страницата да е преместена.</p>
+        <p className="text-taupe-600 mb-10">Възможно е адресът да е грешен или страницата да е преместена.</p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Button asChild size="lg">
             <Link href="/rezervacii">Запази час</Link>

@@ -29,6 +29,16 @@ const config: Config = {
           DEFAULT: "#C9998A",
           dark: "#8E5E51", // text on light backgrounds (contrast 5.3:1 on white)
         },
+        // Warm neutrals (replace Tailwind's cool greys)
+        taupe: {
+          100: "#F4EFEB",
+          200: "#E8DFD8",
+          300: "#D3C6BD",
+          400: "#A3958C", // decorative only (strike-through prices, disabled)
+          500: "#76655C", // secondary text, AA on white/blush/champagne
+          600: "#5F4F47",
+          700: "#473A34",
+        },
         cocoa: {
           DEFAULT: "#33241F",
           light: "#4A3832",

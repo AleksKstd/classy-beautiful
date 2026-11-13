@@ -95,11 +95,17 @@ per-phone booking limit are in `src/config/site.ts`.
 - Colours (tailwind.config.ts): `gold` for buttons and accents, `gold-dark` for
   gold text on white; warm backgrounds `blush`, `blush-light`, `champagne`,
   `ivory`; `rose-dark` for small accent text and badges; `cocoa` for dark
-  sections and the footer. Text/background pairs meet WCAG AA (4.5:1).
+  sections and the footer; warm neutrals `taupe-*` instead of Tailwind greys.
+  Text/background pairs meet WCAG AA (4.5:1).
+- Numbers: headings and prices use lining figures; prices are formatted the
+  Bulgarian way ("36,80 €") by `formatPrice`.
+- Radius scale: `rounded-md` for controls (buttons, inputs, slots, day boxes),
+  `rounded-2xl` for containers. No hover lifts; hover changes border or colour.
 - Shapes: buttons and chips use a small radius (`rounded-md`), cards
   `rounded-2xl`; the hero gallery is a soft arch inside a concentric gold frame.
 - Background "drops": blurred colour shapes with a ripple (`.drop-pattern`) or
   dot (`.drop-dots`) pattern on top, defined in `globals.css`.
 - Booking calendar: every date is a small box that fills up like a glass with
-  that day's bookings (`components/day-load.tsx`, `dayOccupancy` in
-  `lib/slots.ts`). Days with no room for the chosen procedure are disabled.
+  that day's bookings; the liquid has a wavy surface (`components/day-load.tsx`,
+  `dayOccupancy` in `lib/slots.ts`). Days with at most 3 start times left get a
+  gold outline; days with no room for the chosen procedure are disabled.

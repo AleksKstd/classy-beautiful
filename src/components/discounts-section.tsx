@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatPrice, formatDuration } from "@/lib/utils";
+import { cn, formatPrice, formatDuration } from "@/lib/utils";
 import { getFinalPrice } from "@/lib/pricing";
 import type { Procedure } from "@/types/database";
 
@@ -20,7 +20,14 @@ export function DiscountsSection({ procedures }: DiscountsSectionProps) {
           <h2 className="text-4xl sm:text-5xl leading-tight">Текущи отстъпки</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-4",
+            procedures.length === 1 && "max-w-xl",
+            procedures.length === 2 && "md:grid-cols-2 lg:max-w-4xl",
+            procedures.length >= 3 && "md:grid-cols-2 lg:grid-cols-3"
+          )}
+        >
           {procedures.map((procedure) => {
             const discountedPrice = getFinalPrice(procedure);
 
@@ -28,7 +35,7 @@ export function DiscountsSection({ procedures }: DiscountsSectionProps) {
               <Link
                 key={procedure.id}
                 href={`/rezervacii?procedureId=${procedure.id}`}
-                className="group flex flex-col rounded-3xl border border-white/10 bg-cocoa/50 p-8 transition-colors hover:border-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold"
+                className="group flex flex-col rounded-2xl border border-white/10 bg-cocoa/50 p-8 transition-colors hover:border-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold"
               >
                 <span className="self-start rounded bg-gold px-2.5 py-1 text-xs font-semibold tracking-wider text-cocoa">
                   −{procedure.discount_percentage}%

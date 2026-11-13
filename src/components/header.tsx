@@ -20,7 +20,7 @@ export function Header() {
   const close = () => setMobileMenuOpen(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-gray-200">
+    <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-taupe-200">
       <nav className="container mx-auto px-4 sm:px-6 lg:px-8" aria-label="Основна навигация">
         <div className="flex h-20 items-center justify-between">
           {/* Logo */}
@@ -42,7 +42,7 @@ export function Header() {
                   className={cn(
                     "relative py-1 text-xs font-semibold uppercase tracking-[0.2em] transition-colors hover:text-cocoa",
                     "after:absolute after:-bottom-0.5 after:left-0 after:h-px after:bg-gold after:transition-all after:duration-300 hover:after:w-full",
-                    active ? "text-cocoa after:w-full" : "text-gray-600 after:w-0"
+                    active ? "text-cocoa after:w-full" : "text-taupe-600 after:w-0"
                   )}
                 >
                   {link.label}
@@ -68,7 +68,7 @@ export function Header() {
 
         {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden py-6 border-t border-gray-200">
+          <div className="md:hidden py-6 border-t border-taupe-200">
             <div className="flex flex-col gap-5">
               {navLinks.map((link) => (
                 <Link

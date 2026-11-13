@@ -21,13 +21,15 @@ export default async function GalleryPage() {
   return (
     <div className="min-h-screen">
       <section className="relative overflow-hidden pt-16 pb-12 mb-10 bg-gradient-to-b from-blush-light via-ivory to-white">
-        <div aria-hidden="true" className="pointer-events-none absolute -top-24 -right-20 h-[26rem] w-[26rem] rounded-full bg-blush/70 blur-3xl" />
-        <div aria-hidden="true" className="drop-pattern pointer-events-none absolute -top-24 -right-20 h-[26rem] w-[26rem]" />
+        <div aria-hidden="true" className="drops-layer">
+          <div aria-hidden="true" className="absolute -top-24 -right-20 h-[26rem] w-[26rem] rounded-full bg-blush/70 blur-3xl" />
+          <div aria-hidden="true" className="drop-pattern absolute -top-24 -right-20 h-[26rem] w-[26rem]" />
+        </div>
         <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl">
             <p className="eyebrow mb-4">Галерия</p>
             <h1 className="text-5xl sm:text-6xl text-brand-black mb-4">Нашата работа</h1>
-            <p className="text-gray-600 leading-relaxed">
+            <p className="text-taupe-600 leading-relaxed">
               Снимки от салона и резултати от процедурите. Харесва ви нещо? Запазете същата процедура с едно докосване.
             </p>
           </div>
@@ -39,9 +41,9 @@ export default async function GalleryPage() {
           {images.length > 0 ? (
             <GalleryGrid images={images} />
           ) : (
-            <div className="rounded-3xl bg-champagne p-10 text-center">
+            <div className="rounded-2xl bg-champagne p-10 text-center">
               <p className="font-display text-2xl mb-3">Галерията се подготвя</p>
-              <p className="text-gray-600 mb-6">Скоро ще добавим снимки от салона и от нашата работа.</p>
+              <p className="text-taupe-600 mb-6">Скоро ще добавим снимки от салона и от нашата работа.</p>
               <Button asChild>
                 <Link href="/rezervacii">Запази час</Link>
               </Button>

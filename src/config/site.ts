@@ -33,6 +33,23 @@ export const LEGAL = {
 export const OFFICES = ["София", "Лом"] as const;
 export type OfficeName = (typeof OFFICES)[number];
 
+/**
+ * Street address of each salon. Shown in the footer, on the booking
+ * confirmation and as a Google Maps link. Leave null to hide it.
+ * TODO: fill in the real addresses.
+ */
+export const OFFICE_DETAILS: Record<OfficeName, { address: string | null }> = {
+  "София": { address: null },
+  "Лом": { address: null },
+};
+
+export function mapsUrl(office: OfficeName): string | null {
+  const address = OFFICE_DETAILS[office].address;
+  return address
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`Classy & Beautiful, ${address}`)}`
+    : null;
+}
+
 /** All booking times are interpreted in the salon's time zone. */
 export const TIME_ZONE = "Europe/Sofia";
 
@@ -51,6 +68,24 @@ export const OPENING_HOURS: Record<number, { open: string; close: string } | nul
   5: { open: "09:00", close: "19:00" },
   6: { open: "09:00", close: "19:00" },
 };
+
+const DAY_LABELS = ["Нд", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+
+/** Opening hours as short lines, e.g. ["Пн - Нд: 09:00 - 19:00"]. */
+export function openingHoursLines(): string[] {
+  const order = [1, 2, 3, 4, 5, 6, 0];
+  const groups: { from: number; to: number; text: string }[] = [];
+  for (const day of order) {
+    const hours = OPENING_HOURS[day];
+    const text = hours ? `${hours.open} - ${hours.close}` : "почивен ден";
+    const last = groups[groups.length - 1];
+    if (last && last.text === text) last.to = day;
+    else groups.push({ from: day, to: day, text });
+  }
+  return groups.map((g) =>
+    `${DAY_LABELS[g.from]}${g.from !== g.to ? ` - ${DAY_LABELS[g.to]}` : ""}: ${g.text}`
+  );
+}
 
 export const SLOT_INTERVAL_MINUTES = 30;
 /** How many days ahead customers can book. */

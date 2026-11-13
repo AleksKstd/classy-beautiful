@@ -71,14 +71,20 @@ cookie banner is needed. Enable it once: Vercel > your project > **Analytics** >
 in `src/config/site.ts`. Replace the placeholders before going live, and update
 `privacyPolicyUpdated` whenever the text changes.
 
-## 7. Opening hours and booking rules
+## 7. Salon addresses
+
+Set each salon's street address in `OFFICE_DETAILS` in `src/config/site.ts`.
+Once set, it appears in the footer and on the booking confirmation together with
+a "Как да стигнете" Google Maps link. While it is `null` nothing is shown.
+
+## 8. Opening hours and booking rules
 
 Edit `src/config/site.ts`: opening hours per weekday, slot length, how far
 ahead customers can book, and the maximum number of upcoming bookings per phone
 number. The same values drive the booking wizard, the server checks and the
 opening hours shown to search engines.
 
-## 8. Verify
+## 9. Verify
 
 ```sql
 SELECT COUNT(*) FROM procedures;                 -- 80+ after the seed

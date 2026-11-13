@@ -33,13 +33,15 @@ function ReservationContent() {
 
   return (
     <section className="relative overflow-hidden py-12 md:py-20 bg-gradient-to-b from-blush-light via-ivory to-white">
-      <div aria-hidden="true" className="pointer-events-none absolute -top-40 -left-40 h-[30rem] w-[30rem] rounded-full bg-blush/70 blur-3xl" />
-      <div aria-hidden="true" className="drop-pattern pointer-events-none absolute -top-40 -left-40 h-[30rem] w-[30rem]" />
+      <div aria-hidden="true" className="drops-layer">
+        <div aria-hidden="true" className="absolute -top-40 -left-40 h-[30rem] w-[30rem] rounded-full bg-blush/70 blur-3xl" />
+        <div aria-hidden="true" className="drop-pattern absolute -top-40 -left-40 h-[30rem] w-[30rem]" />
+      </div>
       <div className="container relative mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl">
         <div className="text-center mb-12">
           <p className="eyebrow mb-4">Онлайн резервация</p>
           <h1 className="text-5xl sm:text-6xl mb-4">Запази час</h1>
-          <p className="text-gray-600">
+          <p className="text-taupe-600">
             Четири кратки стъпки: салон, процедура, дата и час, вашите данни.
           </p>
         </div>

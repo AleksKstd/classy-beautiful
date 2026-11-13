@@ -12,20 +12,14 @@ import { format, startOfDay } from "date-fns";
 import { bg } from "date-fns/locale";
 import {
   MapPin,
-  Scissors,
   CalendarDays,
   User,
   Check,
   Loader2,
   ChevronRight,
   ArrowLeft,
-  Percent,
   Search,
   Sparkles,
-  Hand,
-  Flower2,
-  Zap,
-  Leaf,
   Clock,
   X,
 } from "lucide-react";
@@ -77,8 +71,8 @@ const initialFormData: ReservationFormData = {
 };
 
 const steps = [
-  { id: 1, title: "Локация", icon: MapPin },
-  { id: 2, title: "Процедура", icon: Scissors },
+  { id: 1, title: "Салон", icon: MapPin },
+  { id: 2, title: "Процедура", icon: Sparkles },
   { id: 3, title: "Дата и час", icon: CalendarDays },
   { id: 4, title: "Данни", icon: User },
 ];
@@ -92,13 +86,13 @@ const categoryHierarchy: Record<string, string[]> = {
   "Тяло": ["Естетични процедури - тяло", "Пилинг на тяло", "Пресотерапия и лимфендренаж"],
 };
 
-// Icon and one-line description for each category card
-const categoryMeta: Record<string, { icon: typeof MapPin; description: string }> = {
-  "Промоции": { icon: Percent, description: "Процедури с отстъпка в момента" },
-  "Нокти": { icon: Hand, description: "Педикюр и грижа за ноктите" },
-  "Лице": { icon: Flower2, description: "Мигли, вежди, терапии и естетика" },
-  "Епилация": { icon: Zap, description: "Лазер и кола маска за жени и мъже" },
-  "Тяло": { icon: Leaf, description: "Пилинг, лимфодренаж и оформяне" },
+// One-line description for each category card
+const categoryDescriptions: Record<string, string> = {
+  "Промоции": "Процедури с отстъпка в момента",
+  "Нокти": "Педикюр и грижа за ноктите",
+  "Лице": "Мигли, вежди, терапии и естетика",
+  "Епилация": "Лазер и кола маска за жени и мъже",
+  "Тяло": "Пилинг, лимфодренаж и оформяне",
 };
 
 const officeTaglines: Record<OfficeName, string> = {
@@ -226,13 +220,19 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
 
   // Per day: share of the day already booked, and whether the chosen procedure still fits anywhere
   const dayLoad = useMemo(() => {
-    const map = new Map<string, { occupancy: number; full: boolean }>();
+    const map = new Map<string, { occupancy: number; full: boolean; fewLeft: boolean }>();
     if (!windowBooked || windowBooked.office !== state.office) return map;
     const duration = state.procedure?.duration_minutes ?? 30;
     for (const key of getBookingWindowDays()) {
       const busy = [...windowBooked.ranges, ...scheduleClosures];
       const slots = buildDaySlots({ dateKey: key, durationMinutes: duration, closures: scheduleClosures, booked: windowBooked.ranges });
-      map.set(key, { occupancy: dayOccupancy(key, busy), full: !slots.some((slot) => slot.available) });
+      const freeCount = slots.filter((slot) => slot.available).length;
+      map.set(key, {
+        occupancy: dayOccupancy(key, busy),
+        full: freeCount === 0,
+        // Only a handful of start times left: outline the day in gold
+        fewLeft: freeCount > 0 && freeCount <= 3,
+      });
     }
     return map;
   }, [windowBooked, state.office, state.procedure, scheduleClosures]);
@@ -292,7 +292,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
       <>
         {show && <GlassFill occupancy={info.occupancy} />}
         <span className="relative">{date.getDate()}</span>
-        {show && <span className="sr-only">, {loadLabel(info.occupancy)}</span>}
+        {show && <span className="sr-only">, {loadLabel(info.occupancy, info.fewLeft)}</span>}
       </>
     );
   };
@@ -498,14 +498,14 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
         key={proc.id}
         onClick={() => selectProcedure(proc)}
         className={cn(
-          "group w-full rounded-xl border bg-white p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_24px_-18px_rgba(51,36,31,0.5)]",
-          state.procedure?.id === proc.id ? "border-cocoa" : hasDiscount ? "border-gold" : "border-gray-200 hover:border-cocoa/40"
+          "group w-full rounded-md border bg-white p-4 text-left transition-colors duration-200",
+          state.procedure?.id === proc.id ? "border-cocoa" : hasDiscount ? "border-gold" : "border-taupe-200 hover:border-cocoa/40"
         )}
       >
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="font-medium text-cocoa">{proc.name}</p>
-            <p className="mt-1 flex items-center gap-3 text-sm text-gray-600">
+            <p className="mt-1 flex items-center gap-3 text-sm text-taupe-600">
               <span className="inline-flex items-center gap-1">
                 <Clock className="h-3.5 w-3.5" aria-hidden="true" />
                 {formatDuration(proc.duration_minutes)}
@@ -517,7 +517,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
             {hasDiscount && (
               <p className="text-xs">
                 <span className="mr-1.5 rounded bg-rose-dark px-1.5 py-0.5 font-semibold text-white">−{proc.discount_percentage}%</span>
-                <span className="text-gray-400 line-through">{formatPrice(proc.price)}</span>
+                <span className="text-taupe-400 line-through">{formatPrice(proc.price)}</span>
               </p>
             )}
             <p className="font-display text-xl text-cocoa">{formatPrice(getFinalPrice(proc))}</p>
@@ -532,21 +532,21 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
       <div className="min-w-0">
         {/* Progress: completed steps can be reopened */}
         <nav aria-label="Напредък" className="mb-8">
-          <ol className="flex items-center justify-between">
+          <ol className="grid grid-cols-4">
             {steps.map((step, index) => {
               const status = getStepStatus(step.id);
               const Icon = step.icon;
               const clickable = status === "completed";
               return (
-                <li key={step.id} className="flex flex-1 items-center last:flex-none">
+                <li key={step.id} className="relative flex justify-center">
                   <button
                     type="button"
                     onClick={() => goToStep(step.id)}
                     disabled={!clickable}
                     aria-current={status === "current" ? "step" : undefined}
                     className={cn(
-                      "flex flex-col items-center gap-2 transition-colors duration-300 disabled:cursor-default",
-                      status === "upcoming" ? "text-gray-400" : "text-cocoa",
+                      "relative z-10 flex flex-col items-center gap-2 transition-colors duration-300 disabled:cursor-default",
+                      status === "upcoming" ? "text-taupe-400" : "text-cocoa",
                       clickable && "hover:text-rose-dark"
                     )}
                   >
@@ -555,7 +555,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                         "flex h-11 w-11 items-center justify-center rounded-full border transition-colors duration-300",
                         status === "completed" && "border-cocoa bg-cocoa text-white",
                         status === "current" && "border-gold bg-gold text-cocoa ring-4 ring-gold/20",
-                        status === "upcoming" && "border-gray-300 bg-white text-gray-400"
+                        status === "upcoming" && "border-taupe-300 bg-white text-taupe-400"
                       )}
                     >
                       {status === "completed" ? <Check className="h-5 w-5" aria-hidden="true" /> : <Icon className="h-5 w-5" aria-hidden="true" />}
@@ -565,7 +565,10 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                   {index < steps.length - 1 && (
                     <span
                       aria-hidden="true"
-                      className={cn("mx-2 h-px flex-1 transition-colors duration-500 sm:mx-4", status === "completed" ? "bg-cocoa" : "bg-gray-200")}
+                      className={cn(
+                        "absolute top-[22px] left-[calc(50%+30px)] right-[calc(-50%+30px)] h-px transition-colors duration-500",
+                        status === "completed" ? "bg-cocoa" : "bg-taupe-200"
+                      )}
                     />
                   )}
                 </li>
@@ -576,21 +579,25 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
 
         {/* Compact summary on small screens */}
         {currentStep > 1 && (
-          <div className="mb-6 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-blush-light px-4 py-3 text-sm text-cocoa lg:hidden">
-            {[state.office, state.procedure?.name, dateLabel && (state.timeSlot ? `${dateLabel}, ${state.timeSlot}` : dateLabel)]
-              .filter(Boolean)
-              .map((item, i) => (
-                <span key={i} className="flex items-center gap-2">
-                  {i > 0 && <span className="text-gold" aria-hidden="true">·</span>}
-                  {item}
-                </span>
-              ))}
-            {finalPrice !== null && <span className="ml-auto font-display text-base">{formatPrice(finalPrice)}</span>}
+          <div className="mb-6 rounded-2xl bg-blush-light px-4 py-3 text-sm text-cocoa lg:hidden">
+            <ul className="space-y-1">
+              {[state.office, state.procedure?.name, dateLabel && (state.timeSlot ? `${dateLabel}, ${state.timeSlot}` : dateLabel)]
+                .filter(Boolean)
+                .map((item, i) => (
+                  <li key={i} className="flex items-baseline gap-2">
+                    <span className="h-px w-3 shrink-0 translate-y-[-3px] bg-gold" aria-hidden="true" />
+                    {item}
+                  </li>
+                ))}
+            </ul>
+            {finalPrice !== null && (
+              <p className="mt-2 border-t border-blush pt-2 text-right font-display text-base">{formatPrice(finalPrice)}</p>
+            )}
           </div>
         )}
 
         {currentStep > 1 && (
-          <button onClick={goBack} className="mb-4 flex items-center gap-2 text-gray-600 transition-colors hover:text-cocoa">
+          <button onClick={goBack} className="mb-4 flex items-center gap-2 text-taupe-600 transition-colors hover:text-cocoa">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             <span className="text-sm">Назад</span>
           </button>
@@ -607,19 +614,19 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                   key={office}
                   onClick={() => selectOffice(office)}
                   className={cn(
-                    "group relative overflow-hidden rounded-2xl border bg-white p-6 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_32px_-20px_rgba(51,36,31,0.5)]",
-                    state.office === office ? "border-cocoa" : "border-gray-200 hover:border-cocoa/40"
+                    "group relative overflow-hidden rounded-2xl border bg-white p-6 text-left transition-colors duration-200",
+                    state.office === office ? "border-cocoa" : "border-taupe-200 hover:border-cocoa/40"
                   )}
                 >
                   <span aria-hidden="true" className="drop-dots absolute -right-10 -top-10 h-32 w-32 opacity-70" />
                   <MapPin className="relative h-5 w-5 text-rose-dark" aria-hidden="true" />
                   <span className="relative mt-4 block font-display text-3xl text-cocoa">{office}</span>
-                  <span className="relative mt-1 block text-sm text-gray-600">{officeTaglines[office]}</span>
-                  <span className="relative mt-4 flex items-center gap-1.5 text-xs font-medium text-gray-600">
+                  <span className="relative mt-1 block text-sm text-taupe-600">{officeTaglines[office]}</span>
+                  <span className="relative mt-4 flex items-center gap-1.5 text-xs font-medium text-taupe-600">
                     <Clock className="h-3.5 w-3.5" aria-hidden="true" />
                     {openingHoursText()}
                   </span>
-                  <ChevronRight className="absolute bottom-6 right-6 h-5 w-5 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-cocoa" aria-hidden="true" />
+                  <ChevronRight className="absolute bottom-6 right-6 h-5 w-5 text-taupe-300 transition-all group-hover:translate-x-0.5 group-hover:text-cocoa" aria-hidden="true" />
                 </button>
               ))}
             </div>
@@ -634,20 +641,20 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
 
             {/* Search */}
             <div className="relative mb-6">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-taupe-400" aria-hidden="true" />
               <input
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Търсете процедура, напр. педикюр, мигли, лазер…"
                 aria-label="Търсене на процедура"
-                className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-11 pr-10 text-sm placeholder:text-gray-400 focus:border-cocoa focus:outline-none focus:ring-2 focus:ring-gold/30"
+                className="h-12 w-full rounded-md border border-taupe-200 bg-white pl-11 pr-10 text-sm placeholder:text-taupe-400 focus:border-cocoa focus:outline-none focus:ring-2 focus:ring-gold/30"
               />
               {query && (
                 <button
                   type="button"
                   onClick={() => setQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-cocoa"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-taupe-400 hover:text-cocoa"
                   aria-label="Изчисти търсенето"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
@@ -657,7 +664,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
 
             {query.trim().length >= 2 ? (
               <div className="space-y-2">
-                <p className="text-sm text-gray-600" aria-live="polite">
+                <p className="text-sm text-taupe-600" aria-live="polite">
                   {searchResults.length > 0 ? `Намерени: ${searchResults.length}` : "Няма намерени процедури. Опитайте с друга дума."}
                 </p>
                 {searchResults.map(renderProcedureButton)}
@@ -675,26 +682,24 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                             (categoryHierarchy[category] ?? []).flatMap((sub) => subCategoryMap[sub] ?? [sub]).includes(p.type)
                           ).length;
                       if (isPromo && count === 0) return null;
-                      const meta = categoryMeta[category];
-                      const Icon = meta?.icon ?? Sparkles;
                       return (
                         <button
                           key={category}
                           onClick={() => selectCategory(category)}
                           className={cn(
-                            "group flex items-center gap-4 rounded-2xl border p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_32px_-20px_rgba(51,36,31,0.5)]",
-                            isPromo ? "border-gold bg-champagne sm:col-span-2" : "border-gray-200 bg-white hover:border-cocoa/40"
+                            "group flex items-center gap-4 rounded-2xl border p-5 text-left transition-colors duration-200",
+                            isPromo ? "border-gold bg-champagne sm:col-span-2" : "border-taupe-200 bg-white hover:border-cocoa/40"
                           )}
                         >
-                          <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl", isPromo ? "bg-gold text-cocoa" : "bg-blush-light text-rose-dark")}>
-                            <Icon className="h-5 w-5" aria-hidden="true" />
-                          </span>
                           <span className="min-w-0 flex-1">
                             <span className="block font-display text-xl text-cocoa">{category}</span>
-                            <span className="block text-sm text-gray-600">{meta?.description}</span>
+                            <span className="block text-sm text-taupe-600">{categoryDescriptions[category]}</span>
                           </span>
-                          <span className="shrink-0 text-xs font-semibold text-gray-500">{count}</span>
-                          <ChevronRight className="h-5 w-5 shrink-0 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-cocoa" aria-hidden="true" />
+                          <span className="shrink-0 text-right">
+                            <span className="block font-display text-3xl italic leading-none text-gold-dark">{count}</span>
+                            <span className="block text-[0.65rem] uppercase tracking-[0.14em] text-taupe-500">{count === 1 ? "процедура" : "процедури"}</span>
+                          </span>
+                          <ChevronRight className="h-5 w-5 shrink-0 text-taupe-300 transition-all group-hover:translate-x-0.5 group-hover:text-cocoa" aria-hidden="true" />
                         </button>
                       );
                     })}
@@ -706,7 +711,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                   <div className="space-y-4">
                     <button
                       onClick={() => setState((prev) => ({ ...prev, selectedCategory: null }))}
-                      className="flex items-center gap-1 text-sm text-gray-600 hover:text-cocoa"
+                      className="flex items-center gap-1 text-sm text-taupe-600 hover:text-cocoa"
                     >
                       <ArrowLeft className="h-4 w-4" aria-hidden="true" /> {state.selectedCategory}
                     </button>
@@ -715,10 +720,10 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                         <button
                           key={subCat}
                           onClick={() => selectSubCategory(subCat)}
-                          className="group flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-cocoa/40"
+                          className="group flex items-center justify-between rounded-2xl border border-taupe-200 bg-white p-5 text-left transition-colors duration-200 hover:border-cocoa/40"
                         >
                           <span className="font-display text-xl text-cocoa">{subCat}</span>
-                          <ChevronRight className="h-5 w-5 text-gray-300 group-hover:text-cocoa" aria-hidden="true" />
+                          <ChevronRight className="h-5 w-5 text-taupe-300 group-hover:text-cocoa" aria-hidden="true" />
                         </button>
                       ))}
                     </div>
@@ -736,7 +741,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                           selectedCategory: prev.selectedSubCategory ? prev.selectedCategory : null,
                         }))
                       }
-                      className="flex items-center gap-1 text-sm text-gray-600 hover:text-cocoa"
+                      className="flex items-center gap-1 text-sm text-taupe-600 hover:text-cocoa"
                     >
                       <ArrowLeft className="h-4 w-4" aria-hidden="true" /> {state.selectedSubCategory || state.selectedCategory}
                     </button>
@@ -758,11 +763,9 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
               <button
                 type="button"
                 onClick={pickEarliest}
-                className="group mb-6 flex w-full items-center gap-4 rounded-2xl border border-gold bg-champagne p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_32px_-20px_rgba(51,36,31,0.5)]"
+                className="group mb-6 flex w-full items-center gap-4 rounded-2xl border border-gold bg-champagne p-4 text-left transition-colors duration-200"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gold text-cocoa">
-                  <Sparkles className="h-5 w-5" aria-hidden="true" />
-                </span>
+                <span className="h-10 w-px shrink-0 bg-gold" aria-hidden="true" />
                 <span className="min-w-0 flex-1">
                   <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-rose-dark">Най-бързо</span>
                   <span className="block text-cocoa">
@@ -784,41 +787,44 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                   className="rounded-2xl border border-blush bg-white p-3 sm:p-4 shadow-[0_20px_40px_-30px_rgba(51,36,31,0.35)]"
                   locale={bg}
                   components={{ DayContent: DayWithLoad }}
+                  modifiers={{ fewLeft: (date) => dayLoad.get(format(date, "yyyy-MM-dd"))?.fewLeft === true }}
+                  modifiersClassNames={{ fewLeft: "!border-gold !border-[1.5px]" }}
                   classNames={{
-                    head_cell: "w-10 sm:w-11 text-[0.7rem] font-medium uppercase text-gray-500",
+                    head_cell: "w-10 sm:w-11 text-[0.7rem] font-medium uppercase text-taupe-500",
                     row: "flex w-full mt-1",
                     cell: "h-12 w-10 sm:h-14 sm:w-11 p-0.5 text-center text-sm relative focus-within:relative focus-within:z-20",
-                    day: "relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg border border-blush bg-white text-sm font-medium text-cocoa transition-colors hover:border-cocoa/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-dark aria-selected:opacity-100",
+                    day: "relative flex h-full w-full items-center justify-center overflow-hidden rounded-md border border-blush bg-white text-sm font-medium text-cocoa transition-colors hover:border-cocoa/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-dark aria-selected:opacity-100",
                     day_selected: "!border-cocoa !bg-cocoa !text-white",
                     day_today: "font-bold",
-                    day_disabled: "!border-transparent !bg-transparent text-gray-300 line-through decoration-gray-300 cursor-default hover:!border-transparent",
+                    day_disabled: "!border-transparent !bg-transparent text-taupe-300 line-through decoration-taupe-300 cursor-default hover:!border-transparent",
                     day_outside: "invisible",
                   }}
                 />
-                <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-gray-600">
+                <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-taupe-600">
                   <span className="flex items-center gap-2"><GlassSample occupancy={0} /> свободно</span>
                   <span className="flex items-center gap-2"><GlassSample occupancy={0.5} /> наполовина</span>
                   <span className="flex items-center gap-2"><GlassSample occupancy={0.9} /> почти пълно</span>
+                  <span className="flex items-center gap-2"><GlassSample occupancy={0.75} fewLeft /> малко свободни часове</span>
                 </div>
               </div>
 
               {/* Time slots */}
               <div>
                 {!state.date ? (
-                  <div className="flex h-full min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-blush p-8 text-center text-gray-500">
+                  <div className="flex h-full min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-blush p-8 text-center text-taupe-500">
                     <CalendarDays className="mb-3 h-6 w-6 text-rose-dark" aria-hidden="true" />
                     <p>Изберете ден от календара, за да видите свободните часове.</p>
                   </div>
                 ) : (
                   <div className="animate-fade-in">
-                    <p className="mb-4 text-sm text-gray-600">
+                    <p className="mb-4 text-sm text-taupe-600">
                       Свободни часове за{" "}
                       <span className="font-semibold text-cocoa">{format(state.date, "EEEE, d MMMM", { locale: bg })}</span>
                     </p>
                     {loadingSlots ? (
                       <div className="flex items-center justify-center py-8">
                         <Loader2 className="h-6 w-6 animate-spin text-gold-dark" aria-hidden="true" />
-                        <span className="ml-2 text-gray-500">Зареждане...</span>
+                        <span className="ml-2 text-taupe-500">Зареждане...</span>
                       </div>
                     ) : timeSlots.some((slot) => slot.available) ? (
                       <div className="space-y-5">
@@ -835,12 +841,12 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                                     onClick={() => slot.available && selectTimeSlot(slot.time)}
                                     disabled={!slot.available}
                                     className={cn(
-                                      "rounded-md px-2 py-3 text-sm font-medium tabular-nums transition-all duration-200",
+                                      "rounded-md px-2 py-3 text-sm font-medium tabular-nums transition-colors duration-200",
                                       state.timeSlot === slot.time
                                         ? "border border-cocoa bg-cocoa text-white"
                                         : slot.available
-                                          ? "border border-gray-200 bg-white text-cocoa hover:-translate-y-0.5 hover:border-cocoa hover:bg-blush-light"
-                                          : "cursor-not-allowed border border-transparent bg-gray-50 text-gray-300 line-through"
+                                          ? "border border-taupe-200 bg-white text-cocoa hover:border-cocoa hover:bg-blush-light"
+                                          : "cursor-not-allowed border border-transparent bg-ivory text-taupe-400 line-through"
                                     )}
                                     title={slot.booked ? "Заето" : !slot.available ? "Недостъпно" : ""}
                                   >
@@ -853,7 +859,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                         })}
                       </div>
                     ) : (
-                      <p className="rounded-2xl bg-blush-light p-6 text-center text-gray-600">Няма свободни часове този ден. Изберете друг ден.</p>
+                      <p className="rounded-2xl bg-blush-light p-6 text-center text-taupe-600">Няма свободни часове този ден. Изберете друг ден.</p>
                     )}
                   </div>
                 )}
@@ -867,7 +873,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
           <div key="step-4" className="animate-fade-in-up">
             <p className="eyebrow mb-2">Стъпка 4 от 4</p>
             <h2 className="mb-2 text-3xl">Почти готово</h2>
-            <p className="mb-6 text-gray-600">Остава само да ни кажете как да се свържем с вас.</p>
+            <p className="mb-6 text-taupe-600">Остава само да ни кажете как да се свържем с вас.</p>
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -945,7 +951,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
               )}
             </div>
 
-            <label className="flex items-start gap-3 text-sm text-gray-700 cursor-pointer">
+            <label className="flex items-start gap-3 text-sm text-taupe-700 cursor-pointer">
               <input
                 type="checkbox"
                 checked={remember}
@@ -957,7 +963,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
               />
               <span>
                 Запомни ме на това устройство
-                <span className="block text-gray-500">
+                <span className="block text-taupe-500">
                   Името, телефонът и имейлът ще се попълват автоматично следващия път. Пазят се само във вашия браузър.
                 </span>
               </span>
@@ -985,7 +991,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
               )}
             </Button>
 
-            <p className="text-xs text-gray-500 text-center">
+            <p className="text-xs text-taupe-500 text-center">
               Използваме данните ви само за тази резервация и за връзка с вас.{" "}
               <Link href="/poveritelnost" className="underline underline-offset-2 hover:text-cocoa">
                 Политика за поверителност
@@ -999,7 +1005,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
       {/* Booking summary (desktop) */}
       <aside className="hidden lg:block">
         <div className="sticky top-28 overflow-hidden rounded-2xl bg-cocoa p-6 text-white">
-          <span aria-hidden="true" className="drop-dots absolute -right-16 -top-16 h-48 w-48 opacity-60" />
+          <span aria-hidden="true" className="drop-dots absolute -bottom-16 -right-16 h-48 w-48 opacity-50" />
           <p className="relative text-xs font-semibold uppercase tracking-[0.2em] text-gold">Вашата резервация</p>
           <dl className="relative mt-5 space-y-4">
             {summaryRows.map((row) => (

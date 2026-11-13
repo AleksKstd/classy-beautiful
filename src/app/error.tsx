@@ -15,7 +15,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
     <section className="py-20">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-xl text-center">
         <h1 className="text-4xl sm:text-5xl mb-4">Нещо се обърка</h1>
-        <p className="text-gray-600 mb-8">
+        <p className="text-taupe-600 mb-8">
           Страницата не може да бъде заредена в момента. Моля, опитайте отново или ни се обадете на{" "}
           <a href={`tel:${BUSINESS.phone}`} className="text-gold-dark underline underline-offset-2">
             {BUSINESS.phoneDisplay}

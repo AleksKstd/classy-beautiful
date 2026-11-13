@@ -22,7 +22,7 @@ export function PopularProcedures({ procedures }: PopularProceduresProps) {
           description="Най-резервираното от нашите клиенти през последния месец."
         />
 
-        <ol className="overflow-hidden rounded-3xl bg-blush-light px-2 sm:px-6">
+        <ol className="overflow-hidden rounded-2xl bg-blush-light px-2 sm:px-6">
           {procedures.map((procedure, index) => (
             <li key={procedure.id} className="border-b border-blush last:border-b-0">
               <Link
@@ -32,13 +32,13 @@ export function PopularProcedures({ procedures }: PopularProceduresProps) {
                 <span className="font-display text-lg text-rose-dark">{String(index + 1).padStart(2, "0")}</span>
                 <span>
                   <span className="block font-medium text-brand-black">{procedure.name}</span>
-                  <span className="block text-sm text-gray-600">
+                  <span className="block text-sm text-taupe-600">
                     {formatDuration(procedure.duration_minutes)} · {procedure.technician}
                   </span>
                 </span>
                 <span className="text-right">
                   {hasDiscount(procedure) && (
-                    <span className="mr-2 text-sm text-gray-400 line-through">{formatPrice(procedure.price)}</span>
+                    <span className="mr-2 text-sm text-taupe-400 line-through">{formatPrice(procedure.price)}</span>
                   )}
                   <span className="font-display text-xl text-cocoa">{formatPrice(getFinalPrice(procedure))}</span>
                 </span>

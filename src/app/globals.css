@@ -9,7 +9,7 @@
 
 @layer base {
   * {
-    @apply border-gray-200;
+    @apply border-taupe-200;
   }
 
   body {
@@ -21,6 +21,13 @@
   h1,
   h2 {
     @apply font-display font-medium tracking-normal;
+  }
+
+  /* Playfair's default old-style figures make prices and dates jump */
+  .font-display,
+  h1,
+  h2 {
+    font-variant-numeric: lining-nums;
   }
 
   h3,
@@ -59,6 +66,19 @@
     background-size: 16px 16px;
     -webkit-mask-image: radial-gradient(circle at center, #000 20%, transparent 68%);
     mask-image: radial-gradient(circle at center, #000 20%, transparent 68%);
+  }
+}
+
+@layer components {
+  /* Layer for the drops: fades out towards the section's bottom edge so the
+     soft shapes are never cut off by a hard line. */
+  .drops-layer {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
   }
 }
 

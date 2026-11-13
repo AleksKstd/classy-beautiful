@@ -9,9 +9,9 @@ export const metadata: Metadata = {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="border-t border-gray-200 pt-8">
+    <section className="border-t border-taupe-200 pt-8">
       <h2 className="text-3xl mb-4">{title}</h2>
-      <div className="space-y-4 text-gray-700 leading-relaxed">{children}</div>
+      <div className="space-y-4 text-taupe-700 leading-relaxed">{children}</div>
     </section>
   );
 }
@@ -27,7 +27,7 @@ export default function PrivacyPolicyPage() {
     <article className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 max-w-3xl">
       <p className="eyebrow mb-4">Поверителност</p>
       <h1 className="text-5xl sm:text-6xl mb-4">Политика за поверителност</h1>
-      <p className="text-sm text-gray-500 mb-12">Последна актуализация: {LEGAL.privacyPolicyUpdated}</p>
+      <p className="text-sm text-taupe-500 mb-12">Последна актуализация: {LEGAL.privacyPolicyUpdated}</p>
 
       <div className="space-y-10">
         <Section title="Кои сме ние">

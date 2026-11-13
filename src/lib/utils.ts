@@ -5,8 +5,16 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const priceFormatter = new Intl.NumberFormat("bg-BG", {
+  style: "currency",
+  currency: "EUR",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+/** Bulgarian price format, e.g. "36,80 €". */
 export function formatPrice(price: number): string {
-  return `${price.toFixed(2)} €`;
+  return priceFormatter.format(price);
 }
 
 export function formatDuration(minutes: number): string {

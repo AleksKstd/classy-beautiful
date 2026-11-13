@@ -143,12 +143,21 @@ export function ProceduresGrid({ procedures }: ProceduresGridProps) {
 
               {/* Category */}
               <div className="mt-6">
-                <h3 className="flex items-baseline justify-between gap-4 mb-1">
-                  <span className="font-display text-2xl">{category}</span>
-                  <span className="text-xs text-gray-500">{procs.length} процедури</span>
-                </h3>
+                {/* Skip the category title when it just repeats the section title (e.g. "Нокти") */}
+                {category !== mainSection ? (
+                  <h3 className="flex items-baseline justify-between gap-4 mb-1">
+                    <span className="font-display text-2xl">{category}</span>
+                    <span className="text-xs text-taupe-500">
+                      {procs.length} {procs.length === 1 ? "процедура" : "процедури"}
+                    </span>
+                  </h3>
+                ) : (
+                  <p className="mb-1 text-right text-xs text-taupe-500">
+                    {procs.length} {procs.length === 1 ? "процедура" : "процедури"}
+                  </p>
+                )}
 
-                <ul className="mt-3 overflow-hidden rounded-3xl bg-blush-light/60 px-2 sm:px-4 divide-y divide-blush">
+                <ul className="mt-3 overflow-hidden rounded-2xl bg-blush-light/60 px-2 sm:px-4 divide-y divide-blush">
                   {procs.map((procedure) => {
                     const hasDiscount = procedureHasDiscount(procedure);
                     const discountedPrice = getFinalPrice(procedure);
@@ -167,22 +176,22 @@ export function ProceduresGrid({ procedures }: ProceduresGridProps) {
                               </span>
                             )}
                             {procedure.description && (
-                              <span className="mt-1 block text-sm text-gray-600 line-clamp-2">{procedure.description}</span>
+                              <span className="mt-1 block text-sm text-taupe-600 line-clamp-2">{procedure.description}</span>
                             )}
-                            <span className="mt-1 block text-sm text-gray-600 sm:hidden">
+                            <span className="mt-1 block text-sm text-taupe-600 sm:hidden">
                               {formatDuration(procedure.duration_minutes)} · {procedure.technician}
                             </span>
                           </span>
-                          <span className="hidden sm:block text-sm text-gray-600">
+                          <span className="hidden sm:block text-sm text-taupe-600">
                             {formatDuration(procedure.duration_minutes)}
                           </span>
                           <span className="text-right whitespace-nowrap">
                             {hasDiscount && (
-                              <span className="mr-2 text-sm text-gray-400 line-through">{formatPrice(procedure.price)}</span>
+                              <span className="mr-2 text-sm text-taupe-400 line-through">{formatPrice(procedure.price)}</span>
                             )}
                             <span className="font-display text-xl text-cocoa">{formatPrice(discountedPrice)}</span>
                           </span>
-                          <span className="hidden sm:inline-flex items-center justify-end gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-rose-dark transition-colors group-hover:text-cocoa">
+                          <span className="hidden sm:inline-flex items-center justify-end gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-rose-dark opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
                             Запази
                             <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                           </span>
@@ -198,10 +207,10 @@ export function ProceduresGrid({ procedures }: ProceduresGridProps) {
       </div>
 
       {/* Contact */}
-      <div className="mt-20 rounded-[2rem] bg-champagne p-8 sm:p-12 sm:flex sm:items-center sm:justify-between gap-8">
+      <div className="mt-20 rounded-2xl bg-champagne p-8 sm:p-12 sm:flex sm:items-center sm:justify-between gap-8">
         <div className="max-w-xl">
           <h3 className="font-display text-3xl mb-3">Не сте сигурни коя процедура е за вас?</h3>
-          <p className="text-gray-600">
+          <p className="text-taupe-600">
             Обадете ни се и ще ви помогнем да изберете според вашата кожа и желания резултат.
           </p>
         </div>
