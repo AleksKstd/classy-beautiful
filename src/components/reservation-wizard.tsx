@@ -20,6 +20,14 @@ import {
   ChevronRight,
   ArrowLeft,
   Percent,
+  Search,
+  Sparkles,
+  Hand,
+  Flower2,
+  Zap,
+  Leaf,
+  Clock,
+  X,
 } from "lucide-react";
 import {
   createReservation,
@@ -29,7 +37,7 @@ import {
   getOfficeClosures,
   type CreateReservationResult,
 } from "@/app/actions/booking";
-import { OFFICES, type OfficeName } from "@/config/site";
+import { OFFICES, OPENING_HOURS, type OfficeName } from "@/config/site";
 import { getFinalPrice, hasDiscount as procedureHasDiscount } from "@/lib/pricing";
 import {
   buildDaySlots,
@@ -40,7 +48,7 @@ import {
   type DaySlot,
   type TimeRange,
 } from "@/lib/slots";
-import { DayLoadWave, loadLabel } from "@/components/day-load";
+import { GlassFill, GlassSample, loadLabel } from "@/components/day-load";
 import type { DayContentProps } from "react-day-picker";
 import { fieldErrors, reservationFormSchema, type ReservationFormData } from "@/lib/validation";
 import type { Procedure } from "@/types/database";
@@ -83,6 +91,42 @@ const categoryHierarchy: Record<string, string[]> = {
   "Епилация": ["Епилация жени", "Епилация мъже"],
   "Тяло": ["Естетични процедури - тяло", "Пилинг на тяло", "Пресотерапия и лимфендренаж"],
 };
+
+// Icon and one-line description for each category card
+const categoryMeta: Record<string, { icon: typeof MapPin; description: string }> = {
+  "Промоции": { icon: Percent, description: "Процедури с отстъпка в момента" },
+  "Нокти": { icon: Hand, description: "Педикюр и грижа за ноктите" },
+  "Лице": { icon: Flower2, description: "Мигли, вежди, терапии и естетика" },
+  "Епилация": { icon: Zap, description: "Лазер и кола маска за жени и мъже" },
+  "Тяло": { icon: Leaf, description: "Пилинг, лимфодренаж и оформяне" },
+};
+
+const officeTaglines: Record<OfficeName, string> = {
+  "София": "Салонът в столицата",
+  "Лом": "Салонът в Лом",
+};
+
+/** "Всеки ден 09:00 - 19:00" when every day has the same hours. */
+function openingHoursText(): string {
+  const days = Object.values(OPENING_HOURS).filter(Boolean) as { open: string; close: string }[];
+  const first = days[0];
+  if (days.length === 7 && days.every((d) => d.open === first.open && d.close === first.close)) {
+    return `Всеки ден ${first.open} - ${first.close}`;
+  }
+  return "Вижте свободните часове в календара";
+}
+
+const timeGroups = [
+  { label: "Сутрин", test: (t: string) => t < "12:00" },
+  { label: "Следобед", test: (t: string) => t >= "12:00" && t < "17:00" },
+  { label: "Вечер", test: (t: string) => t >= "17:00" },
+];
+
+/** Local calendar Date for a "yyyy-MM-dd" key (the calendar works in local days). */
+function dateFromKey(key: string): Date {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
 
 // Sub-categories for epilation
 const subCategoryMap: Record<string, string[]> = {
@@ -240,24 +284,44 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
     );
   };
 
-  // Calendar day: the date with a small wave showing how busy the day is
+  // Calendar day: a box that fills up like a glass with the day's bookings
   const DayWithLoad = ({ date, activeModifiers }: DayContentProps) => {
     const info = dayLoad.get(format(date, "yyyy-MM-dd"));
-    const showWave = info && !activeModifiers.disabled && !activeModifiers.outside;
+    const show = info && !activeModifiers.disabled && !activeModifiers.outside;
     return (
-      <span className="flex flex-col items-center gap-1">
-        <span>{date.getDate()}</span>
-        {showWave ? (
-          <>
-            <DayLoadWave occupancy={info.occupancy} />
-            <span className="sr-only">, {loadLabel(info.occupancy)}</span>
-          </>
-        ) : (
-          <span className="h-1.5" aria-hidden="true" />
-        )}
-      </span>
+      <>
+        {show && <GlassFill occupancy={info.occupancy} />}
+        <span className="relative">{date.getDate()}</span>
+        {show && <span className="sr-only">, {loadLabel(info.occupancy)}</span>}
+      </>
     );
   };
+
+  // First free time for the chosen procedure across the booking window (cheap: ~60 days)
+  const findEarliest = (): { dateKey: string; time: string } | null => {
+    if (!state.procedure || !windowBooked || windowBooked.office !== state.office) return null;
+    for (const key of getBookingWindowDays()) {
+      const slot = buildDaySlots({
+        dateKey: key,
+        durationMinutes: state.procedure.duration_minutes,
+        closures: scheduleClosures,
+        booked: windowBooked.ranges,
+      }).find((candidate) => candidate.available);
+      if (slot) return { dateKey: key, time: slot.time };
+    }
+    return null;
+  };
+  const earliest = currentStep === 3 ? findEarliest() : null;
+
+  // Search across all procedures (step 2)
+  const [query, setQuery] = useState("");
+  const searchResults = useMemo(() => {
+    const q = query.trim().toLocaleLowerCase("bg");
+    if (q.length < 2) return [];
+    return procedures
+      .filter((p) => p.name.toLocaleLowerCase("bg").includes(q) || p.type.toLocaleLowerCase("bg").includes(q))
+      .slice(0, 30);
+  }, [query, procedures]);
 
   const selectOffice = (office: OfficeName) => {
     setState((prev) => ({ ...prev, office }));
@@ -296,6 +360,18 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
   const selectTimeSlot = (time: string) => {
     setState((prev) => ({ ...prev, timeSlot: time }));
     setCurrentStep(4);
+  };
+
+  const pickEarliest = () => {
+    const earliest = findEarliest();
+    if (!earliest) return;
+    setState((prev) => ({ ...prev, date: dateFromKey(earliest.dateKey), timeSlot: earliest.time }));
+    setCurrentStep(4);
+  };
+
+  // Completed steps can be reopened from the stepper or the summary
+  const goToStep = (step: number) => {
+    if (step < currentStep) setCurrentStep(step);
   };
 
   const updateFormData = (field: keyof ReservationFormData, value: string) => {
@@ -402,370 +478,396 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
     return "upcoming";
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Progress indicator */}
-      <nav aria-label="Напредък" className="mb-8">
-        <ol className="flex items-center justify-between">
-          {steps.map((step, index) => {
-            const status = getStepStatus(step.id);
-            const Icon = step.icon;
-            return (
-              <li key={step.id} className="flex items-center flex-1">
-                <div
-                  className={cn(
-                    "flex flex-col items-center gap-2 transition-all duration-300",
-                    status === "completed" && "text-brand-black",
-                    status === "current" && "text-brand-black",
-                    status === "upcoming" && "text-gray-400"
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "w-11 h-11 rounded-full flex items-center justify-center border transition-colors duration-300",
-                      status === "completed" && "bg-cocoa border-cocoa text-white",
-                      status === "current" && "border-gold bg-gold text-brand-black",
-                      status === "upcoming" && "border-gray-300 text-gray-400"
-                    )}
-                  >
-                    {status === "completed" ? (
-                      <Check className="w-5 h-5" aria-hidden="true" />
-                    ) : (
-                      <Icon className="w-5 h-5" aria-hidden="true" />
-                    )}
-                  </div>
-                  <span className="text-xs font-medium hidden sm:block">
-                    {step.title}
-                  </span>
-                </div>
-                {index < steps.length - 1 && (
-                  <div
-                    className={cn(
-                      "flex-1 h-px mx-2 sm:mx-4 transition-colors duration-500",
-                      status === "completed" ? "bg-cocoa" : "bg-gray-200"
-                    )}
-                    aria-hidden="true"
-                  />
-                )}
-              </li>
-            );
-          })}
-        </ol>
-      </nav>
+  const finalPrice = state.procedure ? getFinalPrice(state.procedure) : null;
+  const dateLabel = state.date ? format(state.date, "EEEE, d MMMM", { locale: bg }) : null;
 
-      {/* Back button */}
-      {currentStep > 1 && (
-        <button
-          onClick={goBack}
-          className="flex items-center gap-2 text-gray-600 hover:text-cocoa transition-colors mb-4"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span className="text-sm">Назад</span>
-        </button>
-      )}
+  const summaryRows = [
+    { step: 1, label: "Салон", value: state.office },
+    { step: 2, label: "Процедура", value: state.procedure?.name ?? null },
+    {
+      step: 3,
+      label: "Дата и час",
+      value: dateLabel && state.timeSlot ? `${dateLabel}, ${state.timeSlot}` : dateLabel,
+    },
+  ];
 
-      {/* Step 1: Office selection */}
-      {currentStep === 1 && (
-        <div className="animate-fade-in-up">
-          <h2 className="text-3xl mb-6">Изберете локация
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {OFFICES.map((office) => (
-              <button
-                key={office}
-                onClick={() => selectOffice(office)}
-                className={cn(
-                  "p-8 rounded-3xl border text-center transition-colors duration-200",
-                  state.office === office
-                    ? "border-cocoa bg-blush-light"
-                    : "border-gray-300 hover:border-cocoa"
-                )}
-              >
-                <span className="font-display text-3xl">{office}</span>
-              </button>
-            ))}
+  const renderProcedureButton = (proc: Procedure) => {
+    const hasDiscount = procedureHasDiscount(proc);
+    return (
+      <button
+        key={proc.id}
+        onClick={() => selectProcedure(proc)}
+        className={cn(
+          "group w-full rounded-xl border bg-white p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_24px_-18px_rgba(51,36,31,0.5)]",
+          state.procedure?.id === proc.id ? "border-cocoa" : hasDiscount ? "border-gold" : "border-gray-200 hover:border-cocoa/40"
+        )}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="font-medium text-cocoa">{proc.name}</p>
+            <p className="mt-1 flex items-center gap-3 text-sm text-gray-600">
+              <span className="inline-flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                {formatDuration(proc.duration_minutes)}
+              </span>
+              <span>{proc.technician}</span>
+            </p>
+          </div>
+          <div className="shrink-0 text-right">
+            {hasDiscount && (
+              <p className="text-xs">
+                <span className="mr-1.5 rounded bg-rose-dark px-1.5 py-0.5 font-semibold text-white">−{proc.discount_percentage}%</span>
+                <span className="text-gray-400 line-through">{formatPrice(proc.price)}</span>
+              </p>
+            )}
+            <p className="font-display text-xl text-cocoa">{formatPrice(getFinalPrice(proc))}</p>
           </div>
         </div>
-      )}
+      </button>
+    );
+  };
 
-      {/* Step 2: Procedure selection - Hierarchical */}
-      {currentStep === 2 && (
-        <div className="animate-fade-in-up">
-          <h2 className="text-3xl mb-6">Изберете процедура
-          </h2>
-          
-          {/* Main Categories */}
-          {!state.selectedCategory && (
-            <div className="grid grid-cols-2 gap-4">
-              {Object.keys(categoryHierarchy).map((category) => {
-                const isPromo = category === "Промоции";
-                const hasDiscounts = isPromo && getDiscountedProcedures().length > 0;
-                
-                // Hide promo category if no discounts
-                if (isPromo && !hasDiscounts) return null;
-                
-                return (
+  return (
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-12">
+      <div className="min-w-0">
+        {/* Progress: completed steps can be reopened */}
+        <nav aria-label="Напредък" className="mb-8">
+          <ol className="flex items-center justify-between">
+            {steps.map((step, index) => {
+              const status = getStepStatus(step.id);
+              const Icon = step.icon;
+              const clickable = status === "completed";
+              return (
+                <li key={step.id} className="flex flex-1 items-center last:flex-none">
                   <button
-                    key={category}
-                    onClick={() => selectCategory(category)}
+                    type="button"
+                    onClick={() => goToStep(step.id)}
+                    disabled={!clickable}
+                    aria-current={status === "current" ? "step" : undefined}
                     className={cn(
-                      "p-6 rounded-3xl border text-left transition-colors duration-200 group",
-                      isPromo 
-                        ? "border-gold bg-blush-light hover:border-cocoa col-span-2"
-                        : "border-gray-300 hover:border-cocoa"
+                      "flex flex-col items-center gap-2 transition-colors duration-300 disabled:cursor-default",
+                      status === "upcoming" ? "text-gray-400" : "text-cocoa",
+                      clickable && "hover:text-rose-dark"
                     )}
                   >
-                    <div className="flex items-center gap-2">
-                      {isPromo && <Percent className="w-5 h-5 text-gold-dark" aria-hidden="true" />}
-                      <span className={cn("text-lg", isPromo && "font-semibold")}>{category}</span>
-                      {isPromo && (
-                        <span className="ml-1 text-sm text-gold-dark">({getDiscountedProcedures().length} оферти)</span>
-                      )}
-                    </div>
-                    <ChevronRight className={cn(
-                      "w-5 h-5 float-right -mt-5 transition-colors",
-                      isPromo ? "text-gold-dark group-hover:text-cocoa" : "text-gray-400 group-hover:text-cocoa"
-                    )} />
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Sub Categories (for Епилация) - skip for Промоции which goes directly to procedure list */}
-          {state.selectedCategory && state.selectedCategory !== "Промоции" && !state.selectedSubCategory && categoryHierarchy[state.selectedCategory]?.some(sub => subCategoryMap[sub]) && (
-            <div className="space-y-4">
-              <button
-                onClick={() => setState(prev => ({ ...prev, selectedCategory: null }))}
-                className="text-sm text-gray-600 hover:text-cocoa flex items-center gap-1"
-              >
-                <ArrowLeft className="w-4 h-4" /> {state.selectedCategory}
-              </button>
-              <div className="grid grid-cols-2 gap-4">
-                {categoryHierarchy[state.selectedCategory].map((subCat) => (
-                  <button
-                    key={subCat}
-                    onClick={() => selectSubCategory(subCat)}
-                    className="p-5 rounded-3xl border border-gray-300 text-left transition-colors duration-200 hover:border-cocoa group"
-                  >
-                    <span>{subCat}</span>
-                    <ChevronRight className="w-5 h-5 float-right text-gray-400 group-hover:text-cocoa transition-colors" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Procedure List */}
-          {state.selectedCategory && (state.selectedCategory === "Промоции" || state.selectedSubCategory || !categoryHierarchy[state.selectedCategory]?.some(sub => subCategoryMap[sub])) && (
-            <div className="space-y-4">
-              <button
-                onClick={() => setState(prev => ({ 
-                  ...prev, 
-                  selectedSubCategory: null,
-                  selectedCategory: state.selectedSubCategory ? prev.selectedCategory : null 
-                }))}
-                className="text-sm text-gray-600 hover:text-cocoa flex items-center gap-1"
-              >
-                <ArrowLeft className="w-4 h-4" /> {state.selectedSubCategory || state.selectedCategory}
-              </button>
-              <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
-                {getFilteredProcedures().map((proc) => {
-                  const hasDiscount = procedureHasDiscount(proc);
-                  const discountedPrice = getFinalPrice(proc);
-                  
-                  return (
-                    <button
-                      key={proc.id}
-                      onClick={() => selectProcedure(proc)}
+                    <span
                       className={cn(
-                        "w-full p-4 rounded-2xl border text-left transition-colors duration-200 relative",
-                        state.procedure?.id === proc.id
-                          ? "border-cocoa bg-blush-light"
-                          : "border-gray-300 hover:border-cocoa",
-                        hasDiscount && "border-gold"
+                        "flex h-11 w-11 items-center justify-center rounded-full border transition-colors duration-300",
+                        status === "completed" && "border-cocoa bg-cocoa text-white",
+                        status === "current" && "border-gold bg-gold text-cocoa ring-4 ring-gold/20",
+                        status === "upcoming" && "border-gray-300 bg-white text-gray-400"
                       )}
                     >
-                      {hasDiscount && (
-                        <span className="absolute -top-2.5 right-4 rounded-full bg-rose-dark text-white text-xs font-semibold px-2.5 py-0.5">
-                          -{proc.discount_percentage}%
-                        </span>
-                      )}
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium">{proc.name}</p>
-                          <p className="text-sm text-gray-500 mt-1">
-                            {formatDuration(proc.duration_minutes)}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          {hasDiscount ? (
-                            <>
-                              <p className="text-sm text-gray-400 line-through">
-                                {formatPrice(proc.price)}
-                              </p>
-                              <p className="font-display text-xl text-brand-black">
-                                {formatPrice(discountedPrice)}
-                              </p>
-                            </>
-                          ) : (
-                            <p className="font-display text-xl text-brand-black">
-                              {formatPrice(proc.price)}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+                      {status === "completed" ? <Check className="h-5 w-5" aria-hidden="true" /> : <Icon className="h-5 w-5" aria-hidden="true" />}
+                    </span>
+                    <span className="hidden text-xs font-medium sm:block">{step.title}</span>
+                  </button>
+                  {index < steps.length - 1 && (
+                    <span
+                      aria-hidden="true"
+                      className={cn("mx-2 h-px flex-1 transition-colors duration-500 sm:mx-4", status === "completed" ? "bg-cocoa" : "bg-gray-200")}
+                    />
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </nav>
 
-      {/* Step 3: Date and time selection - Inline */}
-      {currentStep === 3 && (
-        <div className="animate-fade-in-up">
-          <h2 className="text-3xl mb-6">Изберете дата и час
-          </h2>
-          
-          {/* Selected procedure summary */}
-          {state.procedure && (() => {
-            const hasDiscount = procedureHasDiscount(state.procedure);
-            const discountedPrice = getFinalPrice(state.procedure);
-            
-            return (
-              <div className={cn(
-                "mb-6 p-5 rounded-2xl border bg-blush-light",
-                hasDiscount ? "border-gold" : "border-gray-200"
-              )}>
-                <p className="text-sm text-gray-500">Избрана процедура:</p>
-                <p className="font-medium">{state.procedure.name}</p>
-                {hasDiscount ? (
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-sm text-gray-400 line-through">{formatPrice(state.procedure.price)}</span>
-                    <span className="text-sm font-semibold text-brand-black">{formatPrice(discountedPrice)}</span>
-                    <span className="rounded-full bg-rose-dark text-white text-xs font-semibold px-2 py-0.5">−{state.procedure.discount_percentage}%</span>
-                    <span className="text-sm text-gray-500">• {formatDuration(state.procedure.duration_minutes)}</span>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-700">{formatPrice(state.procedure.price)} · {formatDuration(state.procedure.duration_minutes)}</p>
-                )}
+        {/* Compact summary on small screens */}
+        {currentStep > 1 && (
+          <div className="mb-6 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-blush-light px-4 py-3 text-sm text-cocoa lg:hidden">
+            {[state.office, state.procedure?.name, dateLabel && (state.timeSlot ? `${dateLabel}, ${state.timeSlot}` : dateLabel)]
+              .filter(Boolean)
+              .map((item, i) => (
+                <span key={i} className="flex items-center gap-2">
+                  {i > 0 && <span className="text-gold" aria-hidden="true">·</span>}
+                  {item}
+                </span>
+              ))}
+            {finalPrice !== null && <span className="ml-auto font-display text-base">{formatPrice(finalPrice)}</span>}
+          </div>
+        )}
+
+        {currentStep > 1 && (
+          <button onClick={goBack} className="mb-4 flex items-center gap-2 text-gray-600 transition-colors hover:text-cocoa">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            <span className="text-sm">Назад</span>
+          </button>
+        )}
+
+        {/* Step 1: Salon */}
+        {currentStep === 1 && (
+          <div key="step-1" className="animate-fade-in-up">
+            <p className="eyebrow mb-2">Стъпка 1 от 4</p>
+            <h2 className="mb-6 text-3xl">Къде ще ви посрещнем?</h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {OFFICES.map((office) => (
+                <button
+                  key={office}
+                  onClick={() => selectOffice(office)}
+                  className={cn(
+                    "group relative overflow-hidden rounded-2xl border bg-white p-6 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_32px_-20px_rgba(51,36,31,0.5)]",
+                    state.office === office ? "border-cocoa" : "border-gray-200 hover:border-cocoa/40"
+                  )}
+                >
+                  <span aria-hidden="true" className="drop-dots absolute -right-10 -top-10 h-32 w-32 opacity-70" />
+                  <MapPin className="relative h-5 w-5 text-rose-dark" aria-hidden="true" />
+                  <span className="relative mt-4 block font-display text-3xl text-cocoa">{office}</span>
+                  <span className="relative mt-1 block text-sm text-gray-600">{officeTaglines[office]}</span>
+                  <span className="relative mt-4 flex items-center gap-1.5 text-xs font-medium text-gray-600">
+                    <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                    {openingHoursText()}
+                  </span>
+                  <ChevronRight className="absolute bottom-6 right-6 h-5 w-5 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-cocoa" aria-hidden="true" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Procedure */}
+        {currentStep === 2 && (
+          <div key="step-2" className="animate-fade-in-up">
+            <p className="eyebrow mb-2">Стъпка 2 от 4</p>
+            <h2 className="mb-6 text-3xl">Каква процедура желаете?</h2>
+
+            {/* Search */}
+            <div className="relative mb-6">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Търсете процедура, напр. педикюр, мигли, лазер…"
+                aria-label="Търсене на процедура"
+                className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-11 pr-10 text-sm placeholder:text-gray-400 focus:border-cocoa focus:outline-none focus:ring-2 focus:ring-gold/30"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-cocoa"
+                  aria-label="Изчисти търсенето"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+              )}
+            </div>
+
+            {query.trim().length >= 2 ? (
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600" aria-live="polite">
+                  {searchResults.length > 0 ? `Намерени: ${searchResults.length}` : "Няма намерени процедури. Опитайте с друга дума."}
+                </p>
+                {searchResults.map(renderProcedureButton)}
               </div>
-            );
-          })()}
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Calendar with day occupancy */}
-            <div className="flex justify-center">
-              <div>
+            ) : (
+              <>
+                {/* Main categories */}
+                {!state.selectedCategory && (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {Object.keys(categoryHierarchy).map((category) => {
+                      const isPromo = category === "Промоции";
+                      const count = isPromo
+                        ? getDiscountedProcedures().length
+                        : procedures.filter((p) =>
+                            (categoryHierarchy[category] ?? []).flatMap((sub) => subCategoryMap[sub] ?? [sub]).includes(p.type)
+                          ).length;
+                      if (isPromo && count === 0) return null;
+                      const meta = categoryMeta[category];
+                      const Icon = meta?.icon ?? Sparkles;
+                      return (
+                        <button
+                          key={category}
+                          onClick={() => selectCategory(category)}
+                          className={cn(
+                            "group flex items-center gap-4 rounded-2xl border p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_32px_-20px_rgba(51,36,31,0.5)]",
+                            isPromo ? "border-gold bg-champagne sm:col-span-2" : "border-gray-200 bg-white hover:border-cocoa/40"
+                          )}
+                        >
+                          <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl", isPromo ? "bg-gold text-cocoa" : "bg-blush-light text-rose-dark")}>
+                            <Icon className="h-5 w-5" aria-hidden="true" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block font-display text-xl text-cocoa">{category}</span>
+                            <span className="block text-sm text-gray-600">{meta?.description}</span>
+                          </span>
+                          <span className="shrink-0 text-xs font-semibold text-gray-500">{count}</span>
+                          <ChevronRight className="h-5 w-5 shrink-0 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-cocoa" aria-hidden="true" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Sub categories (Епилация) */}
+                {state.selectedCategory && state.selectedCategory !== "Промоции" && !state.selectedSubCategory && categoryHierarchy[state.selectedCategory]?.some((sub) => subCategoryMap[sub]) && (
+                  <div className="space-y-4">
+                    <button
+                      onClick={() => setState((prev) => ({ ...prev, selectedCategory: null }))}
+                      className="flex items-center gap-1 text-sm text-gray-600 hover:text-cocoa"
+                    >
+                      <ArrowLeft className="h-4 w-4" aria-hidden="true" /> {state.selectedCategory}
+                    </button>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {categoryHierarchy[state.selectedCategory].map((subCat) => (
+                        <button
+                          key={subCat}
+                          onClick={() => selectSubCategory(subCat)}
+                          className="group flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-cocoa/40"
+                        >
+                          <span className="font-display text-xl text-cocoa">{subCat}</span>
+                          <ChevronRight className="h-5 w-5 text-gray-300 group-hover:text-cocoa" aria-hidden="true" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Procedure list */}
+                {state.selectedCategory && (state.selectedCategory === "Промоции" || state.selectedSubCategory || !categoryHierarchy[state.selectedCategory]?.some((sub) => subCategoryMap[sub])) && (
+                  <div className="space-y-4">
+                    <button
+                      onClick={() =>
+                        setState((prev) => ({
+                          ...prev,
+                          selectedSubCategory: null,
+                          selectedCategory: prev.selectedSubCategory ? prev.selectedCategory : null,
+                        }))
+                      }
+                      className="flex items-center gap-1 text-sm text-gray-600 hover:text-cocoa"
+                    >
+                      <ArrowLeft className="h-4 w-4" aria-hidden="true" /> {state.selectedSubCategory || state.selectedCategory}
+                    </button>
+                    <div className="max-h-[28rem] space-y-2 overflow-y-auto pr-1">{getFilteredProcedures().map(renderProcedureButton)}</div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Step 3: Date and time */}
+        {currentStep === 3 && (
+          <div key="step-3" className="animate-fade-in-up">
+            <p className="eyebrow mb-2">Стъпка 3 от 4</p>
+            <h2 className="mb-6 text-3xl">Кога ви е удобно?</h2>
+
+            {earliest && (
+              <button
+                type="button"
+                onClick={pickEarliest}
+                className="group mb-6 flex w-full items-center gap-4 rounded-2xl border border-gold bg-champagne p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_32px_-20px_rgba(51,36,31,0.5)]"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gold text-cocoa">
+                  <Sparkles className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-rose-dark">Най-бързо</span>
+                  <span className="block text-cocoa">
+                    Първи свободен час: <strong className="font-semibold">{format(dateFromKey(earliest.dateKey), "EEEE, d MMMM", { locale: bg })}, {earliest.time}</strong>
+                  </span>
+                </span>
+                <ChevronRight className="h-5 w-5 shrink-0 text-cocoa/50 transition-all group-hover:translate-x-0.5 group-hover:text-cocoa" aria-hidden="true" />
+              </button>
+            )}
+
+            <div className="grid grid-cols-1 gap-8 xl:grid-cols-[auto_minmax(0,1fr)]">
+              {/* Calendar: each day is a box that fills like a glass with its bookings */}
+              <div className="flex flex-col items-center xl:items-start">
                 <Calendar
                   mode="single"
                   selected={state.date ?? undefined}
                   onSelect={selectDate}
                   disabled={isDateDisabled}
-                  className="rounded-3xl border border-blush p-4 bg-white shadow-[0_20px_40px_-30px_rgba(51,36,31,0.35)]"
+                  className="rounded-2xl border border-blush bg-white p-3 sm:p-4 shadow-[0_20px_40px_-30px_rgba(51,36,31,0.35)]"
                   locale={bg}
                   components={{ DayContent: DayWithLoad }}
                   classNames={{
-                    head_cell: "text-gray-500 w-10 font-normal text-[0.75rem] uppercase",
-                    day_today: "font-semibold",
-                    cell: "h-12 w-10 text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
-                    day: "inline-flex h-12 w-10 items-center justify-center rounded-2xl p-0 text-sm font-normal transition-colors hover:bg-blush focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-dark aria-selected:opacity-100",
+                    head_cell: "w-10 sm:w-11 text-[0.7rem] font-medium uppercase text-gray-500",
+                    row: "flex w-full mt-1",
+                    cell: "h-12 w-10 sm:h-14 sm:w-11 p-0.5 text-center text-sm relative focus-within:relative focus-within:z-20",
+                    day: "relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg border border-blush bg-white text-sm font-medium text-cocoa transition-colors hover:border-cocoa/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-dark aria-selected:opacity-100",
+                    day_selected: "!border-cocoa !bg-cocoa !text-white",
+                    day_today: "font-bold",
+                    day_disabled: "!border-transparent !bg-transparent text-gray-300 line-through decoration-gray-300 cursor-default hover:!border-transparent",
+                    day_outside: "invisible",
                   }}
                 />
-                {/* Legend */}
-                <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-gray-500">
-                  <span className="flex items-center gap-2">
-                    <DayLoadWave occupancy={0.15} className="text-brand-black" /> свободно
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <DayLoadWave occupancy={0.55} className="text-brand-black" /> натоварено
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <DayLoadWave occupancy={0.95} className="text-brand-black" /> почти пълно
-                  </span>
+                <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-gray-600">
+                  <span className="flex items-center gap-2"><GlassSample occupancy={0} /> свободно</span>
+                  <span className="flex items-center gap-2"><GlassSample occupancy={0.5} /> наполовина</span>
+                  <span className="flex items-center gap-2"><GlassSample occupancy={0.9} /> почти пълно</span>
                 </div>
               </div>
-            </div>
-            
-            {/* Time slots - shown when date selected */}
-            <div>
-              {!state.date ? (
-                <div className="h-full flex items-center justify-center text-gray-400">
-                  <p>Изберете дата от календара</p>
-                </div>
-              ) : (
-                <div className="animate-fade-in">
-                  <p className="text-sm text-gray-600 mb-4">
-                    Налични часове за{" "}
-                    <span className="font-semibold text-brand-black">
-                      {format(state.date, "d MMMM yyyy", { locale: bg })}
-                    </span>
-                  </p>
-                  {loadingSlots ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-6 h-6 animate-spin text-gold-dark" />
-                      <span className="ml-2 text-gray-500">Зареждане...</span>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-80 overflow-y-auto pr-2">
-                      {timeSlots.map((slot) => (
-                        <button
-                          key={slot.time}
-                          onClick={() => slot.available && selectTimeSlot(slot.time)}
-                          disabled={!slot.available}
-                          className={cn(
-                            "py-3 px-2 rounded-full text-sm font-medium tabular-nums transition-colors duration-200",
-                            state.timeSlot === slot.time
-                              ? "bg-cocoa text-white border border-cocoa"
-                              : slot.available
-                                ? "border border-gray-300 bg-white hover:border-cocoa hover:bg-blush-light"
-                                : slot.booked
-                                  ? "border border-transparent bg-gray-100 text-gray-400 cursor-not-allowed line-through"
-                                  : "border border-transparent bg-gray-50 text-gray-300 cursor-not-allowed line-through"
-                          )}
-                          title={slot.booked ? "Заето" : !slot.available ? "Недостъпно" : ""}
-                        >
-                          {slot.time}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Step 4: Customer details */}
-      {currentStep === 4 && (
-        <div className="animate-fade-in-up">
-          <h2 className="text-3xl mb-6">Вашите данни
-          </h2>
-          
-          {/* Reservation summary */}
-          <div className="mb-6 p-5 rounded-2xl bg-blush-light space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Локация:</span>
-              <span className="font-medium">{state.office}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Процедура:</span>
-              <span className="font-medium">{state.procedure?.name}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Дата:</span>
-              <span className="font-medium">{state.date && format(state.date, "d MMMM yyyy", { locale: bg })}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Час:</span>
-              <span className="font-medium">{state.timeSlot}</span>
+              {/* Time slots */}
+              <div>
+                {!state.date ? (
+                  <div className="flex h-full min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-blush p-8 text-center text-gray-500">
+                    <CalendarDays className="mb-3 h-6 w-6 text-rose-dark" aria-hidden="true" />
+                    <p>Изберете ден от календара, за да видите свободните часове.</p>
+                  </div>
+                ) : (
+                  <div className="animate-fade-in">
+                    <p className="mb-4 text-sm text-gray-600">
+                      Свободни часове за{" "}
+                      <span className="font-semibold text-cocoa">{format(state.date, "EEEE, d MMMM", { locale: bg })}</span>
+                    </p>
+                    {loadingSlots ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-gold-dark" aria-hidden="true" />
+                        <span className="ml-2 text-gray-500">Зареждане...</span>
+                      </div>
+                    ) : timeSlots.some((slot) => slot.available) ? (
+                      <div className="space-y-5">
+                        {timeGroups.map((group) => {
+                          const groupSlots = timeSlots.filter((slot) => group.test(slot.time));
+                          if (!groupSlots.some((slot) => slot.available)) return null;
+                          return (
+                            <div key={group.label}>
+                              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-rose-dark">{group.label}</p>
+                              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                                {groupSlots.map((slot) => (
+                                  <button
+                                    key={slot.time}
+                                    onClick={() => slot.available && selectTimeSlot(slot.time)}
+                                    disabled={!slot.available}
+                                    className={cn(
+                                      "rounded-md px-2 py-3 text-sm font-medium tabular-nums transition-all duration-200",
+                                      state.timeSlot === slot.time
+                                        ? "border border-cocoa bg-cocoa text-white"
+                                        : slot.available
+                                          ? "border border-gray-200 bg-white text-cocoa hover:-translate-y-0.5 hover:border-cocoa hover:bg-blush-light"
+                                          : "cursor-not-allowed border border-transparent bg-gray-50 text-gray-300 line-through"
+                                    )}
+                                    title={slot.booked ? "Заето" : !slot.available ? "Недостъпно" : ""}
+                                  >
+                                    {slot.time}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="rounded-2xl bg-blush-light p-6 text-center text-gray-600">Няма свободни часове този ден. Изберете друг ден.</p>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-          
+        )}
+
+        {/* Step 4: Details */}
+        {currentStep === 4 && (
+          <div key="step-4" className="animate-fade-in-up">
+            <p className="eyebrow mb-2">Стъпка 4 от 4</p>
+            <h2 className="mb-2 text-3xl">Почти готово</h2>
+            <p className="mb-6 text-gray-600">Остава само да ни кажете как да се свържем с вас.</p>
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -891,7 +993,42 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
             </p>
           </div>
         </div>
-      )}
+        )}
+      </div>
+
+      {/* Booking summary (desktop) */}
+      <aside className="hidden lg:block">
+        <div className="sticky top-28 overflow-hidden rounded-2xl bg-cocoa p-6 text-white">
+          <span aria-hidden="true" className="drop-dots absolute -right-16 -top-16 h-48 w-48 opacity-60" />
+          <p className="relative text-xs font-semibold uppercase tracking-[0.2em] text-gold">Вашата резервация</p>
+          <dl className="relative mt-5 space-y-4">
+            {summaryRows.map((row) => (
+              <div key={row.step} className="border-b border-white/10 pb-4 last:border-b-0">
+                <dt className="flex items-center justify-between text-xs text-white/60">
+                  {row.label}
+                  {row.value && row.step < currentStep && (
+                    <button type="button" onClick={() => goToStep(row.step)} className="text-gold hover:text-white">
+                      Промени
+                    </button>
+                  )}
+                </dt>
+                <dd className={cn("mt-1", row.value ? "text-white" : "text-white/35")}>{row.value ?? "—"}</dd>
+              </div>
+            ))}
+          </dl>
+          {state.procedure && finalPrice !== null && (
+            <div className="relative mt-2 flex items-baseline justify-between border-t border-white/15 pt-4">
+              <span className="text-sm text-white/70">{formatDuration(state.procedure.duration_minutes)}</span>
+              <span className="text-right">
+                {procedureHasDiscount(state.procedure) && (
+                  <span className="mr-2 text-sm text-white/50 line-through">{formatPrice(state.procedure.price)}</span>
+                )}
+                <span className="font-display text-2xl text-gold">{formatPrice(finalPrice)}</span>
+              </span>
+            </div>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }

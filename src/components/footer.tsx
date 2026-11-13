@@ -58,9 +58,12 @@ export function Footer() {
 
         <div className="mt-12 pt-6 border-t border-white/15 flex flex-col sm:flex-row gap-2 sm:justify-between text-xs text-white/60">
           <p>© {new Date().getFullYear()} CB Classy &amp; Beautiful</p>
-          <Link href="/poveritelnost" className="hover:text-white hover:underline underline-offset-4">
-            Политика за поверителност
-          </Link>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <Link href="/poveritelnost" className="hover:text-white hover:underline underline-offset-4">
+              Политика за поверителност
+            </Link>
+            <span className="tracking-[0.2em] uppercase text-gold/80">Made by KSD</span>
+          </div>
         </div>
       </div>
     </footer>

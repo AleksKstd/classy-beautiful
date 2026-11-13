@@ -133,3 +133,31 @@ export async function deleteStaleCarouselEntry(id: string): Promise<Result> {
   revalidate();
   return { success: true };
 }
+
+const imageDetailsSchema = z.object({
+  procedureId: z.string().uuid().nullable(),
+  caption: z.string().trim().max(120, "Надписът е твърде дълъг (максимум 120 символа)"),
+});
+
+/** Links a photo to the procedure it shows (or none) and sets its caption. */
+export async function updateCarouselImageDetails(
+  id: string,
+  details: { procedureId: string | null; caption: string }
+): Promise<Result> {
+  await requireAdmin();
+  if (!idSchema.safeParse(id).success) return { success: false, error: "Невалидна снимка" };
+  const parsed = imageDetailsSchema.safeParse(details);
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Невалидни данни" };
+
+  const { error } = await createAdminClient()
+    .from("carousel_images")
+    .update({ procedure_id: parsed.data.procedureId, caption: parsed.data.caption || null })
+    .eq("id", id);
+  if (error) {
+    console.error("Error updating image details:", error);
+    return { success: false, error: "Грешка при запазване" };
+  }
+  revalidate();
+  revalidatePath("/galeriya");
+  return { success: true };
+}

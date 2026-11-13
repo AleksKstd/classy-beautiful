@@ -38,6 +38,30 @@
   }
 }
 
+@layer components {
+  /* Decorative patterns that sit inside the soft colour drops.
+     Ripples: fine concentric rings, like a drop falling into water. */
+  .drop-pattern {
+    border-radius: 9999px;
+    background-image: repeating-radial-gradient(
+      circle at 50% 50%,
+      rgb(142 94 81 / 0.16) 0 1px,
+      transparent 1.5px 22px
+    );
+    -webkit-mask-image: radial-gradient(circle at center, #000 25%, transparent 70%);
+    mask-image: radial-gradient(circle at center, #000 25%, transparent 70%);
+  }
+
+  /* Dots: a fine, even dot grid that fades out towards the edges. */
+  .drop-dots {
+    border-radius: 9999px;
+    background-image: radial-gradient(rgb(196 163 90 / 0.45) 1.2px, transparent 1.6px);
+    background-size: 16px 16px;
+    -webkit-mask-image: radial-gradient(circle at center, #000 20%, transparent 68%);
+    mask-image: radial-gradient(circle at center, #000 20%, transparent 68%);
+  }
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

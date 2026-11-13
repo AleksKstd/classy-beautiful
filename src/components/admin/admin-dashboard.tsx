@@ -115,7 +115,7 @@ export function AdminDashboard({
           <ProceduresManager procedures={procedures} />
         )}
         {activeTab === "carousel" && (
-          <CarouselManager images={carouselImages} />
+          <CarouselManager images={carouselImages} procedures={procedures} />
         )}
         {activeTab === "schedule" && (
           <ScheduleManager schedules={schedules} />

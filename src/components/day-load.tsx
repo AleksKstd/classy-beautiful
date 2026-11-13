@@ -1,8 +1,5 @@
 import { cn } from "@/lib/utils";
 
-/** Gentle sine wave, drawn left to right. */
-const WAVE_PATH = "M1 3 C3 0.5 5 0.5 7 3 S11 5.5 13 3 S17 0.5 19 3 S23 5.5 25 3";
-
 export function loadLabel(occupancy: number): string {
   if (occupancy >= 0.85) return "почти пълен";
   if (occupancy >= 0.5) return "натоварен";
@@ -11,30 +8,30 @@ export function loadLabel(occupancy: number): string {
 }
 
 /**
- * A small wavy line under a calendar date. The gold part grows with how
- * much of the day is already booked; the faint wave behind it is the day.
+ * "Glass" fill for a calendar day box: the liquid rises from the bottom
+ * with how much of the day is already booked, topped by a gold line.
+ * Place inside a `relative overflow-hidden` box.
  */
-export function DayLoadWave({ occupancy, className }: { occupancy: number; className?: string }) {
-  const filled = Math.max(0, Math.min(occupancy, 1));
+export function GlassFill({ occupancy, className }: { occupancy: number; className?: string }) {
+  const level = Math.max(0, Math.min(occupancy, 1));
+  if (level === 0) return null;
   return (
-    <svg
-      viewBox="0 0 26 6"
-      className={cn("h-1.5 w-[26px] overflow-visible", className)}
+    <span
       aria-hidden="true"
-      focusable="false"
-    >
-      <path d={WAVE_PATH} fill="none" stroke="currentColor" strokeOpacity={0.18} strokeWidth={1.1} strokeLinecap="round" />
-      {filled > 0 && (
-        <path
-          d={WAVE_PATH}
-          fill="none"
-          className="stroke-gold"
-          strokeWidth={1.4}
-          strokeLinecap="round"
-          pathLength={1}
-          strokeDasharray={`${filled} 1`}
-        />
+      className={cn(
+        "pointer-events-none absolute inset-x-0 bottom-0 border-t-2 border-gold bg-gradient-to-t from-gold/45 to-gold/20 transition-[height] duration-500",
+        className
       )}
-    </svg>
+      style={{ height: `${Math.max(level * 100, 8)}%` }}
+    />
+  );
+}
+
+/** Small sample box for the calendar legend. */
+export function GlassSample({ occupancy }: { occupancy: number }) {
+  return (
+    <span className="relative inline-block h-5 w-4 overflow-hidden rounded-[4px] border border-cocoa/25 bg-white" aria-hidden="true">
+      <GlassFill occupancy={occupancy} />
+    </span>
   );
 }

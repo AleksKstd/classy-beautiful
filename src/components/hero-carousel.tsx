@@ -1,57 +1,42 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface HeroImage {
   src: string;
   alt: string;
+  caption?: string | null;
+  procedure?: { id: string; name: string } | null;
 }
 
 interface HeroCarouselProps {
   images: HeroImage[];
 }
 
-const INTERVAL_MS = 6000;
-
-function subscribeReducedMotion(callback: () => void) {
-  const query = window.matchMedia("(prefers-reduced-motion: reduce)");
-  query.addEventListener("change", callback);
-  return () => query.removeEventListener("change", callback);
-}
-
-function usePrefersReducedMotion() {
-  return useSyncExternalStore(
-    subscribeReducedMotion,
-    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-    () => true // server: assume no motion until the browser says otherwise
-  );
-}
-
-const pad = (n: number) => String(n).padStart(2, "0");
+const INTERVAL_MS = 5500;
 
 /**
- * Portrait gallery with a slow cross-fade, an offset gold frame and
- * minimal controls. Autoplay pauses on hover/focus and is off for visitors
- * who prefer reduced motion.
+ * Self-running photo gallery: photos cross-fade one after another forever.
+ * A soft arch window sits inside an evenly spaced gold frame. Photos linked
+ * to a procedure show a small "book this" caption. Hovering or focusing the
+ * caption link pauses the rotation so it can be clicked.
  */
 export function HeroCarousel({ images }: HeroCarouselProps) {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
-  const reducedMotion = usePrefersReducedMotion();
   const count = images.length;
 
   useEffect(() => {
-    if (count < 2 || paused || reducedMotion) return;
+    if (count < 2 || paused) return;
     const id = window.setInterval(() => setActive((i) => (i + 1) % count), INTERVAL_MS);
     return () => window.clearInterval(id);
-  }, [count, paused, reducedMotion]);
+  }, [count, paused]);
 
   if (count === 0) return null;
-
-  const go = (delta: number) => setActive((i) => (i + delta + count) % count);
 
   return (
     <div
@@ -64,23 +49,19 @@ export function HeroCarousel({ images }: HeroCarouselProps) {
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
     >
-      <div className="relative pr-4 pb-4 sm:pr-6 sm:pb-6">
-        {/* Offset hairline frame */}
-        <div
-          aria-hidden="true"
-          className="absolute left-4 top-4 right-0 bottom-0 sm:left-6 sm:top-6 rounded-tl-[50%_40%] rounded-tr-[50%_40%] rounded-b-[2rem] border border-gold"
-        />
-
-        {/* Arch-shaped window */}
-        <div className="relative aspect-[4/5] overflow-hidden isolate rounded-tl-[50%_40%] rounded-tr-[50%_40%] rounded-b-[2rem] bg-blush shadow-[0_30px_60px_-30px_rgba(51,36,31,0.45)]">
+      {/* Gold frame: same shape as the photo, evenly spaced around it */}
+      <div className="rounded-t-[calc(8rem_+_12px)] sm:rounded-t-[calc(10rem_+_12px)] rounded-b-[calc(1.25rem_+_12px)] border border-gold/70 p-3 bg-white/40 backdrop-blur-[2px]">
+        {/* Soft arch window */}
+        <div className="relative aspect-[4/5] overflow-hidden isolate rounded-t-[8rem] sm:rounded-t-[10rem] rounded-b-[1.25rem] bg-blush shadow-[0_30px_60px_-30px_rgba(51,36,31,0.45)]">
           {images.map((image, index) => {
             const isActive = index === active;
+            const label = image.caption || image.procedure?.name;
             return (
               <div
                 key={image.src}
                 className={cn(
-                  "absolute inset-0 transition-opacity duration-[1400ms] ease-in-out",
-                  isActive ? "opacity-100" : "opacity-0"
+                  "absolute inset-0 transition-opacity duration-[1600ms] ease-in-out",
+                  isActive ? "opacity-100" : "opacity-0 pointer-events-none"
                 )}
                 aria-hidden={!isActive}
                 role="group"
@@ -94,57 +75,31 @@ export function HeroCarousel({ images }: HeroCarouselProps) {
                   sizes="(min-width: 1024px) 440px, (min-width: 640px) 448px, 90vw"
                   priority={index === 0}
                   className={cn(
-                    "object-cover transition-transform duration-[7000ms] ease-out",
-                    isActive && !reducedMotion ? "scale-100" : "scale-[1.04]"
+                    "object-cover transition-transform duration-[7000ms] ease-out motion-reduce:transform-none",
+                    isActive ? "scale-100" : "scale-[1.05]"
                   )}
                 />
+
+                {label && (
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-cocoa/75 via-cocoa/30 to-transparent px-5 pb-5 pt-16 text-white">
+                    <p className="font-display text-lg leading-snug">{label}</p>
+                    {image.procedure && (
+                      <Link
+                        href={`/rezervacii?procedureId=${image.procedure.id}`}
+                        tabIndex={isActive ? 0 : -1}
+                        className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-gold hover:text-white focus-visible:outline-none focus-visible:underline"
+                      >
+                        Запази тази процедура
+                        <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                      </Link>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       </div>
-
-      {count > 1 && (
-        <div className="mt-6 flex items-center justify-between pr-4 sm:pr-6">
-          <p className="font-display text-lg tracking-wide text-cocoa">
-            {pad(active + 1)}
-            <span className="mx-2 text-gray-400">/</span>
-            <span className="text-gray-500">{pad(count)}</span>
-          </p>
-
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:flex items-center gap-1.5" aria-hidden="true">
-              {images.map((image, index) => (
-                <span
-                  key={image.src}
-                  className={cn(
-                    "h-1.5 rounded-full transition-all duration-500",
-                    index === active ? "w-6 bg-gold" : "w-1.5 bg-cocoa/20"
-                  )}
-                />
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => go(-1)}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-cocoa/25 bg-white text-cocoa transition-colors hover:bg-cocoa hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-dark"
-                aria-label="Предишна снимка"
-              >
-                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                onClick={() => go(1)}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-cocoa/25 bg-white text-cocoa transition-colors hover:bg-cocoa hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-dark"
-                aria-label="Следваща снимка"
-              >
-                <ChevronRight className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

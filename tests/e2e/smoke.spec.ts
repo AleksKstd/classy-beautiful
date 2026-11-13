@@ -16,7 +16,7 @@ test.describe("public pages", () => {
   test("reservation page shows the office step", async ({ page }) => {
     await page.goto("/rezervacii");
     const main = page.locator("main");
-    await expect(main.getByRole("heading", { name: "Изберете локация" })).toBeVisible();
+    await expect(main.getByRole("heading", { name: "Къде ще ви посрещнем?" })).toBeVisible();
     await expect(main.getByRole("button", { name: /София/ })).toBeVisible();
     await expect(main.getByRole("button", { name: /Лом/ })).toBeVisible();
   });
@@ -32,6 +32,12 @@ test.describe("public pages", () => {
     await page.locator("footer").getByRole("link", { name: "Политика за поверителност" }).click();
     await expect(page).toHaveURL(/\/poveritelnost$/);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Политика за поверителност");
+  });
+
+  test("gallery page renders", async ({ page }) => {
+    await page.goto("/galeriya");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Нашата работа");
+    await expect(page.locator("footer")).toContainText("Made by KSD");
   });
 
   test("sitemap only lists real pages", async ({ request }) => {

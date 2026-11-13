@@ -30,7 +30,7 @@ export function DiscountsSection({ procedures }: DiscountsSectionProps) {
                 href={`/rezervacii?procedureId=${procedure.id}`}
                 className="group flex flex-col rounded-3xl border border-white/10 bg-cocoa/50 p-8 transition-colors hover:border-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold"
               >
-                <span className="self-start rounded-full bg-gold px-3 py-1 text-xs font-semibold tracking-wider text-cocoa">
+                <span className="self-start rounded bg-gold px-2.5 py-1 text-xs font-semibold tracking-wider text-cocoa">
                   −{procedure.discount_percentage}%
                 </span>
                 <h3 className="mt-6 font-display text-2xl leading-snug">{procedure.name}</h3>

@@ -17,8 +17,10 @@ export default async function ProceduresPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Clean Header */}
-      <section className="pt-16 pb-12 mb-10 bg-gradient-to-b from-blush-light via-ivory to-white">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="relative overflow-hidden pt-16 pb-12 mb-10 bg-gradient-to-b from-blush-light via-ivory to-white">
+        <div aria-hidden="true" className="pointer-events-none absolute -top-32 -right-24 h-[28rem] w-[28rem] rounded-full bg-champagne blur-3xl" />
+        <div aria-hidden="true" className="drop-dots pointer-events-none absolute -top-32 -right-24 h-[28rem] w-[28rem]" />
+        <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl">
             <p className="eyebrow mb-4">Ценоразпис</p>
             <h1 className="text-5xl sm:text-6xl text-brand-black mb-4">Нашите процедури</h1>

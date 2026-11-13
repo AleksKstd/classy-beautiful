@@ -8,12 +8,13 @@
    2. `supabase/migrations/001_reservations.sql`
    3. `supabase/migrations/002_security_hardening.sql`
    4. `supabase/migrations/003_data_retention.sql` (nightly clean-up promised in the privacy policy)
+   5. `supabase/migrations/004_gallery_links.sql` (link photos to procedures for the gallery)
 3. For a **new, empty** project only: run `supabase/seed.sql` to load the procedure catalogue.
    Never run it on a database that already has reservations.
 
 ### Existing project (upgrading)
 
-Run `002_security_hardening.sql`, then `003_data_retention.sql`. Both are safe to re-run. If it stops with an
+Run `002_security_hardening.sql`, then `003_data_retention.sql`, then `004_gallery_links.sql`. All are safe to re-run. If it stops with an
 error about the `reservations_no_overlap` constraint, two existing active
 bookings overlap: the file contains a query that lists them. Cancel one of each
 pair and run the file again.
@@ -53,6 +54,9 @@ Go to `/admin` and log in with `ADMIN_USERNAME` and the password you hashed.
 - **Google Calendar:** scan the QR code or use the link in the Settings tab.
   The link contains the secret `CALENDAR_FEED_TOKEN`; treat it like a password.
   To revoke it, change `CALENDAR_FEED_TOKEN` and subscribe again.
+- **Photos tab:** uploaded photos appear in the home page carousel and on `/galeriya`.
+  Link a photo to the procedure it shows (and optionally add a caption) so visitors
+  can book that procedure straight from the photo.
 - **Log everyone out:** change `ADMIN_SESSION_SECRET`.
 
 ## 5. Vercel Web Analytics

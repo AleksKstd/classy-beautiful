@@ -9,6 +9,7 @@ src/
     proceduri/              Price list
     rezervacii/             Booking wizard
     poveritelnost/          Privacy policy
+    galeriya/               Photo gallery (photos linked to procedures)
     admin/                  Login page + dashboard (protected)
     api/calendar/feed.ics/  Private iCalendar feed (needs ?token=)
     actions/
@@ -29,7 +30,7 @@ src/
     pricing.ts, ics.ts, html.ts, rate-limit.ts, notifications.ts
   proxy.ts                  Redirects unauthenticated requests away from /admin/dashboard
 supabase/
-  migrations/               Run in order: 000, 001, 002, 003
+  migrations/               Run in order: 000, 001, 002, 003, 004
   seed.sql                  Procedure catalogue for a fresh database
 tests/
   unit/                     Vitest
@@ -95,7 +96,10 @@ per-phone booking limit are in `src/config/site.ts`.
   gold text on white; warm backgrounds `blush`, `blush-light`, `champagne`,
   `ivory`; `rose-dark` for small accent text and badges; `cocoa` for dark
   sections and the footer. Text/background pairs meet WCAG AA (4.5:1).
-- Soft shapes: pill buttons, rounded cards (`rounded-3xl`), arch-shaped hero
-  gallery.
-- Booking calendar: a wavy line under each date shows how busy the day is
-  (`components/day-load.tsx`, `dayOccupancy` in `lib/slots.ts`).
+- Shapes: buttons and chips use a small radius (`rounded-md`), cards
+  `rounded-2xl`; the hero gallery is a soft arch inside a concentric gold frame.
+- Background "drops": blurred colour shapes with a ripple (`.drop-pattern`) or
+  dot (`.drop-dots`) pattern on top, defined in `globals.css`.
+- Booking calendar: every date is a small box that fills up like a glass with
+  that day's bookings (`components/day-load.tsx`, `dayOccupancy` in
+  `lib/slots.ts`). Days with no room for the chosen procedure are disabled.

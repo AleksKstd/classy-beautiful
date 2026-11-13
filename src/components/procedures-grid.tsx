@@ -110,7 +110,7 @@ export function ProceduresGrid({ procedures }: ProceduresGridProps) {
               <li key={section}>
                 <a
                   href={`#${sectionIds[section] ?? "drugi"}`}
-                  className="inline-block rounded-full bg-blush-light px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-cocoa transition-colors hover:bg-blush"
+                  className="inline-block rounded-md bg-blush-light px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-cocoa transition-colors hover:bg-blush"
                 >
                   {section}
                 </a>
@@ -162,7 +162,7 @@ export function ProceduresGrid({ procedures }: ProceduresGridProps) {
                           <span>
                             <span className="text-brand-black">{procedure.name}</span>
                             {hasDiscount && (
-                              <span className="ml-2 rounded-full bg-rose-dark px-2 py-0.5 text-[0.7rem] font-semibold text-white">
+                              <span className="ml-2 rounded bg-rose-dark px-1.5 py-0.5 text-[0.7rem] font-semibold text-white">
                                 −{procedure.discount_percentage}%
                               </span>
                             )}

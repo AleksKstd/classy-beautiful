@@ -1,10 +1,13 @@
+"use client";
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Check, MapPin, Scissors, CalendarDays, Clock, User } from "lucide-react";
+import { Check, MapPin, Scissors, CalendarDays, CalendarPlus, Clock, User } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { bg } from "date-fns/locale";
 import { formatPrice, formatDuration } from "@/lib/utils";
 import { toTimeOfDay } from "@/lib/time";
+import { buildIcsCalendar, escapeIcsText, formatIcsDate } from "@/lib/ics";
 import type { CreateReservationResult } from "@/app/actions/booking";
 
 interface ReservationSuccessProps {
@@ -17,6 +20,30 @@ export function ReservationSuccess({
   onNewReservation,
 }: ReservationSuccessProps) {
   const startDate = parseISO(reservation.startAt);
+
+  // Download an .ics file so the customer can add the visit to their own calendar
+  const addToCalendar = () => {
+    const ics = buildIcsCalendar(
+      ["VERSION:2.0", "PRODID:-//Classy & Beautiful//Booking//BG", "CALSCALE:GREGORIAN", "METHOD:PUBLISH"],
+      [
+        [
+          `UID:${reservation.id}@classybeautiful.bg`,
+          `DTSTAMP:${formatIcsDate(new Date())}`,
+          `DTSTART:${formatIcsDate(new Date(reservation.startAt))}`,
+          `DTEND:${formatIcsDate(new Date(reservation.endAt))}`,
+          `SUMMARY:${escapeIcsText(`${reservation.procedureName} - Classy & Beautiful`)}`,
+          `LOCATION:${escapeIcsText(`Classy & Beautiful - ${reservation.officeName}`)}`,
+          `DESCRIPTION:${escapeIcsText(`Специалист: ${reservation.technician}`)}`,
+        ],
+      ]
+    );
+    const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "classy-beautiful-rezervaciya.ics";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <section className="py-12 md:py-20">
@@ -101,7 +128,12 @@ export function ReservationSuccess({
           </div>
         </div>
 
-        <div className="mt-8 flex flex-col sm:flex-row gap-4">
+        <Button onClick={addToCalendar} variant="outline" className="mt-6 w-full">
+          <CalendarPlus className="w-4 h-4 mr-2" aria-hidden="true" />
+          Добави в календара
+        </Button>
+
+        <div className="mt-4 flex flex-col sm:flex-row gap-4">
           <Button onClick={onNewReservation} variant="outline" className="flex-1">
             Нова резервация
           </Button>

@@ -9,6 +9,7 @@ import {
   updateCarouselImageOrder,
   deleteStaleCarouselEntry,
 } from "@/app/actions/admin/carousel";
+import { ImageLinkEditor, type ProcedureOption } from "./image-link-editor";
 
 interface CarouselImage {
   id: string;
@@ -16,13 +17,16 @@ interface CarouselImage {
   display_order: number;
   is_active: boolean;
   created_at: string;
+  procedure_id: string | null;
+  caption: string | null;
 }
 
 interface CarouselManagerProps {
   images: CarouselImage[];
+  procedures: ProcedureOption[];
 }
 
-export function CarouselManager({ images: initialImages }: CarouselManagerProps) {
+export function CarouselManager({ images: initialImages, procedures }: CarouselManagerProps) {
   const [uploading, setUploading] = useState(false);
   const [cleaningUp, setCleaningUp] = useState(false);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
@@ -214,7 +218,13 @@ export function CarouselManager({ images: initialImages }: CarouselManagerProps)
                 </div>
               </div>
 
-              <div className="p-4">
+              <div className="p-4 space-y-4">
+                <ImageLinkEditor
+                  imageId={image.id}
+                  procedureId={image.procedure_id}
+                  caption={image.caption}
+                  procedures={procedures}
+                />
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex gap-2">
                     <Button
@@ -252,8 +262,9 @@ export function CarouselManager({ images: initialImages }: CarouselManagerProps)
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-sm text-blue-800">
-          <strong>Забележка:</strong> Снимките се показват в каруселата по реда, в който са подредени тук.
-          Използвайте стрелките нагоре/надолу за промяна на реда.
+          <strong>Забележка:</strong> Снимките се показват в каруселата на началната страница и в галерията
+          по реда, в който са подредени тук. Свържете снимка с процедура, за да може клиентът да запази час
+          за нея директно от снимката.
         </p>
       </div>
     </div>

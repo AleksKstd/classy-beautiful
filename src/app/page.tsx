@@ -27,6 +27,8 @@ export default async function HomePage() {
         {/* Soft colour shapes */}
         <div aria-hidden="true" className="pointer-events-none absolute -top-32 -right-24 h-[34rem] w-[34rem] rounded-full bg-blush/80 blur-3xl" />
         <div aria-hidden="true" className="pointer-events-none absolute -bottom-40 -left-32 h-[26rem] w-[26rem] rounded-full bg-champagne blur-3xl" />
+        <div aria-hidden="true" className="drop-pattern pointer-events-none absolute -top-32 -right-24 h-[34rem] w-[34rem]" />
+        <div aria-hidden="true" className="drop-dots pointer-events-none absolute -bottom-40 -left-32 h-[26rem] w-[26rem]" />
         <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-16 items-center">
             {/* Text Content */}
