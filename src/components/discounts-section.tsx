@@ -13,7 +13,7 @@ export function DiscountsSection({ procedures }: DiscountsSectionProps) {
   }
 
   return (
-    <section className="py-20 md:py-28 bg-brand-black text-white">
+    <section className="py-20 md:py-28 bg-cocoa-light text-white">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-12 max-w-2xl">
           <p className="mb-4 text-xs font-semibold uppercase tracking-[0.25em] text-gold">Оферти</p>
@@ -28,12 +28,12 @@ export function DiscountsSection({ procedures }: DiscountsSectionProps) {
               <Link
                 key={procedure.id}
                 href={`/rezervacii?procedureId=${procedure.id}`}
-                className="group flex flex-col border border-white/20 p-8 transition-colors hover:border-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold"
+                className="group flex flex-col rounded-3xl border border-white/10 bg-cocoa/50 p-8 transition-colors hover:border-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold"
               >
-                <span className="self-start border border-gold px-2 py-0.5 text-xs font-semibold tracking-wider text-gold">
+                <span className="self-start rounded-full bg-gold px-3 py-1 text-xs font-semibold tracking-wider text-cocoa">
                   −{procedure.discount_percentage}%
                 </span>
-                <h3 className="mt-6 font-display text-2xl font-medium leading-snug">{procedure.name}</h3>
+                <h3 className="mt-6 font-display text-2xl leading-snug">{procedure.name}</h3>
                 <p className="mt-2 text-sm text-white/60">
                   {formatDuration(procedure.duration_minutes)} · {procedure.technician}
                 </p>

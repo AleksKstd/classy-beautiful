@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Manrope } from "next/font/google";
+import { Montserrat, Playfair_Display } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { Header } from "@/components/header";
@@ -8,15 +8,14 @@ import { LocalBusinessSchema, WebsiteSchema } from "@/components/seo/structured-
 import { SITE_URL as siteUrl } from "@/config/site";
 
 // Fonts are downloaded at build time and served from this site (no requests to Google).
-const display = Cormorant_Garamond({
+const display = Playfair_Display({
   subsets: ["latin", "cyrillic"],
-  weight: ["400", "500", "600"],
   style: ["normal", "italic"],
   variable: "--font-display",
   display: "swap",
 });
 
-const body = Manrope({
+const body = Montserrat({
   subsets: ["latin", "cyrillic"],
   variable: "--font-body",
   display: "swap",

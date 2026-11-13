@@ -22,7 +22,7 @@ export function ReservationSuccess({
     <section className="py-12 md:py-20">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-xl">
         <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-full border border-gold flex items-center justify-center mx-auto mb-6">
+          <div className="w-16 h-16 rounded-full bg-blush flex items-center justify-center mx-auto mb-6">
             <Check className="w-6 h-6 text-gold-dark" aria-hidden="true" />
           </div>
           <h1 className="text-4xl sm:text-5xl mb-3">Благодарим ви</h1>
@@ -31,8 +31,8 @@ export function ReservationSuccess({
           </p>
         </div>
 
-        <div className="bg-ivory p-6 sm:p-8 border border-gray-200 space-y-4">
-          <h2 className="text-2xl border-b border-gray-200 pb-3">
+        <div className="rounded-3xl bg-blush-light p-6 sm:p-8 space-y-4">
+          <h2 className="text-2xl border-b border-blush pb-3">
             Детайли на резервацията
           </h2>
 
@@ -91,10 +91,10 @@ export function ReservationSuccess({
             </div>
           </div>
 
-          <div className="border-t border-gray-200 pt-4 mt-4">
+          <div className="border-t border-blush pt-4 mt-4">
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Цена</span>
-              <span className="font-display text-2xl text-brand-black">
+              <span className="font-display text-2xl text-cocoa">
                 {formatPrice(reservation.price)}
               </span>
             </div>

@@ -89,8 +89,13 @@ per-phone booking limit are in `src/config/site.ts`.
 
 ## Design system
 
-- Fonts: Cormorant Garamond (headings, `font-display`) and Manrope (body), both
+- Fonts: Playfair Display (headings, `font-display`) and Montserrat (body), both
   self-hosted by `next/font` with Cyrillic support.
-- Colours: `gold` (#C4A35A) for backgrounds, borders and accents; `gold-dark`
-  (#8A6D2F) for gold text on white (meets WCAG AA); `ivory` for soft backgrounds.
-- Buttons are square with small uppercase labels; gold buttons use black text.
+- Colours (tailwind.config.ts): `gold` for buttons and accents, `gold-dark` for
+  gold text on white; warm backgrounds `blush`, `blush-light`, `champagne`,
+  `ivory`; `rose-dark` for small accent text and badges; `cocoa` for dark
+  sections and the footer. Text/background pairs meet WCAG AA (4.5:1).
+- Soft shapes: pill buttons, rounded cards (`rounded-3xl`), arch-shaped hero
+  gallery.
+- Booking calendar: a wavy line under each date shows how busy the day is
+  (`components/day-load.tsx`, `dayOccupancy` in `lib/slots.ts`).

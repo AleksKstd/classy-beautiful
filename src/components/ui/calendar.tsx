@@ -28,7 +28,7 @@ function Calendar({
         caption_label: "font-display text-lg font-medium capitalize",
         nav: "space-x-1 flex items-center",
         nav_button:
-          "inline-flex h-7 w-7 items-center justify-center border border-gray-300 text-gray-600 transition-colors hover:border-brand-black hover:text-brand-black",
+          "inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-300 text-gray-600 transition-colors hover:border-cocoa hover:text-cocoa",
         nav_button_previous: "absolute left-1",
         nav_button_next: "absolute right-1",
         table: "w-full border-collapse space-y-1",
@@ -36,9 +36,9 @@ function Calendar({
         head_cell: "text-gray-500 w-9 font-normal text-[0.75rem] uppercase",
         row: "flex w-full mt-2",
         cell: "h-9 w-9 text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
-        day: "inline-flex h-9 w-9 items-center justify-center p-0 text-sm font-normal transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-dark aria-selected:opacity-100",
+        day: "inline-flex h-9 w-9 items-center justify-center rounded-full p-0 text-sm font-normal transition-colors hover:bg-blush focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-dark aria-selected:opacity-100",
         day_selected:
-          "bg-brand-black text-white hover:bg-brand-black hover:text-white focus:bg-brand-black focus:text-white",
+          "bg-cocoa text-white hover:bg-cocoa hover:text-white focus:bg-cocoa focus:text-white",
         day_today: "font-semibold underline decoration-gold decoration-2 underline-offset-4",
         day_outside: "day-outside text-gray-400 opacity-50",
         day_disabled: "text-gray-300 line-through decoration-gray-300 hover:bg-transparent cursor-default",

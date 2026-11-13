@@ -68,10 +68,11 @@ export function HeroCarousel({ images }: HeroCarouselProps) {
         {/* Offset hairline frame */}
         <div
           aria-hidden="true"
-          className="absolute left-4 top-4 right-0 bottom-0 sm:left-6 sm:top-6 border border-gold"
+          className="absolute left-4 top-4 right-0 bottom-0 sm:left-6 sm:top-6 rounded-tl-[50%_40%] rounded-tr-[50%_40%] rounded-b-[2rem] border border-gold"
         />
 
-        <div className="relative aspect-[4/5] overflow-hidden bg-ivory">
+        {/* Arch-shaped window */}
+        <div className="relative aspect-[4/5] overflow-hidden isolate rounded-tl-[50%_40%] rounded-tr-[50%_40%] rounded-b-[2rem] bg-blush shadow-[0_30px_60px_-30px_rgba(51,36,31,0.45)]">
           {images.map((image, index) => {
             const isActive = index === active;
             return (
@@ -105,7 +106,7 @@ export function HeroCarousel({ images }: HeroCarouselProps) {
 
       {count > 1 && (
         <div className="mt-6 flex items-center justify-between pr-4 sm:pr-6">
-          <p className="font-display text-lg tracking-wide text-brand-black" aria-live="polite">
+          <p className="font-display text-lg tracking-wide text-cocoa">
             {pad(active + 1)}
             <span className="mx-2 text-gray-400">/</span>
             <span className="text-gray-500">{pad(count)}</span>
@@ -117,17 +118,17 @@ export function HeroCarousel({ images }: HeroCarouselProps) {
                 <span
                   key={image.src}
                   className={cn(
-                    "h-px transition-all duration-500",
-                    index === active ? "w-8 bg-brand-black" : "w-4 bg-gray-300"
+                    "h-1.5 rounded-full transition-all duration-500",
+                    index === active ? "w-6 bg-gold" : "w-1.5 bg-cocoa/20"
                   )}
                 />
               ))}
             </div>
-            <div className="flex">
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => go(-1)}
-                className="flex h-10 w-10 items-center justify-center border border-gray-300 text-brand-black transition-colors hover:border-brand-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-dark"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-cocoa/25 bg-white text-cocoa transition-colors hover:bg-cocoa hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-dark"
                 aria-label="Предишна снимка"
               >
                 <ChevronLeft className="h-4 w-4" aria-hidden="true" />
@@ -135,7 +136,7 @@ export function HeroCarousel({ images }: HeroCarouselProps) {
               <button
                 type="button"
                 onClick={() => go(1)}
-                className="-ml-px flex h-10 w-10 items-center justify-center border border-gray-300 text-brand-black transition-colors hover:border-brand-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-dark"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-cocoa/25 bg-white text-cocoa transition-colors hover:bg-cocoa hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-dark"
                 aria-label="Следваща снимка"
               >
                 <ChevronRight className="h-4 w-4" aria-hidden="true" />

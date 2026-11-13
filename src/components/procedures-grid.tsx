@@ -103,14 +103,14 @@ export function ProceduresGrid({ procedures }: ProceduresGridProps) {
       {mainSections.length > 1 && (
         <nav
           aria-label="Категории"
-          className="sticky top-20 z-30 -mx-4 mb-10 overflow-x-auto border-y border-gray-200 bg-white/95 px-4 backdrop-blur sm:mx-0 sm:px-0"
+          className="sticky top-20 z-30 -mx-4 mb-10 overflow-x-auto bg-white/95 px-4 py-3 backdrop-blur sm:mx-0 sm:px-0"
         >
-          <ul className="flex gap-8 whitespace-nowrap py-4">
+          <ul className="flex gap-2 whitespace-nowrap">
             {mainSections.map((section) => (
               <li key={section}>
                 <a
                   href={`#${sectionIds[section] ?? "drugi"}`}
-                  className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-600 transition-colors hover:text-brand-black"
+                  className="inline-block rounded-full bg-blush-light px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-cocoa transition-colors hover:bg-blush"
                 >
                   {section}
                 </a>
@@ -130,7 +130,7 @@ export function ProceduresGrid({ procedures }: ProceduresGridProps) {
               {showMainSection && (
                 <h2
                   id={sectionIds[mainSection] ?? "drugi"}
-                  className="scroll-mt-40 pt-10 first:pt-0 mb-6 text-4xl sm:text-5xl border-b border-brand-black pb-4"
+                  className="scroll-mt-40 pt-10 first:pt-0 mb-6 text-4xl sm:text-5xl text-cocoa border-b border-gold/40 pb-4"
                 >
                   {mainSection}
                 </h2>
@@ -144,11 +144,11 @@ export function ProceduresGrid({ procedures }: ProceduresGridProps) {
               {/* Category */}
               <div className="mt-6">
                 <h3 className="flex items-baseline justify-between gap-4 mb-1">
-                  <span className="font-display text-2xl font-medium">{category}</span>
+                  <span className="font-display text-2xl">{category}</span>
                   <span className="text-xs text-gray-500">{procs.length} процедури</span>
                 </h3>
 
-                <ul className="divide-y divide-gray-200 border-t border-gray-200">
+                <ul className="mt-3 overflow-hidden rounded-3xl bg-blush-light/60 px-2 sm:px-4 divide-y divide-blush">
                   {procs.map((procedure) => {
                     const hasDiscount = procedureHasDiscount(procedure);
                     const discountedPrice = getFinalPrice(procedure);
@@ -157,32 +157,32 @@ export function ProceduresGrid({ procedures }: ProceduresGridProps) {
                       <li key={procedure.id}>
                         <Link
                           href={`/rezervacii?procedureId=${procedure.id}`}
-                          className="group grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_7rem_8rem_6rem] items-baseline gap-x-6 gap-y-1 py-4 transition-colors hover:bg-ivory focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-dark"
+                          className="group grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_7rem_8rem_6rem] items-baseline gap-x-6 gap-y-1 px-3 py-4 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-dark"
                         >
                           <span>
                             <span className="text-brand-black">{procedure.name}</span>
                             {hasDiscount && (
-                              <span className="ml-2 border border-gold-dark px-1.5 py-px text-[0.7rem] font-semibold text-gold-dark">
+                              <span className="ml-2 rounded-full bg-rose-dark px-2 py-0.5 text-[0.7rem] font-semibold text-white">
                                 −{procedure.discount_percentage}%
                               </span>
                             )}
                             {procedure.description && (
-                              <span className="mt-1 block text-sm text-gray-500 line-clamp-2">{procedure.description}</span>
+                              <span className="mt-1 block text-sm text-gray-600 line-clamp-2">{procedure.description}</span>
                             )}
-                            <span className="mt-1 block text-sm text-gray-500 sm:hidden">
+                            <span className="mt-1 block text-sm text-gray-600 sm:hidden">
                               {formatDuration(procedure.duration_minutes)} · {procedure.technician}
                             </span>
                           </span>
-                          <span className="hidden sm:block text-sm text-gray-500">
+                          <span className="hidden sm:block text-sm text-gray-600">
                             {formatDuration(procedure.duration_minutes)}
                           </span>
                           <span className="text-right whitespace-nowrap">
                             {hasDiscount && (
                               <span className="mr-2 text-sm text-gray-400 line-through">{formatPrice(procedure.price)}</span>
                             )}
-                            <span className="font-display text-xl text-brand-black">{formatPrice(discountedPrice)}</span>
+                            <span className="font-display text-xl text-cocoa">{formatPrice(discountedPrice)}</span>
                           </span>
-                          <span className="hidden sm:inline-flex items-center justify-end gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 transition-colors group-hover:text-brand-black">
+                          <span className="hidden sm:inline-flex items-center justify-end gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-rose-dark transition-colors group-hover:text-cocoa">
                             Запази
                             <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                           </span>
@@ -198,9 +198,9 @@ export function ProceduresGrid({ procedures }: ProceduresGridProps) {
       </div>
 
       {/* Contact */}
-      <div className="mt-20 border border-gray-300 p-8 sm:p-12 sm:flex sm:items-center sm:justify-between gap-8">
+      <div className="mt-20 rounded-[2rem] bg-champagne p-8 sm:p-12 sm:flex sm:items-center sm:justify-between gap-8">
         <div className="max-w-xl">
-          <h3 className="font-display text-3xl font-medium mb-3">Не сте сигурни коя процедура е за вас?</h3>
+          <h3 className="font-display text-3xl mb-3">Не сте сигурни коя процедура е за вас?</h3>
           <p className="text-gray-600">
             Обадете ни се и ще ви помогнем да изберете според вашата кожа и желания резултат.
           </p>

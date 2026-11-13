@@ -423,7 +423,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                   <div
                     className={cn(
                       "w-11 h-11 rounded-full flex items-center justify-center border transition-colors duration-300",
-                      status === "completed" && "bg-brand-black border-brand-black text-white",
+                      status === "completed" && "bg-cocoa border-cocoa text-white",
                       status === "current" && "border-gold bg-gold text-brand-black",
                       status === "upcoming" && "border-gray-300 text-gray-400"
                     )}
@@ -442,7 +442,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                   <div
                     className={cn(
                       "flex-1 h-px mx-2 sm:mx-4 transition-colors duration-500",
-                      status === "completed" ? "bg-brand-black" : "bg-gray-200"
+                      status === "completed" ? "bg-cocoa" : "bg-gray-200"
                     )}
                     aria-hidden="true"
                   />
@@ -457,7 +457,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
       {currentStep > 1 && (
         <button
           onClick={goBack}
-          className="flex items-center gap-2 text-gray-600 hover:text-brand-black transition-colors mb-4"
+          className="flex items-center gap-2 text-gray-600 hover:text-cocoa transition-colors mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
           <span className="text-sm">Назад</span>
@@ -475,10 +475,10 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                 key={office}
                 onClick={() => selectOffice(office)}
                 className={cn(
-                  "p-8 border text-center transition-colors duration-200",
+                  "p-8 rounded-3xl border text-center transition-colors duration-200",
                   state.office === office
-                    ? "border-brand-black bg-ivory"
-                    : "border-gray-300 hover:border-brand-black"
+                    ? "border-cocoa bg-blush-light"
+                    : "border-gray-300 hover:border-cocoa"
                 )}
               >
                 <span className="font-display text-3xl">{office}</span>
@@ -509,10 +509,10 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                     key={category}
                     onClick={() => selectCategory(category)}
                     className={cn(
-                      "p-6 border text-left transition-colors duration-200 group",
+                      "p-6 rounded-3xl border text-left transition-colors duration-200 group",
                       isPromo 
-                        ? "border-gold bg-ivory hover:border-brand-black col-span-2"
-                        : "border-gray-300 hover:border-brand-black"
+                        ? "border-gold bg-blush-light hover:border-cocoa col-span-2"
+                        : "border-gray-300 hover:border-cocoa"
                     )}
                   >
                     <div className="flex items-center gap-2">
@@ -524,7 +524,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                     </div>
                     <ChevronRight className={cn(
                       "w-5 h-5 float-right -mt-5 transition-colors",
-                      isPromo ? "text-gold-dark group-hover:text-brand-black" : "text-gray-400 group-hover:text-brand-black"
+                      isPromo ? "text-gold-dark group-hover:text-cocoa" : "text-gray-400 group-hover:text-cocoa"
                     )} />
                   </button>
                 );
@@ -537,7 +537,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
             <div className="space-y-4">
               <button
                 onClick={() => setState(prev => ({ ...prev, selectedCategory: null }))}
-                className="text-sm text-gray-600 hover:text-brand-black flex items-center gap-1"
+                className="text-sm text-gray-600 hover:text-cocoa flex items-center gap-1"
               >
                 <ArrowLeft className="w-4 h-4" /> {state.selectedCategory}
               </button>
@@ -546,10 +546,10 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                   <button
                     key={subCat}
                     onClick={() => selectSubCategory(subCat)}
-                    className="p-5 border border-gray-300 text-left transition-colors duration-200 hover:border-brand-black group"
+                    className="p-5 rounded-3xl border border-gray-300 text-left transition-colors duration-200 hover:border-cocoa group"
                   >
                     <span>{subCat}</span>
-                    <ChevronRight className="w-5 h-5 float-right text-gray-400 group-hover:text-brand-black transition-colors" />
+                    <ChevronRight className="w-5 h-5 float-right text-gray-400 group-hover:text-cocoa transition-colors" />
                   </button>
                 ))}
               </div>
@@ -565,7 +565,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                   selectedSubCategory: null,
                   selectedCategory: state.selectedSubCategory ? prev.selectedCategory : null 
                 }))}
-                className="text-sm text-gray-600 hover:text-brand-black flex items-center gap-1"
+                className="text-sm text-gray-600 hover:text-cocoa flex items-center gap-1"
               >
                 <ArrowLeft className="w-4 h-4" /> {state.selectedSubCategory || state.selectedCategory}
               </button>
@@ -579,15 +579,15 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                       key={proc.id}
                       onClick={() => selectProcedure(proc)}
                       className={cn(
-                        "w-full p-4 border text-left transition-colors duration-200 relative",
+                        "w-full p-4 rounded-2xl border text-left transition-colors duration-200 relative",
                         state.procedure?.id === proc.id
-                          ? "border-brand-black bg-ivory"
-                          : "border-gray-300 hover:border-brand-black",
+                          ? "border-cocoa bg-blush-light"
+                          : "border-gray-300 hover:border-cocoa",
                         hasDiscount && "border-gold"
                       )}
                     >
                       {hasDiscount && (
-                        <span className="absolute -top-2.5 right-3 bg-brand-black text-white text-xs font-semibold px-2 py-0.5">
+                        <span className="absolute -top-2.5 right-4 rounded-full bg-rose-dark text-white text-xs font-semibold px-2.5 py-0.5">
                           -{proc.discount_percentage}%
                         </span>
                       )}
@@ -637,7 +637,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
             
             return (
               <div className={cn(
-                "mb-6 p-4 border bg-ivory",
+                "mb-6 p-5 rounded-2xl border bg-blush-light",
                 hasDiscount ? "border-gold" : "border-gray-200"
               )}>
                 <p className="text-sm text-gray-500">Избрана процедура:</p>
@@ -646,7 +646,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-sm text-gray-400 line-through">{formatPrice(state.procedure.price)}</span>
                     <span className="text-sm font-semibold text-brand-black">{formatPrice(discountedPrice)}</span>
-                    <span className="bg-brand-black text-white text-xs font-semibold px-1.5 py-0.5">−{state.procedure.discount_percentage}%</span>
+                    <span className="rounded-full bg-rose-dark text-white text-xs font-semibold px-2 py-0.5">−{state.procedure.discount_percentage}%</span>
                     <span className="text-sm text-gray-500">• {formatDuration(state.procedure.duration_minutes)}</span>
                   </div>
                 ) : (
@@ -665,14 +665,14 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                   selected={state.date ?? undefined}
                   onSelect={selectDate}
                   disabled={isDateDisabled}
-                  className="border border-gray-300 p-4 bg-white"
+                  className="rounded-3xl border border-blush p-4 bg-white shadow-[0_20px_40px_-30px_rgba(51,36,31,0.35)]"
                   locale={bg}
                   components={{ DayContent: DayWithLoad }}
                   classNames={{
                     head_cell: "text-gray-500 w-10 font-normal text-[0.75rem] uppercase",
                     day_today: "font-semibold",
                     cell: "h-12 w-10 text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
-                    day: "inline-flex h-12 w-10 items-center justify-center p-0 text-sm font-normal transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-dark aria-selected:opacity-100",
+                    day: "inline-flex h-12 w-10 items-center justify-center rounded-2xl p-0 text-sm font-normal transition-colors hover:bg-blush focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-dark aria-selected:opacity-100",
                   }}
                 />
                 {/* Legend */}
@@ -717,11 +717,11 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                           onClick={() => slot.available && selectTimeSlot(slot.time)}
                           disabled={!slot.available}
                           className={cn(
-                            "py-3 px-2 text-sm font-medium tabular-nums transition-colors duration-200",
+                            "py-3 px-2 rounded-full text-sm font-medium tabular-nums transition-colors duration-200",
                             state.timeSlot === slot.time
-                              ? "bg-brand-black text-white border border-brand-black"
+                              ? "bg-cocoa text-white border border-cocoa"
                               : slot.available
-                                ? "border border-gray-300 hover:border-brand-black"
+                                ? "border border-gray-300 bg-white hover:border-cocoa hover:bg-blush-light"
                                 : slot.booked
                                   ? "border border-transparent bg-gray-100 text-gray-400 cursor-not-allowed line-through"
                                   : "border border-transparent bg-gray-50 text-gray-300 cursor-not-allowed line-through"
@@ -747,7 +747,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
           </h2>
           
           {/* Reservation summary */}
-          <div className="mb-6 p-4 bg-ivory border border-gray-200 space-y-2">
+          <div className="mb-6 p-5 rounded-2xl bg-blush-light space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Локация:</span>
               <span className="font-medium">{state.office}</span>
@@ -851,7 +851,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                   setRemember(e.target.checked);
                   if (!e.target.checked) saveRememberedDetails(null);
                 }}
-                className="mt-0.5 h-4 w-4 accent-brand-black"
+                className="mt-0.5 h-4 w-4 accent-cocoa"
               />
               <span>
                 Запомни ме на това устройство
@@ -862,7 +862,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
             </label>
 
             {errors.submit && (
-              <div className="p-4 border border-red-200 bg-red-50 text-red-700 text-sm" role="alert">
+              <div className="p-4 rounded-2xl border border-red-200 bg-red-50 text-red-700 text-sm" role="alert">
                 {errors.submit}
               </div>
             )}
@@ -885,7 +885,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
 
             <p className="text-xs text-gray-500 text-center">
               Използваме данните ви само за тази резервация и за връзка с вас.{" "}
-              <Link href="/poveritelnost" className="underline underline-offset-2 hover:text-brand-black">
+              <Link href="/poveritelnost" className="underline underline-offset-2 hover:text-cocoa">
                 Политика за поверителност
               </Link>
             </p>

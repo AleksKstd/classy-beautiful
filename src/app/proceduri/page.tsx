@@ -17,7 +17,7 @@ export default async function ProceduresPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Clean Header */}
-      <section className="pt-16 pb-10">
+      <section className="pt-16 pb-12 mb-10 bg-gradient-to-b from-blush-light via-ivory to-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl">
             <p className="eyebrow mb-4">Ценоразпис</p>

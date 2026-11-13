@@ -32,7 +32,7 @@ function ReservationContent() {
   }
 
   return (
-    <section className="py-12 md:py-20">
+    <section className="py-12 md:py-20 bg-gradient-to-b from-blush-light via-ivory to-white">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-3xl">
         <div className="text-center mb-12">
           <p className="eyebrow mb-4">Онлайн резервация</p>

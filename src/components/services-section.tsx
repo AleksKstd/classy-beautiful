@@ -23,21 +23,23 @@ const services = [
 
 export function ServicesSection() {
   return (
-    <section id="uslugi" className="py-20 md:py-28 bg-ivory scroll-mt-20">
+    <section id="uslugi" className="py-20 md:py-28 bg-champagne scroll-mt-20">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <SectionHeading eyebrow="Услуги" title="Какво правим" />
 
-        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border-t border-gray-300">
+        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {services.map((service, index) => (
-            <li key={service.title} className="border-b border-gray-300 lg:border-b-0 lg:border-r last:border-r-0">
+            <li key={service.title}>
               <Link
                 href="/proceduri"
-                className="group flex h-full flex-col p-6 lg:p-8 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-dark"
+                className="group flex h-full flex-col rounded-3xl bg-white p-7 lg:p-8 shadow-[0_20px_40px_-28px_rgba(51,36,31,0.35)] transition-transform duration-300 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-dark"
               >
-                <span className="font-display text-sm text-gold-dark">{String(index + 1).padStart(2, "0")}</span>
-                <h3 className="mt-6 font-display text-2xl font-medium">{service.title}</h3>
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-blush-light font-display text-base text-rose-dark">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <h3 className="mt-6 font-display text-2xl">{service.title}</h3>
                 <p className="mt-3 text-sm leading-relaxed text-gray-600">{service.description}</p>
-                <span className="mt-auto pt-8 inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand-black">
+                <span className="mt-auto pt-8 inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.16em] text-rose-dark">
                   Цени
                   <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
                 </span>

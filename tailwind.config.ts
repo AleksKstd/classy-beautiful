@@ -18,7 +18,21 @@ const config: Config = {
           // Readable gold for text on white (contrast 4.6:1)
           dark: "#8A6D2F",
         },
-        ivory: "#FAF8F4",
+        // Warm palette
+        ivory: "#FBF7F2",
+        champagne: "#F5ECDF",
+        blush: {
+          DEFAULT: "#F3E4DE",
+          light: "#F9F1EE",
+        },
+        rose: {
+          DEFAULT: "#C9998A",
+          dark: "#8E5E51", // text on light backgrounds (contrast 5.3:1 on white)
+        },
+        cocoa: {
+          DEFAULT: "#33241F",
+          light: "#4A3832",
+        },
         brand: {
           black: "#000000",
         },

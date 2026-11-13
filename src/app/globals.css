@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --radius: 0.125rem;
+  --radius: 0.75rem;
   --gold: #C4A35A;
 }
 
@@ -34,7 +34,7 @@
 @layer components {
   /* Small uppercase label above section headings */
   .eyebrow {
-    @apply text-xs font-semibold uppercase tracking-[0.25em] text-gold-dark;
+    @apply text-xs font-semibold uppercase tracking-[0.25em] text-rose-dark;
   }
 }
 

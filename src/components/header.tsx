@@ -39,9 +39,9 @@ export function Header() {
                   href={link.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "relative py-1 text-xs font-semibold uppercase tracking-[0.2em] transition-colors hover:text-brand-black",
-                    "after:absolute after:-bottom-0.5 after:left-0 after:h-px after:bg-brand-black after:transition-all after:duration-300 hover:after:w-full",
-                    active ? "text-brand-black after:w-full" : "text-gray-600 after:w-0"
+                    "relative py-1 text-xs font-semibold uppercase tracking-[0.2em] transition-colors hover:text-cocoa",
+                    "after:absolute after:-bottom-0.5 after:left-0 after:h-px after:bg-gold after:transition-all after:duration-300 hover:after:w-full",
+                    active ? "text-cocoa after:w-full" : "text-gray-600 after:w-0"
                   )}
                 >
                   {link.label}
