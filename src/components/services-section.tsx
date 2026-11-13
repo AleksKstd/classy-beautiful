@@ -1,67 +1,50 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Sparkles, Eye, Smile, Zap } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import { SectionHeading } from "./section-heading";
 
 const services = [
   {
-    icon: Sparkles,
     title: "Нокти",
-    description: "Медицински педикюр с висококачествени продукти.",
+    description: "Медицински педикюр и грижа за ноктите с професионални продукти.",
   },
   {
-    icon: Eye,
     title: "Мигли и вежди",
-    description: "Ламиниране на мигли и вежди за перфектен поглед.",
+    description: "Ламиниране, оформяне и боядисване за подреден, естествен поглед.",
   },
   {
-    icon: Smile,
     title: "Лице",
-    description: "Почистване, хидратация и anti-age терапии за сияйна кожа.",
+    description: "Почистване, хидратация и anti-age терапии според типа кожа.",
   },
   {
-    icon: Zap,
     title: "Епилация",
-    description: "Лазерна епилация и кола маска за гладка кожа с дълготраен ефект.",
+    description: "Лазерна епилация и кола маска за жени и мъже.",
   },
 ];
 
 export function ServicesSection() {
   return (
-    <section id="uslugi" className="py-16 md:py-24 bg-gray-50">
+    <section id="uslugi" className="py-20 md:py-28 bg-ivory scroll-mt-20">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <p className="text-sm tracking-[0.3em] text-gray-600 mb-4 uppercase">
-            Нашите услуги
-          </p>
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-            Професионална грижа за вашата красота
-          </h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            Предлагаме широка гама от козметични процедури, изпълнени от опитни
-            специалисти с внимание към всеки детайл.
-          </p>
-        </div>
+        <SectionHeading eyebrow="Услуги" title="Какво правим" />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {services.map((service) => (
-            <div
-              key={service.title}
-              className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div className="w-12 h-12 rounded-full bg-gold/10 flex items-center justify-center mb-4">
-                <service.icon className="w-6 h-6 text-gold" aria-hidden="true" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">{service.title}</h3>
-              <p className="text-gray-600 text-sm">{service.description}</p>
-            </div>
+        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border-t border-gray-300">
+          {services.map((service, index) => (
+            <li key={service.title} className="border-b border-gray-300 lg:border-b-0 lg:border-r last:border-r-0">
+              <Link
+                href="/proceduri"
+                className="group flex h-full flex-col p-6 lg:p-8 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-dark"
+              >
+                <span className="font-display text-sm text-gold-dark">{String(index + 1).padStart(2, "0")}</span>
+                <h3 className="mt-6 font-display text-2xl font-medium">{service.title}</h3>
+                <p className="mt-3 text-sm leading-relaxed text-gray-600">{service.description}</p>
+                <span className="mt-auto pt-8 inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand-black">
+                  Цени
+                  <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
+                </span>
+              </Link>
+            </li>
           ))}
-        </div>
-
-        <div className="text-center mt-12">
-          <Button asChild size="lg">
-            <Link href="/rezervacii">ЗАПАЗИ ЧАС СЕГА</Link>
-          </Button>
-        </div>
+        </ul>
       </div>
     </section>
   );

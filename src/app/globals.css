@@ -3,37 +3,38 @@
 @tailwind utilities;
 
 :root {
-  --radius: 0.5rem;
+  --radius: 0.125rem;
   --gold: #C4A35A;
-  --gold-light: #D4B76A;
-  --gold-dark: #B4934A;
 }
 
 @layer base {
   * {
     @apply border-gray-200;
   }
-  
+
   body {
-    @apply bg-white text-brand-black font-myriad antialiased;
+    @apply bg-white text-brand-black font-sans antialiased;
+    /* Use standard Cyrillic letter shapes instead of the fonts' Bulgarian variants */
+    font-feature-settings: "locl" 0;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-myriad tracking-tight;
+
+  h1,
+  h2 {
+    @apply font-display font-medium tracking-normal;
+  }
+
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-sans tracking-tight;
   }
 }
 
 @layer components {
-  .btn-gold {
-    @apply bg-gold hover:bg-gold-dark text-white font-medium px-6 py-3 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2;
-  }
-  
-  .btn-outline {
-    @apply border-2 border-brand-black text-brand-black font-medium px-6 py-3 rounded-md hover:bg-brand-black hover:text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-black focus:ring-offset-2;
-  }
-  
-  .gold-frame {
-    @apply rounded-2xl border-4 border-gold overflow-hidden;
+  /* Small uppercase label above section headings */
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.25em] text-gold-dark;
   }
 }
 
@@ -47,7 +48,20 @@ html {
   scroll-behavior: smooth;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 ::selection {
   background-color: var(--gold);
-  color: white;
+  color: #000;
 }

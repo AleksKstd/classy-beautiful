@@ -29,6 +29,6 @@ export async function getCarouselImages(): Promise<{ src: string; alt: string }[
     .filter((img) => existing.has(img.path))
     .map((img) => ({
       src: supabase.storage.from(CAROUSEL_BUCKET).getPublicUrl(img.path).data.publicUrl,
-      alt: `Снимка ${img.display_order + 1}`,
+      alt: `Classy & Beautiful - снимка ${img.display_order + 1}`,
     }));
 }

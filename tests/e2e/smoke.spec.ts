@@ -6,9 +6,11 @@ test.describe("public pages", () => {
   test("home page renders the hero carousel", async ({ page }) => {
     await page.goto("/");
     await expect(page).toHaveTitle(/Classy|Beautiful/i);
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("CLASSY & BEAUTIFUL");
-    // Uploaded images or the fallback images
-    await expect(page.locator("section").first().locator("img").first()).toBeAttached();
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Classy & Beautiful");
+    // Uploaded images or the backup images stored with the site
+    await expect(page.getByRole("region", { name: "Снимки от салона" }).locator("img").first()).toBeVisible();
+    // The admin login is not advertised in the public footer
+    await expect(page.locator("footer").getByText("Админ")).toHaveCount(0);
   });
 
   test("reservation page shows the office step", async ({ page }) => {
@@ -23,6 +25,13 @@ test.describe("public pages", () => {
     test.skip(!hasDatabase, "needs a Supabase project");
     await page.goto("/proceduri");
     await expect(page.getByRole("heading", { name: "Нашите процедури" })).toBeVisible();
+  });
+
+  test("privacy policy is linked from the footer", async ({ page }) => {
+    await page.goto("/");
+    await page.locator("footer").getByRole("link", { name: "Политика за поверителност" }).click();
+    await expect(page).toHaveURL(/\/poveritelnost$/);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Политика за поверителност");
   });
 
   test("sitemap only lists real pages", async ({ request }) => {

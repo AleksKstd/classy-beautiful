@@ -17,22 +17,20 @@ export default async function ProceduresPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Clean Header */}
-      <section className="pt-12 pb-8">
+      <section className="pt-16 pb-10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl">
-            <h1 className="text-3xl sm:text-4xl font-bold text-brand-black mb-3">
-              Нашите процедури
-            </h1>
-            <p className="text-gray-500">
-              Открийте широката гама от професионални процедури за красота
+            <p className="eyebrow mb-4">Ценоразпис</p>
+            <h1 className="text-5xl sm:text-6xl text-brand-black mb-4">Нашите процедури</h1>
+            <p className="text-gray-600 leading-relaxed">
+              Цени и продължителност на всички процедури. Изберете процедура, за да запазите час.
             </p>
-            <div className="h-1 w-20 bg-gold mt-4" />
           </div>
         </div>
       </section>
 
       {/* Procedures Grid */}
-      <section className="pb-16">
+      <section className="pb-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <ProceduresGrid procedures={procedures} />
         </div>

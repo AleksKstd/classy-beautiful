@@ -4,11 +4,10 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, parseISO } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, parseISO } from "date-fns";
 import { bg } from "date-fns/locale";
 import {
   Calendar as CalendarIcon,
-  ChevronLeft,
   ChevronRight,
   Clock,
   User,
@@ -240,24 +239,7 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
         {/* Calendar */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <button
-                onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <h3 className="font-semibold">
-                {format(currentMonth, "LLLL yyyy", { locale: bg })}
-              </h3>
-              <button
-                onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-            
+            {/* The calendar's own caption shows the month and the previous/next buttons */}
             <Calendar
               mode="single"
               selected={selectedDate}

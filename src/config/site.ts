@@ -15,6 +15,21 @@ export const BUSINESS = {
   facebook: "https://www.facebook.com/cb.classy.and.beautiful",
 } as const;
 
+/**
+ * Legal details shown in the privacy policy (/poveritelnost).
+ * TODO before launch: replace the placeholders with the company's real data.
+ */
+export const LEGAL = {
+  /** Registered company name, e.g. "Класи енд Бютифул ЕООД" */
+  companyName: "[Име на фирмата]",
+  /** ЕИК / Булстат */
+  eik: "[ЕИК]",
+  /** Registered address */
+  address: "[Адрес на управление]",
+  /** Date the policy text was last changed */
+  privacyPolicyUpdated: "13.11.2026",
+} as const;
+
 export const OFFICES = ["София", "Лом"] as const;
 export type OfficeName = (typeof OFFICES)[number];
 

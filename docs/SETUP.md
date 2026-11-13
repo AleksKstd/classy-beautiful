@@ -7,12 +7,13 @@
    1. `supabase/migrations/000_initial_schema.sql`
    2. `supabase/migrations/001_reservations.sql`
    3. `supabase/migrations/002_security_hardening.sql`
+   4. `supabase/migrations/003_data_retention.sql` (nightly clean-up promised in the privacy policy)
 3. For a **new, empty** project only: run `supabase/seed.sql` to load the procedure catalogue.
    Never run it on a database that already has reservations.
 
 ### Existing project (upgrading)
 
-Only run `002_security_hardening.sql`. It is safe to re-run. If it stops with an
+Run `002_security_hardening.sql`, then `003_data_retention.sql`. Both are safe to re-run. If it stops with an
 error about the `reservations_no_overlap` constraint, two existing active
 bookings overlap: the file contains a query that lists them. Cancel one of each
 pair and run the file again.
@@ -54,21 +55,34 @@ Go to `/admin` and log in with `ADMIN_USERNAME` and the password you hashed.
   To revoke it, change `CALENDAR_FEED_TOKEN` and subscribe again.
 - **Log everyone out:** change `ADMIN_SESSION_SECRET`.
 
-## 5. Opening hours and booking rules
+## 5. Vercel Web Analytics
+
+Visitor statistics use Vercel Web Analytics, which works without cookies, so no
+cookie banner is needed. Enable it once: Vercel > your project > **Analytics** >
+**Enable**. Data appears after the next deployment.
+
+## 6. Privacy policy
+
+`/poveritelnost` reads the company name, EIK and registered address from `LEGAL`
+in `src/config/site.ts`. Replace the placeholders before going live, and update
+`privacyPolicyUpdated` whenever the text changes.
+
+## 7. Opening hours and booking rules
 
 Edit `src/config/site.ts`: opening hours per weekday, slot length, how far
 ahead customers can book, and the maximum number of upcoming bookings per phone
 number. The same values drive the booking wizard, the server checks and the
 opening hours shown to search engines.
 
-## 6. Verify
+## 8. Verify
 
 ```sql
 SELECT COUNT(*) FROM procedures;                 -- 80+ after the seed
 SELECT * FROM admin_settings;                    -- admin_email, notification_enabled
 SELECT conname FROM pg_constraint
  WHERE conname IN ('reservations_no_overlap', 'reservations_procedure_id_fkey');
-SELECT proname FROM pg_proc WHERE proname = 'hit_rate_limit';
+SELECT proname FROM pg_proc WHERE proname IN ('hit_rate_limit', 'apply_data_retention');
+SELECT jobname, schedule FROM cron.job;          -- data-retention, 15 3 * * *
 ```
 
 Then make a test booking on `/rezervacii` and confirm it in the admin panel.

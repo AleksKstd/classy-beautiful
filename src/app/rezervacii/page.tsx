@@ -35,9 +35,10 @@ function ReservationContent() {
     <section className="py-12 md:py-20">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-3xl">
         <div className="text-center mb-12">
-          <h1 className="text-3xl sm:text-4xl font-bold mb-4">Запази час</h1>
+          <p className="eyebrow mb-4">Онлайн резервация</p>
+          <h1 className="text-5xl sm:text-6xl mb-4">Запази час</h1>
           <p className="text-gray-600">
-            Следвайте стъпките по-долу, за да резервирате вашия час.
+            Четири кратки стъпки: салон, процедура, дата и час, вашите данни.
           </p>
         </div>
 

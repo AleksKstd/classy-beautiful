@@ -1,7 +1,8 @@
-import { TrendingUp } from "lucide-react";
+import Link from "next/link";
 import { formatPrice, formatDuration } from "@/lib/utils";
 import { getFinalPrice, hasDiscount } from "@/lib/pricing";
 import type { Procedure } from "@/types/database";
+import { SectionHeading } from "./section-heading";
 
 interface PopularProceduresProps {
   procedures: Procedure[];
@@ -13,58 +14,41 @@ export function PopularProcedures({ procedures }: PopularProceduresProps) {
   }
 
   return (
-    <section className="py-16 bg-gray-50">
+    <section className="py-20 md:py-28">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 text-gold mb-3">
-            <TrendingUp className="w-5 h-5" aria-hidden="true" />
-            <span className="text-sm font-medium uppercase tracking-wider">
-              Най-търсени
-            </span>
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-            Популярни процедури
-          </h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            Най-резервираните процедури от нашите клиенти през последния месец
-          </p>
-        </div>
+        <SectionHeading
+          eyebrow="Най-търсени"
+          title="Любими процедури"
+          description="Най-резервираното от нашите клиенти през последния месец."
+        />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <ol className="border-t border-gray-200">
           {procedures.map((procedure, index) => (
-            <div
-              key={procedure.id}
-              className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-8 h-8 rounded-full bg-gold/10 flex items-center justify-center flex-shrink-0">
-                  <span className="text-gold font-bold text-sm">
-                    {index + 1}
+            <li key={procedure.id} className="border-b border-gray-200">
+              <Link
+                href={`/rezervacii?procedureId=${procedure.id}`}
+                className="group grid grid-cols-[2.5rem_1fr_auto] sm:grid-cols-[3.5rem_1fr_auto_auto] items-baseline gap-x-4 py-5 transition-colors hover:bg-ivory focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-dark"
+              >
+                <span className="font-display text-lg text-gold-dark">{String(index + 1).padStart(2, "0")}</span>
+                <span>
+                  <span className="block font-medium text-brand-black">{procedure.name}</span>
+                  <span className="block text-sm text-gray-500">
+                    {formatDuration(procedure.duration_minutes)} · {procedure.technician}
                   </span>
-                </div>
-                {hasDiscount(procedure) && (
-                  <span className="bg-red-100 text-red-600 text-xs font-semibold px-2 py-1 rounded">
-                    -{procedure.discount_percentage}%
-                  </span>
-                )}
-              </div>
-              
-              <h3 className="font-semibold text-lg mb-2">{procedure.name}</h3>
-              
-              <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
-                <span>{formatDuration(procedure.duration_minutes)}</span>
-                <span>•</span>
-                <span>{procedure.technician}</span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold text-gold">
-                  {formatPrice(getFinalPrice(procedure))}
                 </span>
-              </div>
-            </div>
+                <span className="text-right">
+                  {hasDiscount(procedure) && (
+                    <span className="mr-2 text-sm text-gray-400 line-through">{formatPrice(procedure.price)}</span>
+                  )}
+                  <span className="font-display text-xl text-brand-black">{formatPrice(getFinalPrice(procedure))}</span>
+                </span>
+                <span className="hidden sm:inline text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 transition-colors group-hover:text-brand-black">
+                  Запази
+                </span>
+              </Link>
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
     </section>
   );

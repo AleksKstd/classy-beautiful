@@ -1,9 +1,26 @@
 import type { Metadata } from "next";
+import { Cormorant_Garamond, Manrope } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { LocalBusinessSchema, WebsiteSchema } from "@/components/seo/structured-data";
 import { SITE_URL as siteUrl } from "@/config/site";
+
+// Fonts are downloaded at build time and served from this site (no requests to Google).
+const display = Cormorant_Garamond({
+  subsets: ["latin", "cyrillic"],
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+const body = Manrope({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-body",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -71,7 +88,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="bg">
+    <html lang="bg" className={`${display.variable} ${body.variable}`}>
       <head>
         <LocalBusinessSchema />
         <WebsiteSchema />
@@ -80,6 +97,8 @@ export default function RootLayout({
         <Header />
         <main className="min-h-screen">{children}</main>
         <Footer />
+        {/* Cookie-free, privacy-friendly visitor statistics (enable Web Analytics in Vercel) */}
+        <Analytics />
       </body>
     </html>
   );

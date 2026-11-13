@@ -8,6 +8,7 @@ src/
     page.tsx                Home (popular procedures, discounts, carousel)
     proceduri/              Price list
     rezervacii/             Booking wizard
+    poveritelnost/          Privacy policy
     admin/                  Login page + dashboard (protected)
     api/calendar/feed.ics/  Private iCalendar feed (needs ?token=)
     actions/
@@ -28,7 +29,7 @@ src/
     pricing.ts, ics.ts, html.ts, rate-limit.ts, notifications.ts
   proxy.ts                  Redirects unauthenticated requests away from /admin/dashboard
 supabase/
-  migrations/               Run in order: 000, 001, 002
+  migrations/               Run in order: 000, 001, 002, 003
   seed.sql                  Procedure catalogue for a fresh database
 tests/
   unit/                     Vitest
@@ -75,3 +76,21 @@ server's or visitor's time zone.
 
 Business details, opening hours, slot length, booking window and the
 per-phone booking limit are in `src/config/site.ts`.
+
+## Privacy
+
+- No advertising or tracking cookies. Visitor statistics come from Vercel Web
+  Analytics (cookie-free, aggregated).
+- "Запомни ме" keeps name, phone and email in the visitor's own browser
+  (`localStorage`, key `cb_customer_details`) only when the box is ticked.
+- The only cookie is the admin session cookie (staff only).
+- Migration 003 anonymises reservations 24 months after the visit and deletes
+  rate-limit records (IP addresses) after 24 hours, as the privacy policy states.
+
+## Design system
+
+- Fonts: Cormorant Garamond (headings, `font-display`) and Manrope (body), both
+  self-hosted by `next/font` with Cyrillic support.
+- Colours: `gold` (#C4A35A) for backgrounds, borders and accents; `gold-dark`
+  (#8A6D2F) for gold text on white (meets WCAG AA); `ivory` for soft backgrounds.
+- Buttons are square with small uppercase labels; gold buttons use black text.
