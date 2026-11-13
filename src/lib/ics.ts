@@ -6,7 +6,7 @@
 export function escapeIcsText(value: unknown): string {
   return String(value ?? "")
     .replace(/\\/g, "\\\\")
-    .replace(/;/g, "\;")
+    .replace(/;/g, "\\;")
     .replace(/,/g, "\\,")
     .replace(/\r\n|\r|\n/g, "\\n");
 }

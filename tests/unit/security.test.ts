@@ -66,7 +66,7 @@ describe("output escaping", () => {
   });
 
   it("escapes iCalendar text so notes cannot inject properties", () => {
-    expect(escapeIcsText("a;b,c\\d\r\nURL:https://evil.test")).toBe("a\;b\\,c\\\\d\\nURL:https://evil.test");
+    expect(escapeIcsText("a;b,c\\d\r\nURL:https://evil.test")).toBe("a\\;b\\,c\\\\d\\nURL:https://evil.test");
   });
 
   it("formats UTC dates and folds long lines to 75 octets", () => {
