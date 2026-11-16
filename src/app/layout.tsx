@@ -23,7 +23,7 @@ const body = Montserrat({
 });
 
 const DESCRIPTION =
-  "Салон за красота Classy & Beautiful в София и Лом: маникюр, педикюр, лазерна епилация, мигли, вежди и терапии за лице. Вижте цените и запазете час онлайн.";
+  "Салон за красота Classy & Beautiful в София и Лом: педикюр, лазерна епилация, мигли, вежди и терапии за лице. Вижте цените и запазете час онлайн.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

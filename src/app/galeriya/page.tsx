@@ -11,7 +11,7 @@ export const revalidate = 600;
 export const metadata: Metadata = pageMetadata({
   title: "Галерия",
   description:
-    "Снимки от салона и резултати от процедурите на Classy & Beautiful в София и Лом: маникюр, мигли, вежди и терапии за лице.",
+    "Снимки от салона и резултати от процедурите на Classy & Beautiful в София и Лом: педикюр, мигли, вежди и терапии за лице.",
   path: "/galeriya",
 });
 

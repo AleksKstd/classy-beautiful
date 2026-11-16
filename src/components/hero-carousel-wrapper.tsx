@@ -5,7 +5,6 @@ import { getCarouselImages } from "@/lib/data/carousel";
 // in Admin > Снимки or the image storage is unavailable.
 const backupImages: HeroImage[] = [
   { src: "/images/hero/hero-1.jpg", alt: "Козметична процедура за лице" },
-  { src: "/images/hero/hero-2.jpg", alt: "Маникюр в салона" },
   { src: "/images/hero/hero-3.jpg", alt: "Спа процедура" },
 ];
 

@@ -16,7 +16,7 @@ const reservation: EmailReservation = {
   customer_phone: "+359888123456",
   customer_email: "maria@example.bg",
   customer_note: null,
-  procedureName: "Маникюр",
+  procedureName: "Педикюр",
   durationMinutes: 90,
   price: 36.8,
 };

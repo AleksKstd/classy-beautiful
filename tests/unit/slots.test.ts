@@ -72,8 +72,11 @@ describe("day rules", () => {
 
   it("limits the booking window", () => {
     const now = new Date(at("12:00"));
-    expect(isWithinBookingWindow(DAY, now)).toBe(true);
+    expect(isWithinBookingWindow(DAY, now)).toBe(false); // no same-day bookings
+    expect(isWithinBookingWindow("2026-11-06", now)).toBe(true);
     expect(isWithinBookingWindow("2026-11-04", now)).toBe(false);
+    expect(isWithinBookingWindow("2027-01-04", now)).toBe(true);
+    expect(isWithinBookingWindow("2027-01-05", now)).toBe(false);
     expect(isWithinBookingWindow("2027-02-01", now)).toBe(false);
   });
 
@@ -107,7 +110,7 @@ describe("dayOccupancy", () => {
 describe("getBookingWindowDays", () => {
   it("lists every day of the window", () => {
     const days = getBookingWindowDays(new Date(at("12:00")));
-    expect(days[0]).toBe(DAY);
-    expect(days).toHaveLength(61);
+    expect(days[0]).toBe("2026-11-06"); // starts tomorrow
+    expect(days).toHaveLength(60);
   });
 });

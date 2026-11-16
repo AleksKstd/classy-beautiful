@@ -84,6 +84,12 @@ export function openingHoursLines(): string[] {
 }
 
 export const SLOT_INTERVAL_MINUTES = 30;
+/**
+ * How many days in advance an online booking must be made. 1 = the earliest
+ * bookable day is tomorrow, so nobody can book for today. Staff can still
+ * move a booking to today from the admin panel.
+ */
+export const MIN_BOOKING_NOTICE_DAYS = 1;
 /** How many days ahead customers can book. */
 export const BOOKING_WINDOW_DAYS = 60;
 /** Max upcoming active bookings a single phone number may hold. */

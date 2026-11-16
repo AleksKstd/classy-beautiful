@@ -1,5 +1,6 @@
 import {
   BOOKING_WINDOW_DAYS,
+  MIN_BOOKING_NOTICE_DAYS,
   OPENING_HOURS,
   SLOT_INTERVAL_MINUTES,
 } from "@/config/site";
@@ -87,8 +88,11 @@ export function buildDaySlots({
 
 /** First and last bookable calendar days ("yyyy-MM-dd"), salon time. */
 export function getBookingWindow(now: Date = new Date()) {
-  const first = toDateKey(now);
-  return { first, last: addDaysToKey(first, BOOKING_WINDOW_DAYS) };
+  const today = toDateKey(now);
+  return {
+    first: addDaysToKey(today, MIN_BOOKING_NOTICE_DAYS),
+    last: addDaysToKey(today, BOOKING_WINDOW_DAYS),
+  };
 }
 
 export function isWithinBookingWindow(dateKey: string, now: Date = new Date()): boolean {
