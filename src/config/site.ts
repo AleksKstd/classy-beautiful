@@ -31,15 +31,21 @@ export type OfficeName = (typeof OFFICES)[number];
 
 /**
  * Street address of each salon. Shown in the footer, on the booking
- * confirmation and as a Google Maps link. Leave null to hide it.
+ * confirmation and as a Google Maps link. Leave `address` null to hide it.
+ * `mapsLink` is the salon's own Google Maps link ("Share" in Google Maps);
+ * without it the map link searches for the address instead.
  */
-export const OFFICE_DETAILS: Record<OfficeName, { address: string | null }> = {
-  "София": { address: "кв. Борово, ул. „Борово“ 52, 1680 София" },
+export const OFFICE_DETAILS: Record<OfficeName, { address: string | null; mapsLink?: string }> = {
+  "София": {
+    address: "кв. Борово, ул. „Борово“ 52, 1680 София",
+    mapsLink: "https://maps.app.goo.gl/Lir7Xuhm3xhUFL597",
+  },
   "Лом": { address: "Център, ул. „Дунавска“ 29, 3600 Лом" },
 };
 
 export function mapsUrl(office: OfficeName): string | null {
-  const address = OFFICE_DETAILS[office].address;
+  const { address, mapsLink } = OFFICE_DETAILS[office];
+  if (mapsLink) return mapsLink;
   return address
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`Classy & Beautiful, ${address}`)}`
     : null;
