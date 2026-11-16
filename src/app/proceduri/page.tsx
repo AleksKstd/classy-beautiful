@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = pageMetadata({
   title: "Процедури и цени",
   description:
-    "Цени и продължителност на всички процедури в Classy & Beautiful: маникюр и педикюр, мигли и вежди, терапии за лице, лазерна епилация и кола маска в София и Лом.",
+    "Цени и продължителност на всички процедури в Classy & Beautiful: педикюр, мигли и вежди, терапии за лице, лазерна епилация и кола маска в София и Лом.",
   path: "/proceduri",
 });
 

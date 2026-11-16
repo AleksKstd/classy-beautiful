@@ -100,7 +100,7 @@ const officeTaglines: Record<OfficeName, string> = {
   "Лом": "Салонът в Лом",
 };
 
-/** "Всеки ден 09:00 - 19:00" when every day has the same hours. */
+/** "Всеки ден 10:00 - 19:00" when every day has the same hours. */
 function openingHoursText(): string {
   const days = Object.values(OPENING_HOURS).filter(Boolean) as { open: string; close: string }[];
   const first = days[0];

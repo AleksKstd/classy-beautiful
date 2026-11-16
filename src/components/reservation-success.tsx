@@ -27,7 +27,7 @@ export function ReservationSuccess({
       ["VERSION:2.0", "PRODID:-//Classy & Beautiful//Booking//BG", "CALSCALE:GREGORIAN", "METHOD:PUBLISH"],
       [
         [
-          `UID:${reservation.id}@classybeautiful.bg`,
+          `UID:${reservation.id}@cbclassyandbeautiful.com`,
           `DTSTAMP:${formatIcsDate(new Date())}`,
           `DTSTART:${formatIcsDate(new Date(reservation.startAt))}`,
           `DTEND:${formatIcsDate(new Date(reservation.endAt))}`,

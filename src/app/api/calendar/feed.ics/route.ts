@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
         .join("\n");
 
       return [
-        `UID:${res.id}@classybeautiful.bg`,
+        `UID:${res.id}@cbclassyandbeautiful.com`,
         `DTSTAMP:${stamp}`,
         `DTSTART:${formatIcsDate(new Date(res.start_at))}`,
         `DTEND:${formatIcsDate(new Date(res.end_at))}`,

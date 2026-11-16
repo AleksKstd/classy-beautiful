@@ -117,7 +117,7 @@ function build({ subject, status, heading, paragraphs, sections, footer }: Layou
   return { subject: oneLine(subject), text, html };
 }
 
-const CONTACT_FOOTER = `Ако имате въпроси или нещо се промени, обадете ни се на ${BUSINESS.phoneDisplay}.`;
+const CONTACT_FOOTER = `Ако имате въпроси или нещо се промени, обадете ни се на ${BUSINESS.phoneDisplay}. Този имейл е изпратен автоматично, моля, не отговаряйте на него.`;
 
 /** To the customer, right after they send a booking request. */
 export function reservationReceivedEmail(r: EmailReservation): EmailContent {

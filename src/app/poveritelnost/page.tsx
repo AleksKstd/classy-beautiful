@@ -19,9 +19,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function PrivacyPolicyPage() {
-  const mail = (
-    <a href={`mailto:${BUSINESS.email}`} className="underline underline-offset-2 hover:text-brand-black">
-      {BUSINESS.email}
+  const phone = (
+    <a href={`tel:${BUSINESS.phone}`} className="underline underline-offset-2 hover:text-brand-black">
+      {BUSINESS.phoneDisplay}
     </a>
   );
 
@@ -36,11 +36,7 @@ export default function PrivacyPolicyPage() {
           <p>
             Администратор на личните данни е {LEGAL.companyName}, ЕИК {LEGAL.eik}, със седалище и адрес на
             управление {LEGAL.address} („Classy &amp; Beautiful“, „ние“). За всички въпроси,
-            свързани с личните данни, пишете ни на {mail} или се обадете на{" "}
-            <a href={`tel:${BUSINESS.phone}`} className="underline underline-offset-2 hover:text-brand-black">
-              {BUSINESS.phoneDisplay}
-            </a>
-            .
+            свързани с личните данни, обадете се на {phone} или ни пишете на адреса на управление.
           </p>
         </Section>
 
@@ -121,7 +117,10 @@ export default function PrivacyPolicyPage() {
             <li>ограничаване на обработването или възражение срещу него;</li>
             <li>получаване на данните в машинночетим формат (преносимост).</li>
           </ul>
-          <p>Пишете ни на {mail} - ще отговорим до един месец.</p>
+          <p>
+            Обадете се на {phone} или ни пишете на адреса на управление - ще отговорим до един месец. Имейлите
+            от сайта се изпращат автоматично и отговорите на тях не се четат.
+          </p>
           <p>
             Ако смятате, че правата ви са нарушени, можете да подадете жалба до Комисията за защита на личните
             данни: гр. София 1592, бул. „Проф. Цветан Лазаров“ № 2,{" "}

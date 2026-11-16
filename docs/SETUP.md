@@ -37,7 +37,7 @@ provider (Vercel: Project > Settings > Environment Variables). See
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase > Settings > API > Project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase > Settings > API > `anon` `public` key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase > Settings > API > `service_role` key (**secret**) |
-| `NEXT_PUBLIC_SITE_URL` | Your public domain, e.g. `https://classybeautiful.bg` |
+| `NEXT_PUBLIC_SITE_URL` | Your public domain, e.g. `https://cbclassyandbeautiful.com` |
 | `ADMIN_USERNAME` | Choose one |
 | `ADMIN_PASSWORD_HASH` | `npm run hash-password -- "your new password"` |
 | `ADMIN_SESSION_SECRET` | `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
@@ -89,7 +89,7 @@ a "Как да стигнете" Google Maps link. While it is `null` nothing is
 ## 8. Opening hours and booking rules
 
 Edit `src/config/site.ts`: opening hours per weekday, slot length, how far
-ahead customers can book, and the maximum number of upcoming bookings per phone
+ahead customers can book, the minimum notice (no same-day online bookings), and the maximum number of upcoming bookings per phone
 number. The same values drive the booking wizard, the server checks and the
 opening hours shown to search engines.
 

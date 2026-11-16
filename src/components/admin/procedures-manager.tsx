@@ -172,7 +172,7 @@ export function ProceduresManager({ procedures: initialProcedures }: ProceduresM
                     setFormData({ ...formData, name: e.target.value })
                   }
                   required
-                  placeholder="Класически маникюр"
+                  placeholder="Медицински педикюр"
                 />
               </div>
 

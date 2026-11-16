@@ -3,29 +3,25 @@
  * structured data, emails and booking rules.
  */
 
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://classybeautiful.bg";
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://cbclassyandbeautiful.com";
 
 export const BUSINESS = {
   name: "Classy & Beautiful",
   alternateName: "CB Classy & Beautiful",
   phone: "+359878378083",
   phoneDisplay: "+359 87 837 8083",
-  email: "info@classybeautiful.bg",
   instagram: "https://www.instagram.com/cb.classy.and.beautiful/",
   facebook: "https://www.facebook.com/cb.classy.and.beautiful",
 } as const;
 
-/**
- * Legal details shown in the privacy policy (/poveritelnost).
- * TODO before launch: replace the placeholders with the company's real data.
- */
+/** Legal details shown in the privacy policy (/poveritelnost). */
 export const LEGAL = {
-  /** Registered company name, e.g. "Класи енд Бютифул ЕООД" */
-  companyName: "[Име на фирмата]",
+  /** Registered company name */
+  companyName: "„Бютифул груп“ ЕООД",
   /** ЕИК / Булстат */
-  eik: "[ЕИК]",
+  eik: "208335910",
   /** Registered address */
-  address: "[Адрес на управление]",
+  address: "гр. Лом, ул. „Кръстю Пишурката“ 10",
   /** Date the policy text was last changed */
   privacyPolicyUpdated: "16.11.2026",
 } as const;
@@ -36,11 +32,10 @@ export type OfficeName = (typeof OFFICES)[number];
 /**
  * Street address of each salon. Shown in the footer, on the booking
  * confirmation and as a Google Maps link. Leave null to hide it.
- * TODO: fill in the real addresses.
  */
 export const OFFICE_DETAILS: Record<OfficeName, { address: string | null }> = {
-  "София": { address: null },
-  "Лом": { address: null },
+  "София": { address: "кв. Борово, ул. „Борово“ 52, 1680 София" },
+  "Лом": { address: "Център, ул. „Дунавска“ 29, 3600 Лом" },
 };
 
 export function mapsUrl(office: OfficeName): string | null {
@@ -60,18 +55,18 @@ export const TIME_ZONE = "Europe/Sofia";
  * opening hours published to search engines.
  */
 export const OPENING_HOURS: Record<number, { open: string; close: string } | null> = {
-  0: { open: "09:00", close: "19:00" },
-  1: { open: "09:00", close: "19:00" },
-  2: { open: "09:00", close: "19:00" },
-  3: { open: "09:00", close: "19:00" },
-  4: { open: "09:00", close: "19:00" },
-  5: { open: "09:00", close: "19:00" },
-  6: { open: "09:00", close: "19:00" },
+  0: { open: "10:00", close: "19:00" },
+  1: { open: "10:00", close: "19:00" },
+  2: { open: "10:00", close: "19:00" },
+  3: { open: "10:00", close: "19:00" },
+  4: { open: "10:00", close: "19:00" },
+  5: { open: "10:00", close: "19:00" },
+  6: { open: "10:00", close: "19:00" },
 };
 
 const DAY_LABELS = ["Нд", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 
-/** Opening hours as short lines, e.g. ["Пн - Нд: 09:00 - 19:00"]. */
+/** Opening hours as short lines, e.g. ["Пн - Нд: 10:00 - 19:00"]. */
 export function openingHoursLines(): string[] {
   const order = [1, 2, 3, 4, 5, 6, 0];
   const groups: { from: number; to: number; text: string }[] = [];
@@ -88,6 +83,12 @@ export function openingHoursLines(): string[] {
 }
 
 export const SLOT_INTERVAL_MINUTES = 30;
+/**
+ * How many days in advance an online booking must be made. 1 = the earliest
+ * bookable day is tomorrow, so nobody can book for today. Staff can still
+ * move a booking to today from the admin panel.
+ */
+export const MIN_BOOKING_NOTICE_DAYS = 1;
 /** How many days ahead customers can book. */
 export const BOOKING_WINDOW_DAYS = 60;
 /** Max upcoming active bookings a single phone number may hold. */
