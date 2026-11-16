@@ -30,7 +30,7 @@ src/
     pricing.ts, ics.ts, html.ts, rate-limit.ts, notifications.ts
   proxy.ts                  Redirects unauthenticated requests away from /admin/dashboard
 supabase/
-  migrations/               Run in order: 000, 001, 002, 003, 004
+  migrations/               Run in order: 000, 001, 002, 003, 004, 005
   seed.sql                  Procedure catalogue for a fresh database
 tests/
   unit/                     Vitest
