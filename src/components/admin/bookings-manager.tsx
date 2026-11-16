@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, parseISO } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, parseISO, startOfDay } from "date-fns";
 import { bg } from "date-fns/locale";
 import {
   Calendar as CalendarIcon,
@@ -22,6 +22,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { confirmReservation, cancelReservation, rescheduleReservation } from "@/app/actions/admin/reservations";
+import { OFFICES, type OfficeName } from "@/config/site";
+import { getSlotTimes } from "@/lib/slots";
 import type { ReservationStatus } from "@/types/database";
 
 export interface ReservationWithProcedure {
@@ -57,7 +59,6 @@ interface BookingsManagerProps {
   reservations: ReservationWithProcedure[];
 }
 
-type OfficeName = "София" | "Лом";
 
 const statusLabels: Record<ReservationStatus, string> = {
   pending: "Чакаща",
@@ -129,6 +130,12 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
     "Лом": reservations.filter(r => r.office_name === "Лом" && r.status === "pending").length,
   };
 
+  // Upcoming requests in this office that still need a decision, soonest first
+  const [now] = useState(() => Date.now());
+  const pendingQueue = officeReservations
+    .filter(r => r.status === "pending" && new Date(r.start_at).getTime() >= now)
+    .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
+
   // Handle confirm reservation
   const handleConfirm = async (id: string) => {
     setActionError(null);
@@ -148,7 +155,7 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
   // Handle cancel reservation
   const handleCancel = async (id: string) => {
     setActionError(null);
-    const reason = prompt("Причина за отмяна (по избор):");
+    const reason = prompt("Причина за отмяна (по избор). Клиентът ще получи имейл, че резервацията е отменена.");
     // Pressing "Cancel" in the prompt aborts the cancellation.
     if (reason === null) return;
     startTransition(async () => {
@@ -196,20 +203,14 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
     });
   };
 
-  // Generate time slots for rescheduling
-  const timeSlots = [];
-  for (let hour = 9; hour <= 19; hour++) {
-    timeSlots.push(`${hour.toString().padStart(2, "0")}:00`);
-    if (hour < 19) {
-      timeSlots.push(`${hour.toString().padStart(2, "0")}:30`);
-    }
-  }
+  // Slot start times of the chosen day, from the salon's opening hours
+  const timeSlots = rescheduleDate ? getSlotTimes(format(rescheduleDate, "yyyy-MM-dd")) : [];
 
   return (
     <div className="space-y-6">
       {/* Office Tabs */}
       <div className="flex flex-col sm:flex-row gap-4">
-        {(["София", "Лом"] as OfficeName[]).map((office) => (
+        {OFFICES.map((office) => (
           <button
             key={office}
             onClick={() => setSelectedOffice(office)}
@@ -217,12 +218,12 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
               "flex items-center justify-between px-6 py-4 rounded-xl border-2 transition-all flex-1",
               selectedOffice === office
                 ? "border-gold bg-gold/10 shadow-md"
-                : "border-gray-200 hover:border-gold/50"
+                : "border-taupe-200 hover:border-gold/50"
             )}
           >
             <div className="flex items-center gap-3">
-              <MapPin className={cn("w-5 h-5", selectedOffice === office ? "text-gold" : "text-gray-400")} />
-              <span className={cn("font-medium", selectedOffice === office ? "text-gold" : "text-gray-700")}>
+              <MapPin className={cn("w-5 h-5", selectedOffice === office ? "text-gold" : "text-taupe-400")} />
+              <span className={cn("font-medium", selectedOffice === office ? "text-gold" : "text-taupe-700")}>
                 {office}
               </span>
             </div>
@@ -235,10 +236,60 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
         ))}
       </div>
 
+      {/* Requests waiting for a decision */}
+      {pendingQueue.length > 0 && (
+        <div className="bg-white rounded-2xl border-2 border-yellow-200 p-4 shadow-sm">
+          <h3 className="font-semibold text-lg mb-1">Чакат потвърждение ({pendingQueue.length})</h3>
+          <p className="text-sm text-taupe-500 mb-4">
+            Клиентът получава имейл, когато потвърдите или отмените резервацията.
+          </p>
+          <ul className="divide-y divide-taupe-100">
+            {pendingQueue.map((reservation) => (
+              <li key={reservation.id} className="flex flex-wrap items-center gap-3 py-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const date = parseISO(reservation.start_at);
+                    setSelectedDate(date);
+                    setCurrentMonth(date);
+                    setSelectedReservation(reservation);
+                  }}
+                  className="min-w-0 flex-1 text-left hover:text-gold"
+                >
+                  <span className="block font-medium">
+                    {format(parseISO(reservation.start_at), "d MMM, HH:mm", { locale: bg })} • {reservation.procedure.name}
+                  </span>
+                  <span className="block text-sm text-taupe-500">
+                    {reservation.customer_first_name} {reservation.customer_last_name} • {reservation.customer_phone}
+                  </span>
+                </button>
+                <Button size="sm" onClick={() => handleConfirm(reservation.id)} disabled={isPending}>
+                  <Check className="w-4 h-4 mr-1" />
+                  Потвърди
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleCancel(reservation.id)}
+                  disabled={isPending}
+                  className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Откажи
+                </Button>
+              </li>
+            ))}
+          </ul>
+          {actionError && !selectedReservation && (
+            <p className="mt-3 p-3 bg-red-50 rounded-lg text-sm text-red-700">{actionError}</p>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
+          <div className="bg-white rounded-2xl border border-taupe-200 p-4 shadow-sm">
             {/* The calendar's own caption shows the month and the previous/next buttons */}
             <Calendar
               mode="single"
@@ -264,7 +315,7 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
               }}
             />
 
-            <div className="mt-4 flex gap-4 text-xs text-gray-500">
+            <div className="mt-4 flex gap-4 text-xs text-taupe-500">
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded bg-gold/20" />
                 <span>Има резервации</span>
@@ -279,15 +330,15 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
 
         {/* Day Schedule */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
+          <div className="bg-white rounded-2xl border border-taupe-200 p-4 shadow-sm">
             <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
               <CalendarIcon className="w-5 h-5 text-gold" />
               {format(selectedDate, "EEEE, d MMMM yyyy", { locale: bg })}
-              <span className="text-gray-400 font-normal">• {selectedOffice}</span>
+              <span className="text-taupe-400 font-normal">• {selectedOffice}</span>
             </h3>
 
             {selectedDateReservations.length === 0 ? (
-              <div className="text-center py-12 text-gray-400">
+              <div className="text-center py-12 text-taupe-400">
                 <CalendarIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
                 <p>Няма резервации за този ден</p>
               </div>
@@ -309,7 +360,7 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <Clock className="w-4 h-4 text-gray-400" />
+                            <Clock className="w-4 h-4 text-taupe-400" />
                             <span className="font-semibold">
                               {format(parseISO(reservation.start_at), "HH:mm")} - {format(parseISO(reservation.end_at), "HH:mm")}
                             </span>
@@ -317,12 +368,12 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
                               {statusLabels[reservation.status]}
                             </span>
                           </div>
-                          <p className="font-medium text-gray-800">{reservation.procedure.name}</p>
-                          <p className="text-sm text-gray-500">
+                          <p className="font-medium text-cocoa">{reservation.procedure.name}</p>
+                          <p className="text-sm text-taupe-500">
                             {reservation.customer_first_name} {reservation.customer_last_name}
                           </p>
                         </div>
-                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                        <ChevronRight className="w-5 h-5 text-taupe-400" />
                       </div>
                     </div>
                   ))}
@@ -343,7 +394,7 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
               <div className="flex items-start justify-between mb-6">
                 <div>
                   <h3 className="text-xl font-semibold">{selectedReservation.procedure.name}</h3>
-                  <p className="text-gray-500">{selectedReservation.procedure.technician}</p>
+                  <p className="text-taupe-500">{selectedReservation.procedure.technician}</p>
                 </div>
                 <span className={cn("text-sm px-3 py-1 rounded-full border", statusColors[selectedReservation.status])}>
                   {statusLabels[selectedReservation.status]}
@@ -351,44 +402,44 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-center gap-3 text-gray-700">
+                <div className="flex items-center gap-3 text-taupe-700">
                   <CalendarIcon className="w-5 h-5 text-gold" />
                   <span>
                     {format(parseISO(selectedReservation.start_at), "EEEE, d MMMM yyyy", { locale: bg })}
                   </span>
                 </div>
-                <div className="flex items-center gap-3 text-gray-700">
+                <div className="flex items-center gap-3 text-taupe-700">
                   <Clock className="w-5 h-5 text-gold" />
                   <span>
                     {format(parseISO(selectedReservation.start_at), "HH:mm")} - {format(parseISO(selectedReservation.end_at), "HH:mm")}
-                    <span className="text-gray-400 ml-2">({selectedReservation.procedure.duration_minutes} мин.)</span>
+                    <span className="text-taupe-400 ml-2">({selectedReservation.procedure.duration_minutes} мин.)</span>
                   </span>
                 </div>
-                <div className="flex items-center gap-3 text-gray-700">
+                <div className="flex items-center gap-3 text-taupe-700">
                   <MapPin className="w-5 h-5 text-gold" />
                   <span>{selectedReservation.office_name}</span>
                 </div>
 
                 <hr className="my-4" />
 
-                <div className="flex items-center gap-3 text-gray-700">
+                <div className="flex items-center gap-3 text-taupe-700">
                   <User className="w-5 h-5 text-gold" />
                   <span>{selectedReservation.customer_first_name} {selectedReservation.customer_last_name}</span>
                 </div>
-                <div className="flex items-center gap-3 text-gray-700">
+                <div className="flex items-center gap-3 text-taupe-700">
                   <Phone className="w-5 h-5 text-gold" />
                   <a href={`tel:${selectedReservation.customer_phone}`} className="hover:text-gold">
                     {selectedReservation.customer_phone}
                   </a>
                 </div>
-                <div className="flex items-center gap-3 text-gray-700">
+                <div className="flex items-center gap-3 text-taupe-700">
                   <Mail className="w-5 h-5 text-gold" />
                   <a href={`mailto:${selectedReservation.customer_email}`} className="hover:text-gold">
                     {selectedReservation.customer_email}
                   </a>
                 </div>
                 {selectedReservation.customer_note && (
-                  <div className="flex items-start gap-3 text-gray-700">
+                  <div className="flex items-start gap-3 text-taupe-700">
                     <FileText className="w-5 h-5 text-gold mt-0.5" />
                     <span>{selectedReservation.customer_note}</span>
                   </div>
@@ -418,7 +469,7 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
 
               {/* Reschedule Form */}
               {isRescheduling && (
-                <div className="mt-6 p-4 bg-gray-50 rounded-xl">
+                <div className="mt-6 p-4 bg-taupe-100 rounded-xl">
                   <h4 className="font-medium mb-4">Изберете нова дата и час</h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -426,13 +477,13 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
                         mode="single"
                         selected={rescheduleDate || undefined}
                         onSelect={(date) => date && setRescheduleDate(date)}
-                        disabled={(date) => date < new Date()}
+                        disabled={(date) => date < startOfDay(new Date())}
                         locale={bg}
                         className="rounded-lg border"
                       />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500 mb-2">Час:</p>
+                      <p className="text-sm text-taupe-500 mb-2">Час:</p>
                       <div className="grid grid-cols-2 gap-1 max-h-64 overflow-y-auto">
                         {timeSlots.map((time) => (
                           <button

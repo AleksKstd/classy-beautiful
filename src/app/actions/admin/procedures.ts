@@ -83,18 +83,3 @@ export async function deleteProcedure(id: string): Promise<Result> {
   return { success: true };
 }
 
-export async function toggleProcedureActive(id: string, isActive: boolean): Promise<Result> {
-  await requireAdmin();
-  if (!idSchema.safeParse(id).success) return { success: false, error: "Невалидна процедура" };
-
-  const { error } = await createAdminClient()
-    .from("procedures")
-    .update({ is_active: Boolean(isActive) })
-    .eq("id", id);
-  if (error) {
-    console.error("Error toggling procedure:", error);
-    return { success: false, error: "Грешка при промяна" };
-  }
-  revalidatePublicPages();
-  return { success: true };
-}

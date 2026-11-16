@@ -110,20 +110,20 @@ export default function EditProcedurePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-taupe-100 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-gold" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-taupe-100 py-8">
       <div className="container mx-auto px-4 max-w-2xl">
         {/* Header */}
         <div className="mb-8">
           <Link
             href="/admin/dashboard"
-            className="inline-flex items-center gap-2 text-gray-600 hover:text-gold transition-colors mb-4"
+            className="inline-flex items-center gap-2 text-taupe-600 hover:text-gold transition-colors mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
             Назад към панела
@@ -139,7 +139,7 @@ export default function EditProcedurePage() {
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-200 space-y-6">
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-taupe-200 space-y-6">
           <div>
             <Label htmlFor="name">Име на процедурата *</Label>
             <Input
@@ -158,7 +158,7 @@ export default function EditProcedurePage() {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={4}
-              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold resize-none"
+              className="w-full mt-1 px-3 py-2 border border-taupe-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold resize-none"
               placeholder="Подробно описание на процедурата..."
             />
           </div>

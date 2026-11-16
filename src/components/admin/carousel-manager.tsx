@@ -196,17 +196,17 @@ export function CarouselManager({ images: initialImages, procedures }: CarouselM
       )}
 
       {validImages.length === 0 ? (
-        <div className="bg-white rounded-xl p-12 text-center border border-gray-200">
-          <p className="text-gray-500">Няма качени снимки</p>
+        <div className="bg-white rounded-xl p-12 text-center border border-taupe-200">
+          <p className="text-taupe-500">Няма качени снимки</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {validImages.map((image, index) => (
             <div
               key={image.id}
-              className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200"
+              className="bg-white rounded-xl overflow-hidden shadow-sm border border-taupe-200"
             >
-              <div className="aspect-video relative bg-gray-100">
+              <div className="aspect-video relative bg-taupe-100">
                 <img
                   src={getImageUrl(image.storage_path)}
                   alt={`Снимка ${index + 1}`}

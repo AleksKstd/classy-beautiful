@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
         `DTSTAMP:${stamp}`,
         `DTSTART:${formatIcsDate(new Date(res.start_at))}`,
         `DTEND:${formatIcsDate(new Date(res.end_at))}`,
-        `SUMMARY:${escapeIcsText(`${pending ? "⏳" : "✅"} ${procedure?.name || "Процедура"} - ${customer}`)}`,
+        `SUMMARY:${escapeIcsText(`${pending ? "[Чака] " : ""}${procedure?.name || "Процедура"} - ${customer}`)}`,
         `DESCRIPTION:${escapeIcsText(description)}`,
         `LOCATION:${escapeIcsText(`Classy & Beautiful - ${res.office_name}`)}`,
         `STATUS:${pending ? "TENTATIVE" : "CONFIRMED"}`,

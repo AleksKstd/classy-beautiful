@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { validateSlot } from "@/lib/booking";
-import { sendReservationConfirmation } from "@/lib/notifications";
+import { notifyCustomer } from "@/lib/notifications";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { zonedToUtc } from "@/lib/time";
 import { dateKeySchema, officeSchema, timeSchema } from "@/lib/validation";
@@ -22,16 +22,17 @@ export async function confirmReservation(reservationId: string): Promise<Result>
     .update({ status: "confirmed", confirmed_at: new Date().toISOString() })
     .eq("id", reservationId)
     .eq("status", "pending")
-    .select("id, confirmation_email_sent")
-    .single();
+    .select("id")
+    .maybeSingle();
 
-  if (error || !data) {
+  if (error) {
     return { success: false, error: "Грешка при потвърждаване на резервацията." };
   }
-
-  if (!data.confirmation_email_sent) {
-    await sendReservationConfirmation(reservationId);
+  if (!data) {
+    return { success: false, error: "Резервацията вече е потвърдена или отменена." };
   }
+
+  await notifyCustomer(reservationId, { kind: "confirmed" });
 
   revalidatePath("/admin/dashboard");
   return { success: true };
@@ -43,21 +44,32 @@ export async function cancelReservation(reservationId: string, reason?: string):
   const cleanReason = typeof reason === "string" ? reason.trim().slice(0, 500) : "";
 
   const supabase = createAdminClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("reservations")
     .update({
       status: "cancelled",
       cancelled_at: new Date().toISOString(),
       cancellation_reason: cleanReason || null,
     })
-    .eq("id", reservationId);
+    .eq("id", reservationId)
+    .in("status", ["pending", "confirmed"])
+    .select("id, start_at")
+    .maybeSingle();
 
   if (error) {
     return { success: false, error: "Грешка при отмяна на резервацията." };
   }
+  if (!data) {
+    return { success: false, error: "Резервацията вече е отменена." };
+  }
 
   // Cancelled bookings should not count towards "popular procedures" / statistics.
   await supabase.from("reservation_logs").delete().eq("reservation_id", reservationId);
+
+  // No email about visits that have already taken place.
+  if (new Date(data.start_at).getTime() > Date.now()) {
+    await notifyCustomer(reservationId, { kind: "cancelled", reason: cleanReason || null });
+  }
 
   revalidatePath("/admin/dashboard");
   revalidatePath("/");
@@ -88,6 +100,9 @@ export async function rescheduleReservation(
   if (!current) {
     return { success: false, error: "Резервацията не е намерена." };
   }
+  if (current.status === "cancelled") {
+    return { success: false, error: "Отменена резервация не може да бъде преместена." };
+  }
 
   const duration =
     (current.procedure as unknown as { duration_minutes: number } | null)?.duration_minutes ??
@@ -113,11 +128,16 @@ export async function rescheduleReservation(
       original_start_at: current.original_start_at || current.start_at,
       rescheduled_at: new Date().toISOString(),
     })
-    .eq("id", reservationId);
+    .eq("id", reservationId)
+    .in("status", ["pending", "confirmed"]);
 
   if (error) {
     if (error.code === "23P01") return { success: false, error: "Избраният час вече е зает." };
     return { success: false, error: "Грешка при преместване на резервацията." };
+  }
+
+  if (newStart.getTime() !== new Date(current.start_at).getTime()) {
+    await notifyCustomer(reservationId, { kind: "rescheduled", previousStartAt: current.start_at });
   }
 
   revalidatePath("/admin/dashboard");

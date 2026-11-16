@@ -43,6 +43,10 @@ provider (Vercel: Project > Settings > Environment Variables). See
 | `CALENDAR_FEED_TOKEN` | Same command, a different value |
 | `RESEND_API_KEY`, `EMAIL_FROM` | Optional, from [resend.com](https://resend.com) (verify your domain there) |
 
+`RESEND_API_KEY` is optional for the site to run, but without it **no emails are
+sent**: neither the "request received" / "confirmed" / "moved" / "cancelled"
+emails to customers nor the new-booking email to the salon.
+
 Without the admin variables the admin login is disabled; without
 `CALENDAR_FEED_TOKEN` the calendar feed is disabled.
 
@@ -50,6 +54,9 @@ Without the admin variables the admin login is disabled; without
 
 Go to `/admin` and log in with `ADMIN_USERNAME` and the password you hashed.
 
+- **Bookings tab:** every online booking starts as "Чакаща". Confirm or decline it
+  from the "Чакат потвърждение" list; the customer is emailed each time the
+  status changes (confirmed, moved, cancelled).
 - **Settings tab:** set the email that receives new-booking notifications.
 - **Google Calendar:** scan the QR code or use the link in the Settings tab.
   The link contains the secret `CALENDAR_FEED_TOKEN`; treat it like a password.

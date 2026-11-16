@@ -1,7 +1,14 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email/send";
-import { newReservationAdminEmail, reservationConfirmedEmail, type EmailReservation } from "@/lib/email/templates";
+import {
+  newReservationAdminEmail,
+  reservationCancelledEmail,
+  reservationConfirmedEmail,
+  reservationReceivedEmail,
+  reservationRescheduledEmail,
+  type EmailReservation,
+} from "@/lib/email/templates";
 import { getFinalPrice } from "@/lib/pricing";
 
 async function loadReservation(reservationId: string): Promise<EmailReservation | null> {
@@ -45,18 +52,35 @@ export async function notifyAdminNewReservation(reservationId: string): Promise<
   }
 }
 
-/** Sends the confirmation email once; marks it as sent only on success. */
-export async function sendReservationConfirmation(reservationId: string): Promise<void> {
+export type CustomerNotice =
+  | { kind: "received" }
+  | { kind: "confirmed" }
+  | { kind: "cancelled"; reason: string | null }
+  | { kind: "rescheduled"; previousStartAt: string };
+
+/**
+ * Emails the customer about the state of their booking. Never throws: a
+ * failed email must not undo the booking change that triggered it.
+ */
+export async function notifyCustomer(reservationId: string, notice: CustomerNotice): Promise<void> {
   try {
-    const supabase = createAdminClient();
     const reservation = await loadReservation(reservationId);
     if (!reservation || !reservation.customer_email) return;
 
-    const sent = await sendEmail({ to: reservation.customer_email, ...reservationConfirmedEmail(reservation) });
-    if (sent) {
-      await supabase.from("reservations").update({ confirmation_email_sent: true }).eq("id", reservationId);
+    const content =
+      notice.kind === "received"
+        ? reservationReceivedEmail(reservation)
+        : notice.kind === "confirmed"
+          ? reservationConfirmedEmail(reservation)
+          : notice.kind === "cancelled"
+            ? reservationCancelledEmail(reservation, notice.reason)
+            : reservationRescheduledEmail(reservation, notice.previousStartAt);
+
+    const sent = await sendEmail({ to: reservation.customer_email, ...content });
+    if (sent && notice.kind === "confirmed") {
+      await createAdminClient().from("reservations").update({ confirmation_email_sent: true }).eq("id", reservationId);
     }
   } catch (error) {
-    console.error("Failed to send confirmation email:", error);
+    console.error(`Failed to send "${notice.kind}" email:`, error);
   }
 }

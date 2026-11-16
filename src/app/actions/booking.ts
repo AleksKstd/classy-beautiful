@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { MAX_ACTIVE_BOOKINGS_PER_PHONE, type OfficeName } from "@/config/site";
 import { createPublicClient } from "@/lib/supabase/public";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { notifyAdminNewReservation } from "@/lib/notifications";
+import { notifyAdminNewReservation, notifyCustomer } from "@/lib/notifications";
 import { getFinalPrice } from "@/lib/pricing";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { fetchBookedRanges, fetchBookedRangesBetween, validateSlot } from "@/lib/booking";
@@ -38,6 +38,7 @@ export interface CreateReservationResult {
     durationMinutes: number;
     price: number;
     technician: string;
+    email: string;
     firstName: string;
     lastName: string;
   };
@@ -116,7 +117,9 @@ export async function createReservation(input: unknown): Promise<CreateReservati
     const ip = await getClientIp();
     const allowedIp = await rateLimit(`reserve:ip:${ip}`, 10, 60 * 60);
     const allowedPhone = await rateLimit(`reserve:phone:${phone}`, 5, 24 * 60 * 60);
-    if (!allowedIp || !allowedPhone) {
+    // The address receives an email for every request, so limit it as well.
+    const allowedEmail = await rateLimit(`reserve:email:${data.email.toLowerCase()}`, 5, 24 * 60 * 60);
+    if (!allowedIp || !allowedPhone || !allowedEmail) {
       return { success: false, error: "Твърде много опити за резервация. Моля, опитайте по-късно или се обадете." };
     }
 
@@ -190,7 +193,10 @@ export async function createReservation(input: unknown): Promise<CreateReservati
     });
     if (logError) console.error("Error logging reservation:", logError);
 
-    await notifyAdminNewReservation(reservation.id);
+    await Promise.all([
+      notifyAdminNewReservation(reservation.id),
+      notifyCustomer(reservation.id, { kind: "received" }),
+    ]);
 
     revalidatePath("/");
     revalidatePath("/admin/dashboard");
@@ -206,6 +212,7 @@ export async function createReservation(input: unknown): Promise<CreateReservati
         durationMinutes: procedure.duration_minutes,
         price: getFinalPrice(procedure),
         technician: procedure.technician,
+        email: data.email,
         firstName: data.firstName,
         lastName: data.lastName,
       },

@@ -50,9 +50,9 @@ export function AdminDashboard({
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-taupe-100">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <header className="bg-white border-b border-taupe-200 sticky top-0 z-10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
@@ -61,7 +61,7 @@ export function AdminDashboard({
               </div>
               <div>
                 <h1 className="text-lg font-bold">Админ панел</h1>
-                <p className="text-xs text-gray-500">Classy & Beautiful</p>
+                <p className="text-xs text-taupe-500">Classy & Beautiful</p>
               </div>
             </div>
 
@@ -76,7 +76,7 @@ export function AdminDashboard({
       </header>
 
       {/* Tabs Navigation */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-taupe-200">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex gap-2 overflow-x-auto" aria-label="Табове">
             {tabs.map((tab) => {
@@ -88,7 +88,7 @@ export function AdminDashboard({
                   className={`flex items-center gap-2 px-3 sm:px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
                     activeTab === tab.id
                       ? "border-gold text-gold"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                      : "border-transparent text-taupe-500 hover:text-taupe-700 hover:border-taupe-300"
                   }`}
                   aria-current={activeTab === tab.id ? "page" : undefined}
                 >

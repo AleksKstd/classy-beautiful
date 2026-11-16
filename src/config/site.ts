@@ -27,7 +27,7 @@ export const LEGAL = {
   /** Registered address */
   address: "[Адрес на управление]",
   /** Date the policy text was last changed */
-  privacyPolicyUpdated: "13.11.2026",
+  privacyPolicyUpdated: "16.11.2026",
 } as const;
 
 export const OFFICES = ["София", "Лом"] as const;

@@ -64,11 +64,23 @@ export function ReservationSuccess({
   return (
     <section className="py-12 md:py-20">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-xl">
-        <p className="eyebrow mb-4">Резервацията е изпратена</p>
-        <h1 className="mb-4 text-4xl italic sm:text-5xl">Очакваме ви, {reservation.firstName}.</h1>
-        <p className="mb-10 text-taupe-600">
-          Ще ви потвърдим часа по имейл. Ако нещо се промени, просто ни се обадете.
+        <p className="eyebrow mb-4">Очаква потвърждение</p>
+        <h1 className="mb-4 text-4xl italic sm:text-5xl">Благодарим ви, {reservation.firstName}.</h1>
+        <p className="mb-6 text-taupe-600">
+          Получихме заявката ви. Часът <strong className="font-semibold text-cocoa">все още не е потвърден</strong>:
+          ще го прегледаме и ще ви пишем веднага щом го потвърдим.
         </p>
+
+        <ol className="mb-10 space-y-3 border-l border-gold/60 pl-5 text-sm text-taupe-600">
+          <li>
+            <span className="block text-cocoa">Заявката е изпратена</span>
+            Изпратихме копие на <span className="break-all text-cocoa">{reservation.email}</span>.
+          </li>
+          <li>
+            <span className="block text-cocoa">Потвърждение от салона</span>
+            Ще получите втори имейл, когато часът бъде потвърден или ако се наложи промяна.
+          </li>
+        </ol>
 
         {/* Ticket-style summary */}
         <div className="rounded-2xl border border-gold/40 bg-blush-light">

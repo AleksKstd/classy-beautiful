@@ -46,12 +46,12 @@ export function ImageLinkEditor({ imageId, procedureId, caption, procedures }: I
 
   return (
     <div className="space-y-2">
-      <label className="block text-xs font-medium text-gray-600">
+      <label className="block text-xs font-medium text-taupe-600">
         Процедура на снимката
         <select
           value={selected}
           onChange={(e) => setSelected(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-2 py-2 text-sm"
+          className="mt-1 block w-full rounded-md border border-taupe-300 bg-white px-2 py-2 text-sm"
         >
           <option value="">- без връзка -</option>
           {Object.entries(byType).map(([type, options]) => (
@@ -65,14 +65,14 @@ export function ImageLinkEditor({ imageId, procedureId, caption, procedures }: I
           ))}
         </select>
       </label>
-      <label className="block text-xs font-medium text-gray-600">
+      <label className="block text-xs font-medium text-taupe-600">
         Надпис (по избор)
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
           maxLength={120}
           placeholder="напр. Резултат след 3 процедури"
-          className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-2 text-sm"
+          className="mt-1 block w-full rounded-md border border-taupe-300 px-2 py-2 text-sm"
         />
       </label>
       <Button size="sm" variant="outline" onClick={save} disabled={!dirty || saving} className="w-full">
