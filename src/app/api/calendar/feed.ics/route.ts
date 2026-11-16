@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
         `Телефон: ${res.customer_phone}`,
         `Имейл: ${res.customer_email}`,
         res.customer_note ? `Бележка: ${res.customer_note}` : "",
-        `Техник: ${procedure?.technician || "N/A"}`,
+        `Специалист: ${procedure?.technician || "-"}`,
       ]
         .filter(Boolean)
         .join("\n");

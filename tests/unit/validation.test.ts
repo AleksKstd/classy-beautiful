@@ -65,3 +65,15 @@ describe("reservation schemas", () => {
     expect(reservationRequestSchema.safeParse({ ...request, time: "25:00" }).success).toBe(false);
   });
 });
+
+describe("nameSchema abuse", () => {
+  it("rejects line breaks, dots and web addresses in names", async () => {
+    const { nameSchema } = await import("@/lib/validation");
+    for (const bad of ["Ivan\nVisit evil.com", "evil.com", "Иван\tПетров", "www.spam.bg"]) {
+      expect(nameSchema.safeParse(bad).success).toBe(false);
+    }
+    for (const good of ["Мария", "Ана-Мария", "Jean Luc", "O'Brien"]) {
+      expect(nameSchema.safeParse(good).success).toBe(true);
+    }
+  });
+});

@@ -35,7 +35,7 @@ export default function PrivacyPolicyPage() {
         <Section title="Кои сме ние">
           <p>
             Администратор на личните данни е {LEGAL.companyName}, ЕИК {LEGAL.eik}, със седалище и адрес на
-            управление {LEGAL.address} (&quot;Classy &amp; Beautiful&quot;, &quot;ние&quot;). За всички въпроси,
+            управление {LEGAL.address} („Classy &amp; Beautiful“, „ние“). За всички въпроси,
             свързани с личните данни, пишете ни на {mail} или се обадете на{" "}
             <a href={`tel:${BUSINESS.phone}`} className="underline underline-offset-2 hover:text-brand-black">
               {BUSINESS.phoneDisplay}
@@ -118,7 +118,7 @@ export default function PrivacyPolicyPage() {
             <li>достъп до данните, които пазим за вас;</li>
             <li>коригиране на неточни данни;</li>
             <li>изтриване на данните („правото да бъдеш забравен“);</li>
-            <li>ограничаване на обработването или да възразите срещу него;</li>
+            <li>ограничаване на обработването или възражение срещу него;</li>
             <li>получаване на данните в машинночетим формат (преносимост).</li>
           </ul>
           <p>Пишете ни на {mail} - ще отговорим до един месец.</p>

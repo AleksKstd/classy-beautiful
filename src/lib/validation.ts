@@ -29,7 +29,7 @@ export const nameSchema = z
   .trim()
   .min(2, "Минимум 2 символа")
   .max(50, "Максимум 50 символа")
-  .regex(/^\p{L}[\p{L}\p{M}\s'’.-]*$/u, "Позволени са само букви (кирилица или латиница), тире и интервал");
+  .regex(/^\p{L}[\p{L}\p{M} '’-]*$/u, "Позволени са само букви (кирилица или латиница), тире и интервал");
 
 const emailRegex =
   /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
@@ -43,7 +43,7 @@ export const emailSchema = z
 
 export const noteSchema = z.string().trim().max(500, "Максимум 500 символа").optional();
 
-export const officeSchema = z.enum(OFFICES, { error: "Изберете офис" });
+export const officeSchema = z.enum(OFFICES, { error: "Изберете салон" });
 
 export const dateKeySchema = z.string().refine(isDateKey, "Невалидна дата");
 export const timeSchema = z.string().refine(isTimeOfDay, "Невалиден час");
@@ -87,7 +87,7 @@ export const procedureInputSchema = z.object({
   duration_minutes: z.number().int().min(5, "Невалидна продължителност").max(600),
   price: z.number().min(0, "Невалидна цена").max(100000),
   type: z.string().trim().min(1, "Категорията е задължителна").max(100),
-  technician: z.string().trim().min(1, "Техникът е задължителен").max(100),
+  technician: z.string().trim().min(1, "Специалистът е задължителен").max(100),
   discount_percentage: z.number().min(0).max(100).nullish(),
 });
 

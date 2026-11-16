@@ -204,7 +204,17 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
   };
 
   // Slot start times of the chosen day, from the salon's opening hours
-  const timeSlots = rescheduleDate ? getSlotTimes(format(rescheduleDate, "yyyy-MM-dd")) : [];
+  // (the last entry is the closing time itself, when nothing can start)
+  const timeSlots = rescheduleDate ? getSlotTimes(format(rescheduleDate, "yyyy-MM-dd")).slice(0, -1) : [];
+
+  // Closing the details also discards a half-filled reschedule form and old errors
+  const closeDetails = () => {
+    setSelectedReservation(null);
+    setIsRescheduling(false);
+    setRescheduleDate(null);
+    setRescheduleTime("");
+    setActionError(null);
+  };
 
   return (
     <div className="space-y-6">
@@ -275,7 +285,7 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
                   className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
                 >
                   <X className="w-4 h-4 mr-1" />
-                  Откажи
+                  Отмени
                 </Button>
               </li>
             ))}
@@ -385,7 +395,7 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
 
       {/* Reservation Detail Modal */}
       {selectedReservation && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => !isPending && setSelectedReservation(null)}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => !isPending && closeDetails()}>
           <div 
             className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
@@ -564,7 +574,7 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
 
               <Button
                 variant="ghost"
-                onClick={() => setSelectedReservation(null)}
+                onClick={closeDetails}
                 disabled={isPending}
                 className="w-full mt-4"
               >

@@ -124,7 +124,7 @@ export function reservationReceivedEmail(r: EmailReservation): EmailContent {
   return build({
     subject: "Получихме заявката ви - Classy & Beautiful",
     status: "Очаква потвърждение",
-    heading: `Здравейте, ${r.customer_first_name}.`,
+    heading: `Здравейте, ${oneLine(r.customer_first_name)}.`,
     paragraphs: [
       "Получихме заявката ви за час. Тя все още не е потвърдена.",
       "Ще я прегледаме и ще ви изпратим втори имейл, щом часът бъде потвърден.",
@@ -139,7 +139,7 @@ export function reservationConfirmedEmail(r: EmailReservation): EmailContent {
   return build({
     subject: "Часът ви е потвърден - Classy & Beautiful",
     status: "Потвърдена",
-    heading: `Очакваме ви, ${r.customer_first_name}.`,
+    heading: `Очакваме ви, ${oneLine(r.customer_first_name)}.`,
     paragraphs: ["Вашата резервация е потвърдена. Елате около 5 минути по-рано, за да започнем навреме."],
     sections: [{ title: "Вашата резервация", rows: details(r) }],
     footer: CONTACT_FOOTER,
@@ -151,7 +151,7 @@ export function reservationCancelledEmail(r: EmailReservation, reason: string | 
   return build({
     subject: "Резервацията ви е отменена - Classy & Beautiful",
     status: "Отменена",
-    heading: `Здравейте, ${r.customer_first_name}.`,
+    heading: `Здравейте, ${oneLine(r.customer_first_name)}.`,
     paragraphs: [
       "За съжаление резервацията ви беше отменена и часът вече не е запазен за вас.",
       ...(reason ? [`Причина: ${reason}`] : []),
@@ -167,7 +167,7 @@ export function reservationRescheduledEmail(r: EmailReservation, previousStartAt
   return build({
     subject: "Часът ви е преместен - Classy & Beautiful",
     status: "Нов час",
-    heading: `Здравейте, ${r.customer_first_name}.`,
+    heading: `Здравейте, ${oneLine(r.customer_first_name)}.`,
     paragraphs: [
       `Преместихме часа ви. Предишният час беше ${formatDay(previousStartAt)}, ${formatTime(previousStartAt)}.`,
       "Ако новият час не ви е удобен, обадете ни се и ще намерим друг.",

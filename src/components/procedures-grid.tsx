@@ -23,7 +23,7 @@ const categoryOrder = [
   "Кола маска - мъже",
   "Естетични процедури - тяло",
   "Пилинг на тяло",
-  "Пресотерапия и лимфендренаж",
+  "Пресотерапия и лимфодренаж",
 ];
 
 // Section groupings - hierarchical structure
@@ -40,7 +40,7 @@ const sectionGroups: Record<string, { main: string; sub?: string }> = {
   "Кола маска - мъже": { main: "Епилация", sub: "Епилация мъже" },
   "Естетични процедури - тяло": { main: "Тяло" },
   "Пилинг на тяло": { main: "Тяло" },
-  "Пресотерапия и лимфендренаж": { main: "Тяло" },
+  "Пресотерапия и лимфодренаж": { main: "Тяло" },
 };
 
 // Helper to get section info for any type (handles custom types)

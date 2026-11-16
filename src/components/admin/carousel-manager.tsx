@@ -61,7 +61,7 @@ export function CarouselManager({ images: initialImages, procedures }: CarouselM
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      alert("Моля изберете изображение");
+      alert("Моля, изберете изображение");
       return;
     }
 

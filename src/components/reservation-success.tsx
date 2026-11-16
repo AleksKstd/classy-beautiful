@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CalendarPlus } from "lucide-react";
-import { format, parseISO } from "date-fns";
-import { bg } from "date-fns/locale";
+import { parseISO } from "date-fns";
 import { formatPrice, formatDuration } from "@/lib/utils";
-import { toTimeOfDay } from "@/lib/time";
+import { formatInSalonTz, toTimeOfDay } from "@/lib/time";
 import { buildIcsCalendar, escapeIcsText, formatIcsDate } from "@/lib/ics";
 import type { CreateReservationResult } from "@/app/actions/booking";
 import { BUSINESS, OFFICE_DETAILS, mapsUrl, type OfficeName } from "@/config/site";
@@ -53,7 +52,7 @@ export function ReservationSuccess({
   const rows = [
     { label: "Салон", value: address ? `${reservation.officeName}, ${address}` : reservation.officeName },
     { label: "Процедура", value: reservation.procedureName, sub: `Специалист: ${reservation.technician}` },
-    { label: "Дата", value: format(startDate, "EEEE, d MMMM yyyy", { locale: bg }) },
+    { label: "Дата", value: formatInSalonTz(startDate, { weekday: "long", day: "numeric", month: "long", year: "numeric" }) },
     {
       label: "Час",
       value: `${toTimeOfDay(startDate)} - ${toTimeOfDay(parseISO(reservation.endAt))}`,
@@ -74,7 +73,7 @@ export function ReservationSuccess({
         <ol className="mb-10 space-y-3 border-l border-gold/60 pl-5 text-sm text-taupe-600">
           <li>
             <span className="block text-cocoa">Заявката е изпратена</span>
-            Изпратихме копие на <span className="break-all text-cocoa">{reservation.email}</span>.
+            Ще получите копие на <span className="break-all text-cocoa">{reservation.email}</span>.
           </li>
           <li>
             <span className="block text-cocoa">Потвърждение от салона</span>

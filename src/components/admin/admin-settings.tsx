@@ -199,7 +199,7 @@ export function AdminSettings({
             </div>
             
             <p className="text-sm text-taupe-500 text-center max-w-xs">
-              Сканирайте QR кода с телефона си за да добавите календара автоматично
+              Сканирайте QR кода с телефона си, за да добавите календара автоматично
             </p>
           </div>
 

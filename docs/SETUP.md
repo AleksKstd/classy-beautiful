@@ -9,12 +9,13 @@
    3. `supabase/migrations/002_security_hardening.sql`
    4. `supabase/migrations/003_data_retention.sql` (nightly clean-up promised in the privacy policy)
    5. `supabase/migrations/004_gallery_links.sql` (link photos to procedures for the gallery)
+   6. `supabase/migrations/005_spelling_fixes.sql` (only needed for a database seeded before this fix)
 3. For a **new, empty** project only: run `supabase/seed.sql` to load the procedure catalogue.
    Never run it on a database that already has reservations.
 
 ### Existing project (upgrading)
 
-Run `002_security_hardening.sql`, then `003_data_retention.sql`, then `004_gallery_links.sql`. All are safe to re-run. If it stops with an
+Run `002_security_hardening.sql`, then `003_data_retention.sql`, then `004_gallery_links.sql`, then `005_spelling_fixes.sql`. All are safe to re-run. If it stops with an
 error about the `reservations_no_overlap` constraint, two existing active
 bookings overlap: the file contains a query that lists them. Cancel one of each
 pair and run the file again.

@@ -54,7 +54,7 @@ tests/
 - **Bookings.** The server re-checks every booking against opening hours,
   closures, existing bookings and the booking window (`lib/booking.ts`), and a
   database exclusion constraint makes double bookings impossible even under
-  concurrency. Booking attempts are rate-limited per IP and per phone number.
+  concurrency. Booking attempts are rate-limited per IP, per phone number and per email address.
 - **Output.** Emails escape all customer data; the calendar feed escapes
   iCalendar text and requires a secret token. Security headers (CSP,
   frame-ancestors, HSTS, ...) are set in `next.config.mjs`.
@@ -66,9 +66,10 @@ tests/
    and builds the slot grid with `buildDaySlots` from `lib/slots.ts`.
 3. `createReservation` validates the input, applies rate limits, re-runs the
    same slot rules on the server, inserts the reservation and an analytics log,
-   and emails the admin (if enabled).
-4. The admin confirms, cancels or reschedules from the dashboard; confirming
-   emails the customer.
+   emails the admin (if enabled) and emails the customer that the request
+   is waiting for confirmation.
+4. The admin confirms, cancels or reschedules from the dashboard; each change
+   emails the customer the new status.
 
 All times are salon (Europe/Sofia) wall-clock times regardless of the
 server's or visitor's time zone.
@@ -86,7 +87,7 @@ per-phone booking limit are in `src/config/site.ts`.
   (`localStorage`, key `cb_customer_details`) only when the box is ticked.
 - The only cookie is the admin session cookie (staff only).
 - Migration 003 anonymises reservations 24 months after the visit and deletes
-  rate-limit records (IP addresses) after 24 hours, as the privacy policy states.
+  rate-limit records (IP addresses, phone numbers, email addresses) after 24 hours, as the privacy policy states.
 
 ## Design system
 

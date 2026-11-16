@@ -22,7 +22,7 @@ export async function confirmReservation(reservationId: string): Promise<Result>
     .update({ status: "confirmed", confirmed_at: new Date().toISOString() })
     .eq("id", reservationId)
     .eq("status", "pending")
-    .select("id")
+    .select("id, start_at")
     .maybeSingle();
 
   if (error) {
@@ -32,7 +32,10 @@ export async function confirmReservation(reservationId: string): Promise<Result>
     return { success: false, error: "Резервацията вече е потвърдена или отменена." };
   }
 
-  await notifyCustomer(reservationId, { kind: "confirmed" });
+  // No "we are expecting you" email for a visit that has already passed.
+  if (new Date(data.start_at).getTime() > Date.now()) {
+    await notifyCustomer(reservationId, { kind: "confirmed" });
+  }
 
   revalidatePath("/admin/dashboard");
   return { success: true };
@@ -120,7 +123,7 @@ export async function rescheduleReservation(
   const newStart = zonedToUtc(dateKey, time);
   const newEnd = new Date(newStart.getTime() + duration * 60000);
 
-  const { error } = await supabase
+  const { data: moved, error } = await supabase
     .from("reservations")
     .update({
       start_at: newStart.toISOString(),
@@ -129,11 +132,16 @@ export async function rescheduleReservation(
       rescheduled_at: new Date().toISOString(),
     })
     .eq("id", reservationId)
-    .in("status", ["pending", "confirmed"]);
+    .in("status", ["pending", "confirmed"])
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     if (error.code === "23P01") return { success: false, error: "Избраният час вече е зает." };
     return { success: false, error: "Грешка при преместване на резервацията." };
+  }
+  if (!moved) {
+    return { success: false, error: "Отменена резервация не може да бъде преместена." };
   }
 
   if (newStart.getTime() !== new Date(current.start_at).getTime()) {

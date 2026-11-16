@@ -19,7 +19,7 @@ export function PopularProcedures({ procedures }: PopularProceduresProps) {
         <SectionHeading
           eyebrow="Най-търсени"
           title="Любими процедури"
-          description="Най-резервираното от нашите клиенти през последния месец."
+          description="Най-често резервираните процедури през последния месец."
         />
 
         <ol className="overflow-hidden rounded-2xl bg-blush-light px-2 sm:px-6">

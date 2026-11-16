@@ -9,7 +9,7 @@ export async function adminLogin(formData: FormData): Promise<{ success: false; 
   const password = String(formData.get("password") ?? "");
 
   if (!username || !password) {
-    return { success: false, error: "Моля въведете потребителско име и парола" };
+    return { success: false, error: "Моля, въведете потребителско име и парола" };
   }
 
   // 5 attempts per 15 minutes per IP

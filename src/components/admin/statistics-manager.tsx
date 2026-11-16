@@ -184,7 +184,7 @@ export function StatisticsManager({ procedures, reservationLogs }: StatisticsMan
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-800">
             <strong>Забележка:</strong> Все още няма данни за резервации. Популярността ще се изчислява 
-            автоматично след като започнат да се правят резервации през сайта.
+            автоматично, след като започнат да се правят резервации през сайта.
           </p>
         </div>
       )}

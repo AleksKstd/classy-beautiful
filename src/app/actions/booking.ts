@@ -25,6 +25,8 @@ import type { Procedure } from "@/types/database";
  * returns only non-sensitive data.
  */
 
+const TOO_MANY_ATTEMPTS = "Твърде много опити за резервация. Моля, опитайте по-късно или се обадете.";
+
 export interface CreateReservationResult {
   success: boolean;
   error?: string;
@@ -116,12 +118,7 @@ export async function createReservation(input: unknown): Promise<CreateReservati
   try {
     const ip = await getClientIp();
     const allowedIp = await rateLimit(`reserve:ip:${ip}`, 10, 60 * 60);
-    const allowedPhone = await rateLimit(`reserve:phone:${phone}`, 5, 24 * 60 * 60);
-    // The address receives an email for every request, so limit it as well.
-    const allowedEmail = await rateLimit(`reserve:email:${data.email.toLowerCase()}`, 5, 24 * 60 * 60);
-    if (!allowedIp || !allowedPhone || !allowedEmail) {
-      return { success: false, error: "Твърде много опити за резервация. Моля, опитайте по-късно или се обадете." };
-    }
+    if (!allowedIp) return { success: false, error: TOO_MANY_ATTEMPTS };
 
     const supabase = createAdminClient();
 
@@ -155,6 +152,13 @@ export async function createReservation(input: unknown): Promise<CreateReservati
       durationMinutes: procedure.duration_minutes,
     });
     if (slotError) return { success: false, error: slotError };
+
+    // Counted only for requests that are otherwise valid, so a failed attempt
+    // (e.g. the time was just taken) does not use up the customer's allowance.
+    // The email address is limited because every request sends it an email.
+    const allowedPhone = await rateLimit(`reserve:phone:${phone}`, 5, 24 * 60 * 60);
+    const allowedEmail = await rateLimit(`reserve:email:${data.email.toLowerCase()}`, 5, 24 * 60 * 60);
+    if (!allowedPhone || !allowedEmail) return { success: false, error: TOO_MANY_ATTEMPTS };
 
     const startAt = zonedToUtc(data.date, data.time);
     const endAt = new Date(startAt.getTime() + procedure.duration_minutes * 60000);

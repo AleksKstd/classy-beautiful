@@ -31,7 +31,7 @@ const PREDEFINED_TYPES = [
   "Кола маска - мъже",
   "Естетични процедури - тяло",
   "Пилинг на тяло",
-  "Пресотерапия и лимфендренаж",
+  "Пресотерапия и лимфодренаж",
 ];
 
 export function ProceduresManager({ procedures: initialProcedures }: ProceduresManagerProps) {
@@ -256,7 +256,7 @@ export function ProceduresManager({ procedures: initialProcedures }: ProceduresM
               </div>
 
               <div>
-                <Label htmlFor="price">Цена (eur) *</Label>
+                <Label htmlFor="price">Цена (€) *</Label>
                 <Input
                   id="price"
                   type="number"
