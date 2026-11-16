@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { BUSINESS, LEGAL } from "@/config/site";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Политика за поверителност",
-  description: "Как Classy & Beautiful събира, използва и пази личните ви данни.",
-  alternates: { canonical: "/poveritelnost" },
-};
+  description:
+    "Как Classy & Beautiful събира, използва и пази личните ви данни при онлайн резервация.",
+  path: "/poveritelnost",
+});
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (

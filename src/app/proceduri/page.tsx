@@ -1,21 +1,25 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
+import { BreadcrumbSchema, PriceListSchema } from "@/components/seo/structured-data";
 import { ProceduresGrid } from "@/components/procedures-grid";
 import { getActiveProcedures } from "@/lib/data/procedures";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Процедури и цени",
   description:
-    "Всички процедури на Classy & Beautiful с цени и продължителност - нокти, мигли и вежди, терапии за лице, лазерна епилация и кола маска.",
-  alternates: { canonical: "/proceduri" },
-};
+    "Цени и продължителност на всички процедури в Classy & Beautiful: маникюр и педикюр, мигли и вежди, терапии за лице, лазерна епилация и кола маска в София и Лом.",
+  path: "/proceduri",
+});
 
 export default async function ProceduresPage() {
   const procedures = await getActiveProcedures();
 
   return (
     <div className="min-h-screen bg-white">
+      <BreadcrumbSchema name="Процедури и цени" path="/proceduri" />
+      <PriceListSchema procedures={procedures} />
       {/* Clean Header */}
       <section className="relative overflow-hidden pt-16 pb-12 mb-10 bg-gradient-to-b from-blush-light via-ivory to-white">
         <div aria-hidden="true" className="drops-layer">

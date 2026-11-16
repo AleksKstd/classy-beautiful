@@ -1,6 +1,14 @@
-import { BUSINESS, OPENING_HOURS, SITE_URL as siteUrl } from "@/config/site";
+import { BUSINESS, OFFICES, OFFICE_DETAILS, OPENING_HOURS, SITE_URL, mapsUrl, type OfficeName } from "@/config/site";
+import { getFinalPrice } from "@/lib/pricing";
+import type { Procedure } from "@/types/database";
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const ORGANIZATION_ID = `${SITE_URL}/#organization`;
+
+const SALON_SEO: Record<OfficeName, { slug: string; region: string }> = {
+  "София": { slug: "sofia", region: "София-град" },
+  "Лом": { slug: "lom", region: "Монтана" },
+};
 
 /** Groups identical opening hours into schema.org OpeningHoursSpecification entries. */
 function openingHoursSpecification() {
@@ -17,107 +25,132 @@ function openingHoursSpecification() {
   });
 }
 
-/** Safe JSON for an inline <script>: prevents "</script>" breaking out. */
-function jsonLd(data: unknown) {
-  return { __html: JSON.stringify(data).replace(/</g, "\\u003c") };
-}
-
-export function LocalBusinessSchema() {
-  
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "BeautySalon",
-    "@id": `${siteUrl}/#organization`,
-    name: BUSINESS.name,
-    alternateName: BUSINESS.alternateName,
-    description: "Професионален козметичен салон предлагащ маникюр, педикюр, лазерна епилация, мигли, вежди и терапии за лице в София и Лом.",
-    url: siteUrl,
-    logo: `${siteUrl}/logo.svg`,
-    telephone: BUSINESS.phone,
-    email: BUSINESS.email,
-    priceRange: "$$",
-    currenciesAccepted: "EUR",
-    paymentAccepted: "Cash, Card",
-    openingHoursSpecification: openingHoursSpecification(),
-    address: [
-      {
-        "@type": "PostalAddress",
-        addressLocality: "София",
-        addressRegion: "София-град",
-        addressCountry: "BG",
-      },
-      {
-        "@type": "PostalAddress",
-        addressLocality: "Лом",
-        addressRegion: "Монтана",
-        addressCountry: "BG",
-      },
-    ],
-    areaServed: [
-      { "@type": "City", name: "София" },
-      { "@type": "City", name: "Лом" },
-    ],
-    hasOfferCatalog: {
-      "@type": "OfferCatalog",
-      name: "Козметични услуги",
-      itemListElement: [
-        {
-          "@type": "OfferCatalog",
-          name: "Маникюр и педикюр",
-          itemListElement: [
-            { "@type": "Offer", itemOffered: { "@type": "Service", name: "Класически маникюр" } },
-            { "@type": "Offer", itemOffered: { "@type": "Service", name: "Гел лак маникюр" } },
-            { "@type": "Offer", itemOffered: { "@type": "Service", name: "Педикюр" } },
-          ],
-        },
-        {
-          "@type": "OfferCatalog",
-          name: "Лазерна епилация",
-          itemListElement: [
-            { "@type": "Offer", itemOffered: { "@type": "Service", name: "Лазерна епилация жени" } },
-            { "@type": "Offer", itemOffered: { "@type": "Service", name: "Лазерна епилация мъже" } },
-          ],
-        },
-        {
-          "@type": "OfferCatalog",
-          name: "Мигли и вежди",
-          itemListElement: [
-            { "@type": "Offer", itemOffered: { "@type": "Service", name: "Ламиниране на мигли" } },
-            { "@type": "Offer", itemOffered: { "@type": "Service", name: "Оформяне на вежди" } },
-          ],
-        },
-      ],
-    },
-    sameAs: [BUSINESS.facebook, BUSINESS.instagram],
-  };
-
+function JsonLd({ data }: { data: unknown }) {
+  // Escaping "<" keeps a "</script>" inside the data from closing the tag.
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={jsonLd(structuredData)}
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }}
     />
   );
 }
 
-export function WebsiteSchema() {
-  
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "@id": `${siteUrl}/#website`,
-    url: siteUrl,
-    name: "Classy & Beautiful",
-    description: "Елегантен салон за красота в София и Лом",
-    publisher: {
-      "@id": `${siteUrl}/#organization`,
-    },
-    inLanguage: "bg-BG",
-  };
+/** The company, one BeautySalon per location, and the website. Rendered on every page. */
+export function SiteSchema() {
+  const salons = OFFICES.map((office) => {
+    const { slug, region } = SALON_SEO[office];
+    const address = OFFICE_DETAILS[office].address;
+    const map = mapsUrl(office);
+    return {
+      "@type": "BeautySalon",
+      "@id": `${SITE_URL}/#salon-${slug}`,
+      name: `${BUSINESS.name} ${office}`,
+      url: SITE_URL,
+      image: `${SITE_URL}/og-image.jpg`,
+      telephone: BUSINESS.phone,
+      email: BUSINESS.email,
+      priceRange: "€€",
+      currenciesAccepted: "EUR",
+      parentOrganization: { "@id": ORGANIZATION_ID },
+      openingHoursSpecification: openingHoursSpecification(),
+      address: {
+        "@type": "PostalAddress",
+        ...(address ? { streetAddress: address } : {}),
+        addressLocality: office,
+        addressRegion: region,
+        addressCountry: "BG",
+      },
+      areaServed: { "@type": "City", name: office },
+      ...(map ? { hasMap: map } : {}),
+      potentialAction: {
+        "@type": "ReserveAction",
+        target: `${SITE_URL}/rezervacii`,
+        name: "Запази час",
+      },
+    };
+  });
 
   return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={jsonLd(structuredData)}
+    <JsonLd
+      data={{
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": ORGANIZATION_ID,
+            name: BUSINESS.name,
+            alternateName: BUSINESS.alternateName,
+            url: SITE_URL,
+            logo: `${SITE_URL}/logo.svg`,
+            telephone: BUSINESS.phone,
+            email: BUSINESS.email,
+            sameAs: [BUSINESS.facebook, BUSINESS.instagram],
+          },
+          ...salons,
+          {
+            "@type": "WebSite",
+            "@id": `${SITE_URL}/#website`,
+            url: SITE_URL,
+            name: BUSINESS.name,
+            description: "Салон за красота в София и Лом",
+            publisher: { "@id": ORGANIZATION_ID },
+            inLanguage: "bg-BG",
+          },
+        ],
+      }}
+    />
+  );
+}
+
+/** Breadcrumb trail for a page directly under the home page. */
+export function BreadcrumbSchema({ name, path }: { name: string; path: string }) {
+  return (
+    <JsonLd
+      data={{
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Начало", item: SITE_URL },
+          { "@type": "ListItem", position: 2, name, item: `${SITE_URL}${path}` },
+        ],
+      }}
+    />
+  );
+}
+
+/** The real price list, grouped by category, so search engines can read services and prices. */
+export function PriceListSchema({ procedures }: { procedures: Procedure[] }) {
+  if (procedures.length === 0) return null;
+
+  const byType = new Map<string, Procedure[]>();
+  for (const procedure of procedures) {
+    byType.set(procedure.type, [...(byType.get(procedure.type) ?? []), procedure]);
+  }
+
+  return (
+    <JsonLd
+      data={{
+        "@context": "https://schema.org",
+        "@type": "OfferCatalog",
+        "@id": `${SITE_URL}/proceduri#cenorazpis`,
+        name: "Процедури и цени",
+        url: `${SITE_URL}/proceduri`,
+        provider: { "@id": ORGANIZATION_ID },
+        itemListElement: Array.from(byType, ([type, items]) => ({
+          "@type": "OfferCatalog",
+          name: type,
+          itemListElement: items.map((procedure) => ({
+            "@type": "Offer",
+            price: getFinalPrice(procedure).toFixed(2),
+            priceCurrency: "EUR",
+            itemOffered: {
+              "@type": "Service",
+              name: procedure.name,
+              provider: { "@id": ORGANIZATION_ID },
+            },
+          })),
+        })),
+      }}
     />
   );
 }

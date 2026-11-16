@@ -1,16 +1,19 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { BreadcrumbSchema } from "@/components/seo/structured-data";
 import { GalleryGrid } from "@/components/gallery-grid";
 import { getCarouselImages } from "@/lib/data/carousel";
 
 export const revalidate = 600;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Галерия",
-  description: "Снимки от салона и резултати от процедурите на Classy & Beautiful в София и Лом.",
-  alternates: { canonical: "/galeriya" },
-};
+  description:
+    "Снимки от салона и резултати от процедурите на Classy & Beautiful в София и Лом: маникюр, мигли, вежди и терапии за лице.",
+  path: "/galeriya",
+});
 
 export default async function GalleryPage() {
   const images = await getCarouselImages().catch((error) => {
@@ -20,6 +23,7 @@ export default async function GalleryPage() {
 
   return (
     <div className="min-h-screen">
+      <BreadcrumbSchema name="Галерия" path="/galeriya" />
       <section className="relative overflow-hidden pt-16 pb-12 mb-10 bg-gradient-to-b from-blush-light via-ivory to-white">
         <div aria-hidden="true" className="drops-layer">
           <div aria-hidden="true" className="absolute -top-24 -right-20 h-[26rem] w-[26rem] rounded-full bg-blush/70 blur-3xl" />

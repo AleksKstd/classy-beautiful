@@ -41,6 +41,7 @@ provider (Vercel: Project > Settings > Environment Variables). See
 | `ADMIN_PASSWORD_HASH` | `npm run hash-password -- "your new password"` |
 | `ADMIN_SESSION_SECRET` | `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 | `CALENDAR_FEED_TOKEN` | Same command, a different value |
+| `GOOGLE_SITE_VERIFICATION` | Optional, Google Search Console > Add property > HTML tag (the `content` value) |
 | `RESEND_API_KEY`, `EMAIL_FROM` | Optional, from [resend.com](https://resend.com) (verify your domain there) |
 
 `RESEND_API_KEY` is optional for the site to run, but without it **no emails are

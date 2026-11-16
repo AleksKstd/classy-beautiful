@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Запази час",
+export const metadata: Metadata = pageMetadata({
+  title: "Запази час онлайн",
   description:
-    "Резервирайте час онлайн в Classy & Beautiful - изберете салон в София или Лом, процедура, дата и час.",
-  alternates: { canonical: "/rezervacii" },
-};
+    "Запазете час онлайн в салон за красота Classy & Beautiful: изберете салон в София или Лом, процедура, дата и час. Потвърждение по имейл.",
+  path: "/rezervacii",
+});
 
 export default function ReservationsLayout({ children }: { children: React.ReactNode }) {
   return children;
