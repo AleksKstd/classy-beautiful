@@ -7,16 +7,17 @@ export function Footer() {
   return (
     <footer className="bg-cocoa text-white/80 border-t-4 border-gold/70">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-[1.2fr_1fr_1fr_1fr]">
+        {/* Centred in one column on phones, left-aligned columns from tablets up */}
+        <div className="grid grid-cols-1 gap-10 text-center md:grid-cols-2 md:text-left lg:grid-cols-[1.2fr_1fr_1fr_1fr]">
           <div>
-            <Link href="/" aria-label="Начало" className="relative block h-16 w-28">
+            <Link href="/" aria-label="Начало" className="relative mx-auto block h-16 w-28 md:mx-0">
               {/* The logo is black; invert it for the dark footer */}
-              <Image src="/logo.svg" alt="Classy & Beautiful" fill className="object-contain object-left brightness-0 invert" />
+              <Image src="/logo.svg" alt="Classy & Beautiful" fill className="object-contain md:object-left brightness-0 invert" />
             </Link>
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/70">
+            <p className="mx-auto mt-4 max-w-xs text-sm leading-relaxed text-white/70 md:mx-0">
               Салон за красота в София и Лом. Процедури за лице, тяло и нокти.
             </p>
-            <div className="mt-6 flex gap-2">
+            <div className="mt-6 flex justify-center gap-2 md:justify-start">
               <a
                 href={BUSINESS.instagram}
                 target="_blank"
@@ -77,9 +78,9 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 pt-6 border-t border-white/15 flex flex-col sm:flex-row gap-2 sm:justify-between text-xs text-white/60">
+        <div className="mt-12 pt-6 border-t border-white/15 flex flex-col items-center gap-3 text-center md:flex-row md:justify-between md:text-left text-xs text-white/60">
           <p>© {new Date().getFullYear()} CB Classy &amp; Beautiful</p>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <div className="flex flex-col items-center gap-3 md:flex-row md:gap-6">
             <Link href="/poveritelnost" className="hover:text-white hover:underline underline-offset-4">
               Политика за поверителност
             </Link>
