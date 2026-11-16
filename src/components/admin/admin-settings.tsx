@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,16 +19,25 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+export interface CalendarFeedInfo {
+  feedUrl: string;
+  googleUrl: string;
+  qrDataUrl: string;
+}
+
 interface AdminSettingsProps {
   adminEmail: string;
   notificationEnabled: boolean;
   onSave: (settings: { adminEmail: string; notificationEnabled: boolean }) => Promise<{ success: boolean; error?: string }>;
+  /** null when CALENDAR_FEED_TOKEN is not configured on the server */
+  calendarFeed: CalendarFeedInfo | null;
 }
 
 export function AdminSettings({ 
   adminEmail: initialEmail, 
   notificationEnabled: initialEnabled,
-  onSave 
+  onSave,
+  calendarFeed,
 }: AdminSettingsProps) {
   const [adminEmail, setAdminEmail] = useState(initialEmail);
   const [notificationEnabled, setNotificationEnabled] = useState(initialEnabled);
@@ -36,20 +45,18 @@ export function AdminSettings({
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Google Calendar subscription URL - this creates an ICS feed that Google Calendar can subscribe to
-  const calendarFeedUrl = typeof window !== "undefined" 
-    ? `${window.location.origin}/api/calendar/feed.ics`
-    : "";
-
-  // Google Calendar add URL for subscribing to the calendar
-  const googleCalendarSubscribeUrl = calendarFeedUrl 
-    ? `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(calendarFeedUrl)}`
-    : "";
+  // Private ICS feed (protected by a secret token) that Google Calendar can subscribe to
+  const calendarFeedUrl = calendarFeed?.feedUrl ?? "";
+  const googleCalendarSubscribeUrl = calendarFeed?.googleUrl ?? "";
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave({ adminEmail, notificationEnabled });
+      const result = await onSave({ adminEmail, notificationEnabled });
+      if (!result.success) {
+        alert(result.error || "Грешка при запазване");
+        return;
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } finally {
@@ -71,19 +78,19 @@ export function AdminSettings({
         </div>
         <div>
           <h2 className="text-xl font-semibold">Настройки</h2>
-          <p className="text-sm text-gray-500">Имейл известия и Google Calendar</p>
+          <p className="text-sm text-taupe-500">Имейл известия и Google Calendar</p>
         </div>
       </div>
 
       {/* Email Notifications Section */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+      <div className="bg-white rounded-2xl border border-taupe-200 p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
             <Mail className="w-4 h-4 text-blue-600" />
           </div>
           <div>
             <h3 className="font-semibold">Имейл известия</h3>
-            <p className="text-sm text-gray-500">Получавайте имейл при нова резервация</p>
+            <p className="text-sm text-taupe-500">Получавайте имейл при нова резервация</p>
           </div>
         </div>
 
@@ -98,17 +105,17 @@ export function AdminSettings({
               placeholder="admin@example.com"
               className="mt-1"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-taupe-500 mt-1">
               На този имейл ще получавате известия за нови резервации
             </p>
           </div>
 
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+          <div className="flex items-center justify-between p-4 bg-taupe-100 rounded-xl">
             <div className="flex items-center gap-3">
-              <Bell className={cn("w-5 h-5", notificationEnabled ? "text-green-500" : "text-gray-400")} />
+              <Bell className={cn("w-5 h-5", notificationEnabled ? "text-green-500" : "text-taupe-400")} />
               <div>
                 <p className="font-medium">Известия за нови резервации</p>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-taupe-500">
                   {notificationEnabled ? "Включени" : "Изключени"}
                 </p>
               </div>
@@ -117,7 +124,7 @@ export function AdminSettings({
               onClick={() => setNotificationEnabled(!notificationEnabled)}
               className={cn(
                 "relative w-12 h-6 rounded-full transition-colors",
-                notificationEnabled ? "bg-green-500" : "bg-gray-300"
+                notificationEnabled ? "bg-green-500" : "bg-taupe-300"
               )}
             >
               <div
@@ -156,36 +163,43 @@ export function AdminSettings({
       </div>
 
       {/* Google Calendar Section */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+      <div className="bg-white rounded-2xl border border-taupe-200 p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
             <Calendar className="w-4 h-4 text-green-600" />
           </div>
           <div>
             <h3 className="font-semibold">Google Calendar интеграция</h3>
-            <p className="text-sm text-gray-500">Синхронизирайте резервациите с вашия календар</p>
+            <p className="text-sm text-taupe-500">Синхронизирайте резервациите с вашия календар</p>
           </div>
         </div>
 
         <div className="space-y-6">
           {/* QR Code for easy mobile setup */}
-          <div className="flex flex-col items-center p-6 bg-gray-50 rounded-xl">
+          <div className="flex flex-col items-center p-6 bg-taupe-100 rounded-xl">
             <div className="flex items-center gap-2 mb-4">
               <QrCode className="w-5 h-5 text-gold" />
               <span className="font-medium">Сканирайте с телефона</span>
             </div>
             
-            {/* QR Code - using Google Charts API for simplicity */}
+            {/* QR code is generated on the server, so the secret feed URL never leaves the site */}
             <div className="bg-white p-4 rounded-xl shadow-sm mb-4">
-              <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(googleCalendarSubscribeUrl)}`}
-                alt="QR код за Google Calendar"
-                className="w-48 h-48"
-              />
+              {calendarFeed ? (
+                // eslint-disable-next-line @next/next/no-img-element -- data: URL, nothing to optimise
+                <img
+                  src={calendarFeed.qrDataUrl}
+                  alt="QR код за Google Calendar"
+                  className="w-48 h-48"
+                />
+              ) : (
+                <div className="w-48 h-48 flex items-center justify-center text-center text-sm text-taupe-500">
+                  Задайте CALENDAR_FEED_TOKEN на сървъра
+                </div>
+              )}
             </div>
             
-            <p className="text-sm text-gray-500 text-center max-w-xs">
-              Сканирайте QR кода с телефона си за да добавите календара автоматично
+            <p className="text-sm text-taupe-500 text-center max-w-xs">
+              Сканирайте QR кода с телефона си, за да добавите календара автоматично
             </p>
           </div>
 
@@ -201,6 +215,7 @@ export function AdminSettings({
               />
               <Button
                 variant="outline"
+                disabled={!calendarFeed}
                 onClick={() => copyToClipboard(calendarFeedUrl)}
                 className="flex-shrink-0"
               >
@@ -211,7 +226,8 @@ export function AdminSettings({
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => window.open(googleCalendarSubscribeUrl, "_blank")}
+              disabled={!calendarFeed}
+              onClick={() => window.open(googleCalendarSubscribeUrl, "_blank", "noopener,noreferrer")}
             >
               <Calendar className="w-4 h-4 mr-2" />
               Отвори в Google Calendar

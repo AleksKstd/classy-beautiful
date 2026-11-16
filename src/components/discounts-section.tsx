@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { Tag, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { formatPrice, formatDuration } from "@/lib/utils";
+import { cn, formatPrice, formatDuration } from "@/lib/utils";
+import { getFinalPrice } from "@/lib/pricing";
 import type { Procedure } from "@/types/database";
 
 interface DiscountsSectionProps {
@@ -13,86 +12,50 @@ export function DiscountsSection({ procedures }: DiscountsSectionProps) {
     return null;
   }
 
-  const calculateDiscountedPrice = (price: number, discount: number) => {
-    return price - (price * discount) / 100;
-  };
-
   return (
-    <section className="py-16 bg-white">
+    <section className="py-20 md:py-28 bg-cocoa-light text-white">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 text-gold mb-3">
-            <Tag className="w-5 h-5" aria-hidden="true" />
-            <span className="text-sm font-medium uppercase tracking-wider">
-              Специални оферти
-            </span>
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-            Текущи отстъпки
-          </h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            Възползвайте се от нашите специални промоции
-          </p>
+        <div className="mb-12 max-w-2xl">
+          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.25em] text-gold">Оферти</p>
+          <h2 className="text-4xl sm:text-5xl leading-tight">Текущи отстъпки</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-4",
+            procedures.length === 1 && "max-w-xl",
+            procedures.length === 2 && "md:grid-cols-2 lg:max-w-4xl",
+            procedures.length >= 3 && "md:grid-cols-2 lg:grid-cols-3"
+          )}
+        >
           {procedures.map((procedure) => {
-            const discountedPrice = calculateDiscountedPrice(
-              procedure.price,
-              procedure.discount_percentage || 0
-            );
+            const discountedPrice = getFinalPrice(procedure);
 
             return (
-              <div
+              <Link
                 key={procedure.id}
-                className="bg-gradient-to-br from-gold/5 to-transparent rounded-xl p-6 border-2 border-gold/20 hover:border-gold/40 transition-colors relative overflow-hidden"
+                href={`/rezervacii?procedureId=${procedure.id}`}
+                className="group flex flex-col rounded-2xl border border-white/10 bg-cocoa/50 p-8 transition-colors hover:border-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold"
               >
-                <div className="absolute top-4 right-4">
-                  <div className="bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-full shadow-lg">
-                    -{procedure.discount_percentage}%
-                  </div>
-                </div>
-
-                <h3 className="font-semibold text-lg mb-2 pr-16">
-                  {procedure.name}
-                </h3>
-
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-                  <span>{formatDuration(procedure.duration_minutes)}</span>
-                  <span>•</span>
-                  <span>{procedure.technician}</span>
-                </div>
-
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="text-gray-400 line-through text-lg">
-                    {formatPrice(procedure.price)}
-                  </span>
-                  <ArrowRight className="w-4 h-4 text-gold" aria-hidden="true" />
-                  <span className="text-2xl font-bold text-gold">
-                    {formatPrice(discountedPrice)}
-                  </span>
-                </div>
-
-                <p className="text-sm text-gray-600 mb-4">
-                  Спестявате {formatPrice(procedure.price - discountedPrice)}
+                <span className="self-start rounded bg-gold px-2.5 py-1 text-xs font-semibold tracking-wider text-cocoa">
+                  −{procedure.discount_percentage}%
+                </span>
+                <h3 className="mt-6 font-display text-2xl leading-snug">{procedure.name}</h3>
+                <p className="mt-2 text-sm text-white/60">
+                  {formatDuration(procedure.duration_minutes)} · {procedure.technician}
                 </p>
-
-                <Button asChild size="sm" className="w-full">
-                  <Link href={`/rezervacii?procedureId=${procedure.id}`}>
-                    ЗАПАЗИ ЧАС
-                  </Link>
-                </Button>
-              </div>
+                <div className="mt-auto pt-8 flex items-baseline justify-between gap-4">
+                  <span>
+                    <span className="mr-3 text-sm text-white/50 line-through">{formatPrice(procedure.price)}</span>
+                    <span className="font-display text-3xl">{formatPrice(discountedPrice)}</span>
+                  </span>
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gold group-hover:text-white transition-colors">
+                    Запази
+                  </span>
+                </div>
+              </Link>
             );
           })}
-        </div>
-
-        <div className="text-center">
-          <Button asChild size="lg">
-            <Link href="/rezervacii">
-              ЗАПАЗИ ЧАС С ОТСТЪПКА
-            </Link>
-          </Button>
         </div>
       </div>
     </section>

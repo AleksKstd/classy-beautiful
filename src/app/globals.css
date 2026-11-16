@@ -3,37 +3,82 @@
 @tailwind utilities;
 
 :root {
-  --radius: 0.5rem;
+  --radius: 0.75rem;
   --gold: #C4A35A;
-  --gold-light: #D4B76A;
-  --gold-dark: #B4934A;
 }
 
 @layer base {
   * {
-    @apply border-gray-200;
+    @apply border-taupe-200;
   }
-  
+
   body {
-    @apply bg-white text-brand-black font-myriad antialiased;
+    @apply bg-white text-brand-black font-sans antialiased;
+    /* Use standard Cyrillic letter shapes instead of the fonts' Bulgarian variants */
+    font-feature-settings: "locl" 0;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-myriad tracking-tight;
+
+  h1,
+  h2 {
+    @apply font-display font-medium tracking-normal;
+  }
+
+  /* Playfair's default old-style figures make prices and dates jump */
+  .font-display,
+  h1,
+  h2 {
+    font-variant-numeric: lining-nums;
+  }
+
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-sans tracking-tight;
   }
 }
 
 @layer components {
-  .btn-gold {
-    @apply bg-gold hover:bg-gold-dark text-white font-medium px-6 py-3 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2;
+  /* Small uppercase label above section headings */
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.25em] text-rose-dark;
   }
-  
-  .btn-outline {
-    @apply border-2 border-brand-black text-brand-black font-medium px-6 py-3 rounded-md hover:bg-brand-black hover:text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-black focus:ring-offset-2;
+}
+
+@layer components {
+  /* Decorative patterns that sit inside the soft colour drops.
+     Ripples: fine concentric rings, like a drop falling into water. */
+  .drop-pattern {
+    border-radius: 9999px;
+    background-image: repeating-radial-gradient(
+      circle at 50% 50%,
+      rgb(142 94 81 / 0.16) 0 1px,
+      transparent 1.5px 22px
+    );
+    -webkit-mask-image: radial-gradient(circle at center, #000 25%, transparent 70%);
+    mask-image: radial-gradient(circle at center, #000 25%, transparent 70%);
   }
-  
-  .gold-frame {
-    @apply rounded-2xl border-4 border-gold overflow-hidden;
+
+  /* Dots: a fine, even dot grid that fades out towards the edges. */
+  .drop-dots {
+    border-radius: 9999px;
+    background-image: radial-gradient(rgb(196 163 90 / 0.45) 1.2px, transparent 1.6px);
+    background-size: 16px 16px;
+    -webkit-mask-image: radial-gradient(circle at center, #000 20%, transparent 68%);
+    mask-image: radial-gradient(circle at center, #000 20%, transparent 68%);
+  }
+}
+
+@layer components {
+  /* Layer for the drops: fades out towards the section's bottom edge so the
+     soft shapes are never cut off by a hard line. */
+  .drops-layer {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
   }
 }
 
@@ -47,7 +92,20 @@ html {
   scroll-behavior: smooth;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 ::selection {
   background-color: var(--gold);
-  color: white;
+  color: #000;
 }

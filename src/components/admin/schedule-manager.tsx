@@ -8,7 +8,7 @@ import { Plus, Trash2, Loader2 } from "lucide-react";
 import {
   createScheduleClosure,
   deleteScheduleClosure,
-} from "@/app/actions/admin";
+} from "@/app/actions/admin/schedule";
 import { format, parseISO } from "date-fns";
 import { bg } from "date-fns/locale";
 import type { Schedule } from "@/types/database";
@@ -95,7 +95,7 @@ export function ScheduleManager({ schedules: initialSchedules }: ScheduleManager
 
       {/* Form */}
       {showForm && (
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-taupe-200">
           <h3 className="text-lg font-semibold mb-4">Затваряне на салон</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -110,7 +110,7 @@ export function ScheduleManager({ schedules: initialSchedules }: ScheduleManager
                       office_name: e.target.value as "София" | "Лом",
                     })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-3 py-2 border border-taupe-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gold"
                   required
                 >
                   <option value="София">София</option>
@@ -166,15 +166,15 @@ export function ScheduleManager({ schedules: initialSchedules }: ScheduleManager
 
       {/* Schedules List */}
       {Object.keys(groupedSchedules).length === 0 ? (
-        <div className="bg-white rounded-xl p-12 text-center border border-gray-200">
-          <p className="text-gray-500">Няма затворени периоди</p>
+        <div className="bg-white rounded-xl p-12 text-center border border-taupe-200">
+          <p className="text-taupe-500">Няма затворени периоди</p>
         </div>
       ) : (
         <div className="space-y-6">
           {Object.entries(groupedSchedules).map(([office, schedules]) => (
             <div
               key={office}
-              className="bg-white rounded-xl p-6 shadow-sm border border-gray-200"
+              className="bg-white rounded-xl p-6 shadow-sm border border-taupe-200"
             >
               <h3 className="text-lg font-semibold mb-4">{office}</h3>
               <div className="space-y-3">
@@ -187,7 +187,7 @@ export function ScheduleManager({ schedules: initialSchedules }: ScheduleManager
                     <div
                       key={schedule.id}
                       className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border gap-3 ${
-                        isPast ? "border-gray-300 bg-gray-50" : "border-gray-200"
+                        isPast ? "border-taupe-300 bg-taupe-100" : "border-taupe-200"
                       }`}
                     >
                       <div className="flex-1 min-w-0">
@@ -198,12 +198,12 @@ export function ScheduleManager({ schedules: initialSchedules }: ScheduleManager
                             {format(endDate, "d MMM yyyy, HH:mm", { locale: bg })}
                           </p>
                           {isPast && (
-                            <span className="bg-gray-200 text-gray-600 text-xs font-semibold px-2 py-1 rounded">
+                            <span className="bg-taupe-200 text-taupe-600 text-xs font-semibold px-2 py-1 rounded">
                               Минал
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-gray-500 mt-1">
+                        <p className="text-sm text-taupe-500 mt-1">
                           Създаден: {format(parseISO(schedule.created_at), "d MMM yyyy", { locale: bg })}
                         </p>
                       </div>

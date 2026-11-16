@@ -1,24 +1,20 @@
+import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 
-// Admin client uses service role key to bypass RLS
-// This should ONLY be used in server actions, never exposed to the browser
+/**
+ * Service-role Supabase client: bypasses Row Level Security.
+ * Server-only. Every caller must do its own authorisation first
+ * (admin actions call requireAdmin(); public actions expose only
+ * non-sensitive fields).
+ */
 export function createAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-  if (!supabaseServiceKey) {
-    console.error("SUPABASE_SERVICE_ROLE_KEY is not set - admin operations will fail");
-    // Fall back to anon key (will likely fail due to RLS)
-    return createClient<Database>(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
-      auth: { persistSession: false },
-    });
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set");
   }
-
-  return createClient<Database>(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
+  return createClient<Database>(url, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
   });
 }

@@ -1,19 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import Link from "next/link";
-import { updateProcedure, deleteProcedure } from "@/app/actions/admin";
+import { updateProcedure, deleteProcedure, getProcedureForEdit } from "@/app/actions/admin/procedures";
 
-interface EditProcedurePageProps {
-  params: { id: string };
-}
-
-export default function EditProcedurePage({ params }: EditProcedurePageProps) {
+export default function EditProcedurePage() {
+  const params = useParams<{ id: string }>();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -33,9 +30,8 @@ export default function EditProcedurePage({ params }: EditProcedurePageProps) {
     // Fetch the procedure data
     const fetchProcedure = async () => {
       try {
-        const response = await fetch(`/api/procedures/${params.id}`);
-        if (!response.ok) throw new Error("Процедурата не е намерена");
-        const data = await response.json();
+        const data = await getProcedureForEdit(params.id);
+        if (!data) throw new Error("Процедурата не е намерена");
         setFormData({
           name: data.name || "",
           description: data.description || "",
@@ -114,20 +110,20 @@ export default function EditProcedurePage({ params }: EditProcedurePageProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-taupe-100 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-gold" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-taupe-100 py-8">
       <div className="container mx-auto px-4 max-w-2xl">
         {/* Header */}
         <div className="mb-8">
           <Link
             href="/admin/dashboard"
-            className="inline-flex items-center gap-2 text-gray-600 hover:text-gold transition-colors mb-4"
+            className="inline-flex items-center gap-2 text-taupe-600 hover:text-gold transition-colors mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
             Назад към панела
@@ -143,7 +139,7 @@ export default function EditProcedurePage({ params }: EditProcedurePageProps) {
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-200 space-y-6">
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-taupe-200 space-y-6">
           <div>
             <Label htmlFor="name">Име на процедурата *</Label>
             <Input
@@ -162,7 +158,7 @@ export default function EditProcedurePage({ params }: EditProcedurePageProps) {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={4}
-              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold resize-none"
+              className="w-full mt-1 px-3 py-2 border border-taupe-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold resize-none"
               placeholder="Подробно описание на процедурата..."
             />
           </div>
@@ -206,7 +202,7 @@ export default function EditProcedurePage({ params }: EditProcedurePageProps) {
             </div>
 
             <div>
-              <Label htmlFor="price">Цена (eur) *</Label>
+              <Label htmlFor="price">Цена (€) *</Label>
               <Input
                 id="price"
                 type="number"

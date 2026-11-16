@@ -108,14 +108,14 @@ export function StatisticsManager({ procedures, reservationLogs }: StatisticsMan
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <h2 className="text-xl sm:text-2xl font-bold">Статистика на процедурите</h2>
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-taupe-500">
           Общо резервации: <span className="font-semibold text-brand-black">{totalReservations}</span>
         </div>
       </div>
 
       {/* Legend */}
-      <div className="bg-white rounded-xl p-4 border border-gray-200">
-        <p className="text-sm font-medium text-gray-700 mb-3">Легенда за популярност:</p>
+      <div className="bg-white rounded-xl p-4 border border-taupe-200">
+        <p className="text-sm font-medium text-taupe-700 mb-3">Легенда за популярност:</p>
         <div className="flex flex-wrap gap-2">
           {Object.entries(popularityConfig).map(([label, config]) => (
             <span
@@ -131,37 +131,37 @@ export function StatisticsManager({ procedures, reservationLogs }: StatisticsMan
 
       {/* Procedures list */}
       {procedures.length === 0 ? (
-        <div className="bg-white rounded-xl p-12 text-center border border-gray-200">
-          <p className="text-gray-500">Няма процедури</p>
+        <div className="bg-white rounded-xl p-12 text-center border border-taupe-200">
+          <p className="text-taupe-500">Няма процедури</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
+        <div className="bg-white rounded-xl border border-taupe-200 overflow-hidden overflow-x-auto">
           <table className="w-full min-w-[600px]">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-taupe-100 border-b border-taupe-200">
               <tr>
-                <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Процедура</th>
-                <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Категория</th>
-                <th className="text-center px-4 py-3 text-sm font-semibold text-gray-700">Резервации</th>
-                <th className="text-center px-4 py-3 text-sm font-semibold text-gray-700">%</th>
-                <th className="text-center px-4 py-3 text-sm font-semibold text-gray-700">Популярност</th>
+                <th className="text-left px-4 py-3 text-sm font-semibold text-taupe-700">Процедура</th>
+                <th className="text-left px-4 py-3 text-sm font-semibold text-taupe-700">Категория</th>
+                <th className="text-center px-4 py-3 text-sm font-semibold text-taupe-700">Резервации</th>
+                <th className="text-center px-4 py-3 text-sm font-semibold text-taupe-700">%</th>
+                <th className="text-center px-4 py-3 text-sm font-semibold text-taupe-700">Популярност</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-taupe-100">
               {procedureStats.map((stat, index) => {
                 const config = popularityConfig[stat.popularity];
                 return (
-                  <tr key={stat.procedure.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={stat.procedure.id} className="hover:bg-taupe-100 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-400 w-6">#{index + 1}</span>
-                        <span className="font-medium text-gray-900">{stat.procedure.name}</span>
+                        <span className="text-xs text-taupe-400 w-6">#{index + 1}</span>
+                        <span className="font-medium text-cocoa">{stat.procedure.name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{stat.procedure.type}</td>
+                    <td className="px-4 py-3 text-sm text-taupe-600">{stat.procedure.type}</td>
                     <td className="px-4 py-3 text-center">
-                      <span className="font-semibold text-gray-900">{stat.count}</span>
+                      <span className="font-semibold text-cocoa">{stat.count}</span>
                     </td>
-                    <td className="px-4 py-3 text-center text-sm text-gray-600">
+                    <td className="px-4 py-3 text-center text-sm text-taupe-600">
                       {stat.percentage.toFixed(1)}%
                     </td>
                     <td className="px-4 py-3 text-center">
@@ -184,7 +184,7 @@ export function StatisticsManager({ procedures, reservationLogs }: StatisticsMan
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-800">
             <strong>Забележка:</strong> Все още няма данни за резервации. Популярността ще се изчислява 
-            автоматично след като започнат да се правят резервации през сайта.
+            автоматично, след като започнат да се правят резервации през сайта.
           </p>
         </div>
       )}

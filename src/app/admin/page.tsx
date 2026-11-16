@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { adminLogin } from "@/app/actions/admin";
+import { adminLogin } from "@/app/actions/admin/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,16 +15,23 @@ export default function AdminLoginPage() {
     setLoading(true);
     setError("");
 
-    const result = await adminLogin(formData);
-
-    if (!result.success) {
-      setError(result.error || "Грешка при вход");
+    try {
+      // On success the action redirects to the dashboard and never returns.
+      const result = await adminLogin(formData);
+      if (result && !result.success) {
+        setError(result.error || "Грешка при вход");
+        setLoading(false);
+      }
+    } catch (err) {
+      // Next.js redirects are thrown as special errors - let them through.
+      if (err instanceof Error && err.message === "NEXT_REDIRECT") throw err;
+      setError("Грешка при вход");
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-taupe-100 px-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-xl shadow-lg p-8">
           <div className="text-center mb-8">
@@ -32,7 +39,7 @@ export default function AdminLoginPage() {
               <Lock className="w-8 h-8 text-gold" aria-hidden="true" />
             </div>
             <h1 className="text-2xl font-bold mb-2">Админ панел</h1>
-            <p className="text-gray-600">Classy & Beautiful</p>
+            <p className="text-taupe-600">Classy & Beautiful</p>
           </div>
 
           <form action={handleSubmit}>
@@ -41,13 +48,14 @@ export default function AdminLoginPage() {
                 <Label htmlFor="username">Потребителско име</Label>
                 <div className="relative mt-1">
                   <User
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-taupe-400"
                     aria-hidden="true"
                   />
                   <Input
                     id="username"
                     name="username"
                     type="text"
+                    autoComplete="username"
                     required
                     className="pl-10"
                     placeholder="Въведете потребителско име"
@@ -60,13 +68,14 @@ export default function AdminLoginPage() {
                 <Label htmlFor="password">Парола</Label>
                 <div className="relative mt-1">
                   <Lock
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-taupe-400"
                     aria-hidden="true"
                   />
                   <Input
                     id="password"
                     name="password"
                     type="password"
+                    autoComplete="current-password"
                     required
                     className="pl-10"
                     placeholder="Въведете парола"
@@ -100,7 +109,7 @@ export default function AdminLoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-sm text-gray-500 mt-6">
+        <p className="text-center text-sm text-taupe-500 mt-6">
           Само за администратори
         </p>
       </div>

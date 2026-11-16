@@ -3,9 +3,12 @@
 -- Prices are in EUR (from studio24.bg)
 
 -- ============================================
--- RUN THIS FIRST TO DELETE ALL PROCEDURES (removes duplicates)
+-- WARNING: only for a brand-new, empty database.
+-- Deleting procedures on a live database would also delete (or, after
+-- migration 002, block on) the reservations that reference them.
+-- To wipe the catalogue on a fresh project, uncomment the next line:
+-- DELETE FROM procedures;
 -- ============================================
-DELETE FROM procedures;
 
 -- Clear existing data (optional, for fresh start)
 -- TRUNCATE procedures, schedules, reservation_logs, carousel_images RESTART IDENTITY CASCADE;
@@ -16,7 +19,7 @@ DELETE FROM procedures;
 INSERT INTO procedures (name, duration_minutes, price, type, technician) VALUES
 ('Медицински педикюр без лак', 60, 46.00, 'Нокти', 'Цвети'),
 ('Третиране на гъбичен нокът - 1 нокът', 20, 7.67, 'Нокти', 'Цвети'),
-('Третиране на гъбичен нокът - 10 ноктя', 60, 51.13, 'Нокти', 'Цвети');
+('Третиране на гъбичен нокът - 10 нокътя', 60, 51.13, 'Нокти', 'Цвети');
 
 -- ============================================
 -- PROCEDURES - Вежди (Brows)
@@ -49,7 +52,7 @@ INSERT INTO procedures (name, duration_minutes, price, type, technician) VALUES
 ('HIFU (Хайфу) лифтинг на чело', 60, 71.58, 'Естетични процедури - лице', 'Цвети'),
 ('HIFU (Хайфу) лифтинг на деколте', 60, 127.82, 'Естетични процедури - лице', 'Цвети'),
 ('HIFU (Хайфу) лифтинг на цяло лице', 60, 143.16, 'Естетични процедури - лице', 'Цвети'),
-('HIFU (Хайфу) лифтинг бузи и скули', 60, 102.26, 'Естетични процедури - лице', 'Цвети'),
+('HIFU (Хайфу) лифтинг на бузи и скули', 60, 102.26, 'Естетични процедури - лице', 'Цвети'),
 ('HIFU (Хайфу) лифтинг около очите', 60, 92.03, 'Естетични процедури - лице', 'Цвети'),
 ('HIFU (Хайфу) лифтинг на назолабиални гънки', 60, 81.81, 'Естетични процедури - лице', 'Цвети'),
 ('HIFU (Хайфу) лифтинг срещу двойна брадичка', 60, 81.81, 'Естетични процедури - лице', 'Цвети'),
@@ -151,8 +154,8 @@ INSERT INTO procedures (name, duration_minutes, price, type, technician) VALUES
 ('Карбонов пилинг на гръб', 60, 102.26, 'Пилинг на тяло', 'Цвети');
 
 -- ============================================
--- PROCEDURES - Пресотерапия и лимфендренаж (Pressotherapy)
+-- PROCEDURES - Пресотерапия и лимфодренаж (Pressotherapy)
 -- ============================================
 INSERT INTO procedures (name, duration_minutes, price, type, technician) VALUES
-('Пресотерапия и лимфендренаж - Цяло тяло', 40, 30.68, 'Пресотерапия и лимфендренаж', 'Цвети'),
-('Пресотерапия и лимфендренаж - Ръце/крака/ханш', 40, 20.45, 'Пресотерапия и лимфендренаж', 'Цвети');
+('Пресотерапия и лимфодренаж - Цяло тяло', 40, 30.68, 'Пресотерапия и лимфодренаж', 'Цвети'),
+('Пресотерапия и лимфодренаж - Ръце/крака/ханш', 40, 20.45, 'Пресотерапия и лимфодренаж', 'Цвети');
