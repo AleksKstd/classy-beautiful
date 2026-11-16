@@ -48,7 +48,6 @@ export function SiteSchema() {
       url: SITE_URL,
       image: `${SITE_URL}/og-image.jpg`,
       telephone: BUSINESS.phone,
-      email: BUSINESS.email,
       priceRange: "€€",
       currenciesAccepted: "EUR",
       parentOrganization: { "@id": ORGANIZATION_ID },
@@ -83,8 +82,7 @@ export function SiteSchema() {
             url: SITE_URL,
             logo: `${SITE_URL}/logo.svg`,
             telephone: BUSINESS.phone,
-            email: BUSINESS.email,
-            sameAs: [BUSINESS.facebook, BUSINESS.instagram],
+                  sameAs: [BUSINESS.facebook, BUSINESS.instagram],
           },
           ...salons,
           {

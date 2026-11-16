@@ -10,7 +10,6 @@ export const BUSINESS = {
   alternateName: "CB Classy & Beautiful",
   phone: "+359878378083",
   phoneDisplay: "+359 87 837 8083",
-  email: "info@classybeautiful.bg",
   instagram: "https://www.instagram.com/cb.classy.and.beautiful/",
   facebook: "https://www.facebook.com/cb.classy.and.beautiful",
 } as const;

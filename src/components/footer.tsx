@@ -73,11 +73,6 @@ export function Footer() {
                   {BUSINESS.phoneDisplay}
                 </a>
               </li>
-              <li>
-                <a href={`mailto:${BUSINESS.email}`} className="hover:text-white hover:underline underline-offset-4">
-                  {BUSINESS.email}
-                </a>
-              </li>
             </ul>
           </div>
         </div>
