@@ -37,7 +37,7 @@ provider (Vercel: Project > Settings > Environment Variables). See
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase > Settings > API > Project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase > Settings > API > `anon` `public` key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase > Settings > API > `service_role` key (**secret**) |
-| `NEXT_PUBLIC_SITE_URL` | Your public domain, e.g. `https://classybeautiful.bg` |
+| `NEXT_PUBLIC_SITE_URL` | Your public domain, e.g. `https://cbclassyandbeautiful.com` |
 | `ADMIN_USERNAME` | Choose one |
 | `ADMIN_PASSWORD_HASH` | `npm run hash-password -- "your new password"` |
 | `ADMIN_SESSION_SECRET` | `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |

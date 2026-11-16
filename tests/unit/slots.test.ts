@@ -1,4 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// Fixed opening hours, so these tests do not change when the salon's hours do.
+vi.mock("@/config/site", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/config/site")>();
+  const hours = { open: "09:00", close: "19:00" };
+  return { ...actual, OPENING_HOURS: { 0: hours, 1: hours, 2: hours, 3: hours, 4: hours, 5: hours, 6: hours } };
+});
+
 import {
   buildDaySlots,
   dayOccupancy,

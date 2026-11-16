@@ -26,7 +26,7 @@ export async function sendEmail(message: EmailMessage): Promise<boolean> {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        from: process.env.EMAIL_FROM || "Classy & Beautiful <noreply@classybeautiful.bg>",
+        from: process.env.EMAIL_FROM || "Classy & Beautiful <noreply@cbclassyandbeautiful.com>",
         to: [message.to],
         subject: message.subject,
         text: message.text,
