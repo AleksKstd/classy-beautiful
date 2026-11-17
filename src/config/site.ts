@@ -8,8 +8,8 @@ export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://cbclassyand
 export const BUSINESS = {
   name: "Classy & Beautiful",
   alternateName: "CB Classy & Beautiful",
-  phone: "+359878378083",
-  phoneDisplay: "+359 87 837 8083",
+  phone: "+359892454583",
+  phoneDisplay: "+359 89 245 4583",
   instagram: "https://www.instagram.com/cb.classy.and.beautiful/",
   facebook: "https://www.facebook.com/cb.classy.and.beautiful",
 } as const;
