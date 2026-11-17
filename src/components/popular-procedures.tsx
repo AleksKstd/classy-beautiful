@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { formatPrice, formatDuration } from "@/lib/utils";
 import { getFinalPrice, hasDiscount } from "@/lib/pricing";
 import type { Procedure } from "@/types/database";
@@ -22,14 +23,14 @@ export function PopularProcedures({ procedures }: PopularProceduresProps) {
           description="Най-често резервираните процедури през последния месец."
         />
 
-        <ol className="overflow-hidden rounded-2xl bg-blush-light px-2 sm:px-6">
+        <ol className="overflow-hidden rounded-2xl bg-blush-light">
           {procedures.map((procedure, index) => (
             <li key={procedure.id} className="border-b border-blush last:border-b-0">
               <Link
                 href={`/rezervacii?procedureId=${procedure.id}`}
-                className="group grid grid-cols-[2.5rem_1fr_auto] sm:grid-cols-[3.5rem_1fr_auto_auto] items-baseline gap-x-4 px-3 py-5 rounded-2xl transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-dark"
+                className="group grid grid-cols-[2.5rem_1fr_auto] sm:grid-cols-[3.5rem_1fr_auto_auto] items-baseline gap-x-4 px-5 py-5 sm:px-9 transition-colors hover:bg-blush focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-dark"
               >
-                <span className="font-display text-lg text-rose-dark">{String(index + 1).padStart(2, "0")}</span>
+                <span className="font-display text-lg text-rose-dark transition-colors group-hover:text-cocoa">{String(index + 1).padStart(2, "0")}</span>
                 <span>
                   <span className="block font-medium text-brand-black">{procedure.name}</span>
                   <span className="block text-sm text-taupe-600">
@@ -42,8 +43,9 @@ export function PopularProcedures({ procedures }: PopularProceduresProps) {
                   )}
                   <span className="font-display text-xl text-cocoa">{formatPrice(getFinalPrice(procedure))}</span>
                 </span>
-                <span className="hidden sm:inline text-xs font-semibold uppercase tracking-[0.18em] text-rose-dark transition-colors group-hover:text-cocoa">
+                <span className="hidden sm:inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-rose-dark transition-colors group-hover:text-cocoa">
                   Запази
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                 </span>
               </Link>
             </li>

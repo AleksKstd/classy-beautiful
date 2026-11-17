@@ -31,9 +31,17 @@ describe("customer emails", () => {
 
   it("shows salon-local time, duration and price", () => {
     const email = reservationConfirmedEmail(reservation);
-    expect(email.text).toContain("Час: 10:00");
+    expect(email.text).toContain("Час: 10:00 ч.");
     expect(email.text).toContain("1 ч. 30 мин.");
     expect(email.text).toContain("36,80");
+  });
+
+  it("gives the salon address and a directions link", () => {
+    const email = reservationConfirmedEmail(reservation);
+    expect(email.text).toContain("Салон: София, кв. Борово");
+    expect(email.text).toContain("Как да стигнете: https://");
+    expect(email.html).toContain('name="viewport"');
+    expect(reservationCancelledEmail(reservation, null).text).not.toContain("Как да стигнете");
   });
 
   it("includes the cancellation reason only when given", () => {
@@ -43,7 +51,7 @@ describe("customer emails", () => {
 
   it("mentions the previous time when rescheduled", () => {
     const email = reservationRescheduledEmail(reservation, "2026-11-30T12:30:00.000Z");
-    expect(email.text).toContain("14:30");
+    expect(email.text).toContain("14:30 ч.");
     expect(email.text).toContain("Час: 10:00");
   });
 

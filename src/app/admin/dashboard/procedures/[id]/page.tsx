@@ -118,7 +118,7 @@ export default function EditProcedurePage() {
 
   return (
     <div className="min-h-screen bg-taupe-100 py-8">
-      <div className="container mx-auto px-4 max-w-2xl">
+      <div className="container mx-auto px-4 max-w-3xl">
         {/* Header */}
         <div className="mb-8">
           <Link
@@ -187,9 +187,9 @@ export default function EditProcedurePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-end">
             <div>
-              <Label htmlFor="duration">Продължителност (мин) *</Label>
+              <Label htmlFor="duration">Минути *</Label>
               <Input
                 id="duration"
                 type="number"
@@ -231,13 +231,14 @@ export default function EditProcedurePage() {
           </div>
 
           {/* Actions */}
-          <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between pt-4 border-t gap-4">
+          {/* Delete on the left, cancel and save on the right; wraps instead of overflowing */}
+          <div className="flex flex-col-reverse gap-3 border-t border-taupe-200 pt-6 sm:flex-row sm:flex-wrap sm:items-center">
             <Button
               type="button"
               variant="outline"
               onClick={handleDelete}
               disabled={deleting}
-              className="text-red-600 border-red-200 hover:bg-red-50 w-full sm:w-auto"
+              className="w-full border-red-200 px-6 text-red-700 hover:border-red-300 hover:bg-red-50 hover:text-red-700 sm:mr-auto sm:w-auto"
             >
               {deleting ? (
                 <>
@@ -249,11 +250,11 @@ export default function EditProcedurePage() {
               )}
             </Button>
 
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button type="button" variant="outline" asChild className="w-full sm:w-auto">
+            <div className="flex flex-col-reverse gap-3 sm:ml-auto sm:flex-row">
+              <Button type="button" variant="outline" asChild className="w-full px-6 sm:w-auto">
                 <Link href="/admin/dashboard">Отказ</Link>
               </Button>
-              <Button type="submit" disabled={saving} className="w-full sm:w-auto">
+              <Button type="submit" disabled={saving} className="w-full px-6 sm:w-auto">
                 {saving ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />

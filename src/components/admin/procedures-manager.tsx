@@ -241,7 +241,7 @@ export function ProceduresManager({ procedures: initialProcedures }: ProceduresM
               </div>
 
               <div>
-                <Label htmlFor="duration">Продължителност (минути) *</Label>
+                <Label htmlFor="duration">Минути *</Label>
                 <Input
                   id="duration"
                   type="number"

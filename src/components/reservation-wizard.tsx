@@ -834,14 +834,14 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                           return (
                             <div key={group.label}>
                               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-rose-dark">{group.label}</p>
-                              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                              <div className="grid grid-cols-[repeat(auto-fill,minmax(4.5rem,1fr))] gap-2">
                                 {groupSlots.map((slot) => (
                                   <button
                                     key={slot.time}
                                     onClick={() => slot.available && selectTimeSlot(slot.time)}
                                     disabled={!slot.available}
                                     className={cn(
-                                      "rounded-md px-2 py-3 text-sm font-medium tabular-nums transition-colors duration-200",
+                                      "min-w-0 whitespace-nowrap rounded-md px-1 py-3 text-center text-sm font-medium tabular-nums transition-colors duration-200",
                                       state.timeSlot === slot.time
                                         ? "border border-cocoa bg-cocoa text-white"
                                         : slot.available

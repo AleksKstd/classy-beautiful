@@ -157,7 +157,7 @@ export function ProceduresGrid({ procedures }: ProceduresGridProps) {
                   </p>
                 )}
 
-                <ul className="mt-3 overflow-hidden rounded-2xl bg-blush-light/60 px-2 sm:px-4 divide-y divide-blush">
+                <ul className="mt-3 overflow-hidden rounded-2xl bg-blush-light divide-y divide-blush">
                   {procs.map((procedure) => {
                     const hasDiscount = procedureHasDiscount(procedure);
                     const discountedPrice = getFinalPrice(procedure);
@@ -166,7 +166,7 @@ export function ProceduresGrid({ procedures }: ProceduresGridProps) {
                       <li key={procedure.id}>
                         <Link
                           href={`/rezervacii?procedureId=${procedure.id}`}
-                          className="group grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_7rem_8rem_6rem] items-baseline gap-x-6 gap-y-1 px-3 py-4 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-dark"
+                          className="group grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_7rem_8rem_6rem] items-baseline gap-x-6 gap-y-1 px-5 py-4 sm:px-7 transition-colors hover:bg-blush focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-dark"
                         >
                           <span>
                             <span className="text-brand-black">{procedure.name}</span>
@@ -191,7 +191,7 @@ export function ProceduresGrid({ procedures }: ProceduresGridProps) {
                             )}
                             <span className="font-display text-xl text-cocoa">{formatPrice(discountedPrice)}</span>
                           </span>
-                          <span className="hidden sm:inline-flex items-center justify-end gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-rose-dark opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                          <span className="hidden sm:inline-flex items-center justify-end gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-rose-dark opacity-0 transition-[opacity,color] group-hover:text-cocoa group-hover:opacity-100 group-focus-visible:opacity-100">
                             Запази
                             <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                           </span>
