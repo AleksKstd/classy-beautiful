@@ -1,14 +1,18 @@
 import Link from "next/link";
 import { cn, formatPrice, formatDuration } from "@/lib/utils";
 import { getFinalPrice } from "@/lib/pricing";
+import { offerProceduresLabel, validUntilLabel, type PromotionOffer } from "@/lib/promotions";
 import type { Procedure } from "@/types/database";
 
 interface DiscountsSectionProps {
   procedures: Procedure[];
+  /** Special promotions (N procedures for a price, packages, ...), shown before the discounts */
+  offers?: PromotionOffer[];
 }
 
-export function DiscountsSection({ procedures }: DiscountsSectionProps) {
-  if (procedures.length === 0) {
+export function DiscountsSection({ procedures, offers = [] }: DiscountsSectionProps) {
+  const total = offers.length + procedures.length;
+  if (total === 0) {
     return null;
   }
 
@@ -24,17 +28,53 @@ export function DiscountsSection({ procedures }: DiscountsSectionProps) {
       <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-12 max-w-2xl">
           <p className="mb-4 text-xs font-semibold uppercase tracking-[0.25em] text-gold">Оферти</p>
-          <h2 className="text-4xl sm:text-5xl leading-tight">Текущи отстъпки</h2>
+          <h2 className="text-4xl sm:text-5xl leading-tight">{offers.length > 0 ? "Текущи промоции" : "Текущи отстъпки"}</h2>
         </div>
 
         <div
           className={cn(
             "grid grid-cols-1 gap-4",
-            procedures.length === 1 && "max-w-xl",
-            procedures.length === 2 && "md:grid-cols-2 lg:max-w-4xl",
-            procedures.length >= 3 && "md:grid-cols-2 lg:grid-cols-3"
+            total === 1 && "max-w-xl",
+            total === 2 && "md:grid-cols-2 lg:max-w-4xl",
+            total >= 3 && "md:grid-cols-2 lg:grid-cols-3"
           )}
         >
+          {offers.map((offer) => {
+            const until = validUntilLabel(offer.promotion);
+            return (
+              <Link
+                key={offer.promotion.id}
+                href={`/rezervacii?promotionId=${offer.promotion.id}`}
+                className="group flex flex-col rounded-2xl border border-gold/40 bg-cocoa/50 p-8 transition-colors hover:border-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold"
+              >
+                <span className="flex items-center justify-between gap-3">
+                  <span className="rounded bg-gold px-2.5 py-1 text-xs font-semibold tracking-wider text-cocoa">
+                    {offer.promotion.badge}
+                  </span>
+                  {until && <span className="text-xs text-white/60">{until}</span>}
+                </span>
+                <h3 className="mt-6 font-display text-2xl leading-snug">{offer.promotion.title}</h3>
+                <p className="mt-2 text-sm text-white/70">{offerProceduresLabel(offer)}</p>
+                {offer.promotion.description && (
+                  <p className="mt-2 text-sm text-white/60">{offer.promotion.description}</p>
+                )}
+                <div className="mt-auto pt-8">
+                  {offer.priceNote && <p className="mb-1 text-xs text-white/60">{offer.priceNote}</p>}
+                  <div className="flex items-baseline justify-between gap-4">
+                    <span>
+                      {offer.regularPrice > offer.totalPrice && (
+                        <span className="mr-3 text-sm text-white/50 line-through">{formatPrice(offer.regularPrice)}</span>
+                      )}
+                      <span className="font-display text-3xl">{formatPrice(offer.totalPrice)}</span>
+                    </span>
+                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gold group-hover:text-white transition-colors">
+                      Запази
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
           {procedures.map((procedure) => {
             const discountedPrice = getFinalPrice(procedure);
 

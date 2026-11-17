@@ -4,16 +4,23 @@ import { HeroCarouselWrapper } from "@/components/hero-carousel-wrapper";
 import { ServicesSection } from "@/components/services-section";
 import { PopularProcedures } from "@/components/popular-procedures";
 import { DiscountsSection } from "@/components/discounts-section";
-import { getPopularProcedures, getDiscountedProcedures } from "@/lib/data/procedures";
+import { getActiveProcedures, getPopularProcedures, getDiscountedProcedures } from "@/lib/data/procedures";
+import { getActivePromotions } from "@/lib/data/promotions";
+import { liveOffers } from "@/lib/promotions";
 
 // Refresh popular procedures / discounts at least every 10 minutes.
 export const revalidate = 600;
 
 export default async function HomePage() {
-  const [popularProcedures, discountedProcedures] = await Promise.all([
+  const [popularProcedures, discountedProcedures, promotions] = await Promise.all([
     getPopularProcedures(6),
-    getDiscountedProcedures()
+    getDiscountedProcedures(),
+    getActivePromotions(),
   ]);
+  // Prices of promotions come from the current procedures
+  const offers = promotions.length
+    ? liveOffers(promotions, await getActiveProcedures().catch(() => []))
+    : [];
 
   return (
     <>
@@ -58,7 +65,7 @@ export default async function HomePage() {
       </section>
 
       <ServicesSection />
-      <DiscountsSection procedures={discountedProcedures} />
+      <DiscountsSection procedures={discountedProcedures} offers={offers} />
       <PopularProcedures procedures={popularProcedures} />
     </>
   );

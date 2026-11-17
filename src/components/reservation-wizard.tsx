@@ -28,6 +28,7 @@ import {
   getBookedRangesForWindow,
   getBookedSlots,
   getBookingProcedures,
+  getBookingPromotions,
   getOfficeClosures,
   type CreateReservationResult,
 } from "@/app/actions/booking";
@@ -45,12 +46,15 @@ import {
 import { GlassFill, GlassSample, loadLabel } from "@/components/day-load";
 import type { DayContentProps } from "react-day-picker";
 import { fieldErrors, reservationFormSchema, type ReservationFormData } from "@/lib/validation";
-import type { Procedure } from "@/types/database";
+import type { Procedure, Promotion } from "@/types/database";
 import { buildCatalog, procedurePath, sectionProcedures, type CatalogGroup, type CatalogSection } from "@/lib/catalog";
+import { liveOffers, offerProceduresLabel, offerVisitMinutes, validUntilLabel, type PromotionOffer } from "@/lib/promotions";
 
 interface ReservationWizardProps {
   onComplete: (reservation: CreateReservationResult["reservation"]) => void;
   preSelectedProcedureId?: string | null;
+  /** Opens the wizard with a promotion chosen (?promotionId=...) */
+  preSelectedPromotionId?: string | null;
 }
 
 interface WizardState {
@@ -59,6 +63,10 @@ interface WizardState {
   /** Names of the sub-categories opened below the category, e.g. ["Лазерно премахване", "на капиляри"]. */
   path: string[];
   procedure: Procedure | null;
+  /** Set when the procedure was chosen through a special promotion */
+  promotionId: string | null;
+  /** True when the procedure came from a link, so step 2 was skipped */
+  fromLink: boolean;
   date: Date | null;
   timeSlot: string | null;
   formData: ReservationFormData;
@@ -172,13 +180,15 @@ function saveRememberedDetails(details: ReservationFormData | null) {
   }
 }
 
-export function ReservationWizard({ onComplete, preSelectedProcedureId }: ReservationWizardProps) {
+export function ReservationWizard({ onComplete, preSelectedProcedureId, preSelectedPromotionId }: ReservationWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [state, setState] = useState<WizardState>(() => ({
     office: null,
     selectedCategory: null,
     path: [],
     procedure: null,
+    promotionId: null,
+    fromLink: false,
     date: null,
     timeSlot: null,
     formData: loadRememberedDetails() ?? initialFormData,
@@ -189,21 +199,43 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [scheduleClosures, setScheduleClosures] = useState<TimeRange[]>([]);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+
+  // Promotions on now, priced from the loaded procedures, and the one chosen (if any)
+  const offers = useMemo(() => liveOffers(promotions, procedures), [promotions, procedures]);
+  const promotionId = state.promotionId;
+  const procedureMinutes = state.procedure?.duration_minutes ?? 30;
+  const chosenOffer = useMemo(
+    () => (promotionId ? offers.find((o) => o.promotion.id === promotionId) ?? null : null),
+    [offers, promotionId]
+  );
+  // How long the visit takes: a promotion package can be several procedures in a row
+  const visitMinutes = chosenOffer ? offerVisitMinutes(chosenOffer, state.procedure) : procedureMinutes;
   // Booked ranges tagged with the office/day they were loaded for
   const [booked, setBooked] = useState<{ key: string; ranges: TimeRange[] } | null>(null);
 
   useEffect(() => {
-    getBookingProcedures()
-      .then((loaded) => {
+    Promise.all([getBookingProcedures(), getBookingPromotions().catch(() => [] as Promotion[])])
+      .then(([loaded, loadedPromotions]) => {
         setProcedures(loaded);
-        // Pre-select a procedure passed in the URL (?procedureId=...)
+        setPromotions(loadedPromotions);
+        // Pre-select a promotion (?promotionId=...) or a procedure (?procedureId=...) from a link
+        const offer = preSelectedPromotionId
+          ? liveOffers(loadedPromotions, loaded).find((o) => o.promotion.id === preSelectedPromotionId)
+          : undefined;
         const preSelected = preSelectedProcedureId && loaded.find((p) => p.id === preSelectedProcedureId);
-        if (preSelected) {
-          setState((prev) => ({ ...prev, procedure: preSelected }));
+        if (offer && offer.choice) {
+          // The client still picks which procedure: open the promotions list in step 2,
+          // with this promotion marked.
+          setState((prev) => ({ ...prev, selectedCategory: PROMO, promotionId: offer.promotion.id }));
+        } else if (offer) {
+          setState((prev) => ({ ...prev, procedure: offer.procedures[0], promotionId: offer.promotion.id, fromLink: true }));
+        } else if (preSelected) {
+          setState((prev) => ({ ...prev, procedure: preSelected, fromLink: true }));
         }
       })
       .catch((error) => console.error("Failed to load procedures:", error));
-  }, [preSelectedProcedureId]);
+  }, [preSelectedProcedureId, preSelectedPromotionId]);
 
   // Fetch schedule closures when office is selected
   useEffect(() => {
@@ -232,7 +264,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
   const dayLoad = useMemo(() => {
     const map = new Map<string, { occupancy: number; full: boolean; fewLeft: boolean }>();
     if (!windowBooked || windowBooked.office !== state.office) return map;
-    const duration = state.procedure?.duration_minutes ?? 30;
+    const duration = visitMinutes;
     for (const key of getBookingWindowDays()) {
       const busy = [...windowBooked.ranges, ...scheduleClosures];
       const slots = buildDaySlots({ dateKey: key, durationMinutes: duration, closures: scheduleClosures, booked: windowBooked.ranges });
@@ -245,7 +277,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
       });
     }
     return map;
-  }, [windowBooked, state.office, state.procedure, scheduleClosures]);
+  }, [windowBooked, state.office, visitMinutes, scheduleClosures]);
 
   // Calendar days are converted to "yyyy-MM-dd"; times are always salon (Sofia) time.
   const dateKey = state.date ? format(state.date, "yyyy-MM-dd") : null;
@@ -274,12 +306,12 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
       dateKey
         ? buildDaySlots({
             dateKey,
-            durationMinutes: state.procedure?.duration_minutes ?? 30,
+            durationMinutes: visitMinutes,
             closures: scheduleClosures,
             booked: booked?.key === bookedKey ? booked.ranges : [],
           })
         : [],
-    [dateKey, scheduleClosures, booked, bookedKey, state.procedure]
+    [dateKey, scheduleClosures, booked, bookedKey, visitMinutes]
   );
 
   const bookingWindow = getBookingWindow();
@@ -313,7 +345,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
     for (const key of getBookingWindowDays()) {
       const slot = buildDaySlots({
         dateKey: key,
-        durationMinutes: state.procedure.duration_minutes,
+        durationMinutes: visitMinutes,
         closures: scheduleClosures,
         booked: windowBooked.ranges,
       }).find((candidate) => candidate.available);
@@ -379,7 +411,20 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
   };
 
   const selectProcedure = (procedure: Procedure) => {
-    setState((prev) => ({ ...prev, procedure, date: null, timeSlot: null }));
+    setState((prev) => ({ ...prev, procedure, promotionId: null, fromLink: false, date: null, timeSlot: null }));
+    setCurrentStep(3);
+  };
+
+  /** Books through a promotion: its first procedure, its length and its price. */
+  const selectOffer = (offer: PromotionOffer, procedure: Procedure = offer.procedures[0]) => {
+    setState((prev) => ({
+      ...prev,
+      procedure,
+      promotionId: offer.promotion.id,
+      fromLink: false,
+      date: null,
+      timeSlot: null,
+    }));
     setCurrentStep(3);
   };
 
@@ -418,7 +463,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
 
   const goBack = () => {
     // A procedure pre-selected from a link skips step 2, so go straight back to the office.
-    if (currentStep === 3 && preSelectedProcedureId && state.procedure?.id === preSelectedProcedureId) {
+    if (currentStep === 3 && state.fromLink) {
       setCurrentStep(1);
     } else if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
@@ -441,6 +486,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
       const response = await createReservation({
         officeName: state.office,
         procedureId: state.procedure.id,
+        promotionId: chosenOffer?.promotion.id ?? null,
         date: dateKey,
         time: state.timeSlot,
         firstName: state.formData.firstName,
@@ -487,12 +533,20 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
     return "upcoming";
   };
 
-  const finalPrice = state.procedure ? getFinalPrice(state.procedure) : null;
+  const finalPrice = chosenOffer ? chosenOffer.totalPrice : state.procedure ? getFinalPrice(state.procedure) : null;
+  const regularPrice = chosenOffer
+    ? chosenOffer.regularPrice
+    : state.procedure && procedureHasDiscount(state.procedure)
+      ? state.procedure.price
+      : null;
+  const procedureLabel = chosenOffer
+    ? `${chosenOffer.promotion.badge}: ${chosenOffer.promotion.title}`
+    : state.procedure?.name ?? null;
   const dateLabel = state.date ? format(state.date, "EEEE, d MMMM", { locale: bg }) : null;
 
   const summaryRows = [
     { step: 1, label: "Салон", value: state.office },
-    { step: 2, label: "Процедура", value: state.procedure?.name ?? null },
+    { step: 2, label: "Процедура", value: procedureLabel },
     {
       step: 3,
       label: "Дата и час",
@@ -535,6 +589,90 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
           </div>
         </div>
       </button>
+    );
+  };
+
+  /**
+   * A special promotion: label, what it includes and its price. A promotion with
+   * a choice of procedures lists them, and the client picks the first visit's one.
+   */
+  const renderOfferCard = (offer: PromotionOffer) => {
+    const selected = state.promotionId === offer.promotion.id;
+    const until = validUntilLabel(offer.promotion);
+    const body = (
+      <span className="flex items-start justify-between gap-4">
+        <span className="min-w-0">
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="inline-block rounded bg-gold px-2 py-0.5 text-xs font-semibold text-cocoa">{offer.promotion.badge}</span>
+            {until && <span className="text-xs text-taupe-500">{until}</span>}
+          </span>
+          <span className="mt-2 block font-display text-xl text-cocoa">{offer.promotion.title}</span>
+          {!offer.choice && <span className="mt-1 block text-sm text-taupe-600">{offerProceduresLabel(offer)}</span>}
+          {offer.promotion.description && (
+            <span className="mt-1 block text-sm text-taupe-600">{offer.promotion.description}</span>
+          )}
+          <span className="mt-2 block text-xs text-taupe-500">
+            {[offer.choice ? null : formatDuration(offer.durationMinutes), offer.priceNote].filter(Boolean).join(" · ")}
+          </span>
+        </span>
+        <span className="shrink-0 text-right">
+          {offer.regularPrice > offer.totalPrice && (
+            <span className="block text-sm text-taupe-400 line-through">{formatPrice(offer.regularPrice)}</span>
+          )}
+          <span className="block font-display text-2xl tabular-nums text-cocoa">{formatPrice(offer.totalPrice)}</span>
+        </span>
+      </span>
+    );
+
+    if (!offer.choice) {
+      return (
+        <button
+          key={offer.promotion.id}
+          onClick={() => selectOffer(offer)}
+          aria-pressed={selected}
+          className={cn(
+            "group w-full rounded-2xl border bg-white p-5 text-left transition-colors duration-200",
+            selected ? "border-cocoa" : "border-gold hover:border-cocoa/40"
+          )}
+        >
+          {body}
+        </button>
+      );
+    }
+
+    return (
+      <div
+        key={offer.promotion.id}
+        role="group"
+        aria-label={offer.promotion.title}
+        className={cn("rounded-2xl border bg-white p-5", selected ? "border-cocoa" : "border-gold")}
+      >
+        {body}
+        <p className="mt-3 text-sm text-taupe-600">
+          Плащате {formatPrice(offer.totalPrice)} за {offer.promotion.procedure_count} процедури. При всяко посещение избирате
+          процедура от списъка.
+        </p>
+        <p className="mb-2 mt-4 text-sm font-medium text-cocoa">С коя процедура да започнем?</p>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {offer.procedures.map((procedure) => {
+            const chosen = selected && state.procedure?.id === procedure.id;
+            return (
+              <button
+                key={procedure.id}
+                onClick={() => selectOffer(offer, procedure)}
+                aria-pressed={chosen}
+                className={cn(
+                  "flex min-h-12 items-center justify-between gap-3 rounded-md border px-4 py-2.5 text-left text-sm transition-colors duration-200",
+                  chosen ? "border-cocoa bg-champagne" : "border-taupe-200 hover:border-cocoa/40"
+                )}
+              >
+                <span className="text-cocoa">{procedure.name}</span>
+                <span className="shrink-0 text-xs text-taupe-500">{formatDuration(procedure.duration_minutes)}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     );
   };
 
@@ -645,7 +783,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
         {currentStep > 1 && (
           <div className="mb-6 rounded-2xl bg-blush-light px-4 py-3 text-sm text-cocoa lg:hidden">
             <ul className="space-y-1">
-              {[state.office, state.procedure?.name, dateLabel && (state.timeSlot ? `${dateLabel}, ${state.timeSlot}` : dateLabel)]
+              {[state.office, procedureLabel, dateLabel && (state.timeSlot ? `${dateLabel}, ${state.timeSlot}` : dateLabel)]
                 .filter(Boolean)
                 .map((item, i) => (
                   <li key={i} className="flex items-baseline gap-2">
@@ -712,7 +850,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Търсете процедура, напр. педикюр, мигли, лазер…"
                 aria-label="Търсене на процедура"
-                className="h-12 w-full rounded-md border border-taupe-200 bg-white pl-11 pr-10 text-sm placeholder:text-taupe-400 focus:border-cocoa focus:outline-none focus:ring-2 focus:ring-gold/30"
+                className="[&::-webkit-search-cancel-button]:appearance-none h-12 w-full rounded-md border border-taupe-200 bg-white pl-11 pr-10 text-sm placeholder:text-taupe-400 focus:border-cocoa focus:outline-none focus:ring-2 focus:ring-gold/30"
               />
               {query && (
                 <button
@@ -739,7 +877,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                 {!state.selectedCategory && (
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {[
-                      { id: PROMO, name: PROMO, description: "Процедури с отстъпка в момента", count: getDiscountedProcedures().length },
+                      { id: PROMO, name: PROMO, description: "Специални оферти и отстъпки в момента", count: offers.length + getDiscountedProcedures().length },
                       ...catalog.map((section) => ({
                         id: section.id,
                         name: section.name,
@@ -780,9 +918,13 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                       <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Всички категории
                     </button>
                     <h3 className="font-display text-2xl text-cocoa">{PROMO}</h3>
-                    <div className="space-y-2">
-                      {getDiscountedProcedures().map((proc) => renderProcedureButton(proc, procedurePath(catalog, proc.id)))}
-                    </div>
+                    {offers.length > 0 && <div className="grid grid-cols-1 gap-3">{offers.map(renderOfferCard)}</div>}
+                    {getDiscountedProcedures().length > 0 && (
+                      <div className="space-y-2">
+                        {offers.length > 0 && <p className="eyebrow pt-2">Отстъпки</p>}
+                        {getDiscountedProcedures().map((proc) => renderProcedureButton(proc, procedurePath(catalog, proc.id)))}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1084,12 +1226,13 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
           </dl>
           {state.procedure && finalPrice !== null && (
             <div className="relative mt-2 flex items-baseline justify-between border-t border-white/15 pt-4">
-              <span className="text-sm text-white/70">{formatDuration(state.procedure.duration_minutes)}</span>
+              <span className="text-sm text-white/70">{formatDuration(visitMinutes)}</span>
               <span className="text-right">
-                {procedureHasDiscount(state.procedure) && (
-                  <span className="mr-2 text-sm text-white/50 line-through">{formatPrice(state.procedure.price)}</span>
+                {regularPrice !== null && regularPrice > finalPrice && (
+                  <span className="mr-2 text-sm text-white/50 line-through">{formatPrice(regularPrice)}</span>
                 )}
                 <span className="font-display text-2xl text-gold">{formatPrice(finalPrice)}</span>
+                {chosenOffer?.priceNote && <span className="mt-1 block text-xs text-white/70">{chosenOffer.priceNote}</span>}
               </span>
             </div>
           )}

@@ -10,6 +10,7 @@ import {
   type EmailReservation,
 } from "@/lib/email/templates";
 import { getFinalPrice } from "@/lib/pricing";
+import { promotionOffer } from "@/lib/promotions";
 
 async function loadReservation(reservationId: string): Promise<EmailReservation | null> {
   const { data } = await createAdminClient()
@@ -26,11 +27,31 @@ async function loadReservation(reservationId: string): Promise<EmailReservation 
     discount_percentage: number | null;
   } | null;
 
-  return {
+  const bookedMinutes = Math.round((new Date(data.end_at).getTime() - new Date(data.start_at).getTime()) / 60000);
+  const base = {
     ...data,
     procedureName: procedure?.name ?? "Процедура",
-    durationMinutes: procedure?.duration_minutes ?? 0,
+    durationMinutes: bookedMinutes || procedure?.duration_minutes || 0,
     price: procedure ? getFinalPrice(procedure) : 0,
+    promotion: null,
+  };
+  if (!data.promotion_id) return base;
+
+  // Booked through a promotion: show it, with the promotion's price and procedures.
+  const supabase = createAdminClient();
+  const { data: promotion } = await supabase.from("promotions").select("*").eq("id", data.promotion_id).maybeSingle();
+  if (!promotion) return base;
+  const { data: included } = await supabase.from("procedures").select("*").in("id", promotion.procedure_ids);
+  const offer = promotionOffer({ ...promotion, is_active: true }, included ?? []);
+  if (!offer) return { ...base, promotion: `${promotion.badge} · ${promotion.title}` };
+  return {
+    ...base,
+    procedureName:
+      promotion.kind !== "bundle" && offer.procedures.length > 1
+        ? `${promotion.title}: ${offer.procedures.map((p) => p.name).join(", ")}`
+        : base.procedureName,
+    price: offer.totalPrice,
+    promotion: [`${promotion.badge} · ${promotion.title}`, offer.priceNote].filter(Boolean).join(" - "),
   };
 }
 

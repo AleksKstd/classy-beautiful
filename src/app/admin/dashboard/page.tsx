@@ -21,6 +21,7 @@ export default async function DashboardPage() {
       carouselImages={data.carouselImages}
       reservationLogs={data.reservationLogs}
       reservations={data.reservations as unknown as ReservationWithProcedure[]}
+      promotions={data.promotions}
       adminSettings={adminSettings}
       calendarFeed={calendarFeed}
     />

@@ -96,7 +96,7 @@ export async function rescheduleReservation(
   const supabase = createAdminClient();
   const { data: current } = await supabase
     .from("reservations")
-    .select("*, procedure:procedures(duration_minutes)")
+    .select("*")
     .eq("id", reservationId)
     .single();
 
@@ -107,9 +107,8 @@ export async function rescheduleReservation(
     return { success: false, error: "Отменена резервация не може да бъде преместена." };
   }
 
-  const duration =
-    (current.procedure as unknown as { duration_minutes: number } | null)?.duration_minutes ??
-    Math.round((new Date(current.end_at).getTime() - new Date(current.start_at).getTime()) / 60000);
+  // Keep the booked length: a promotion visit can be longer than its first procedure.
+  const duration = Math.round((new Date(current.end_at).getTime() - new Date(current.start_at).getTime()) / 60000);
 
   const slotError = await validateSlot({
     officeName: officeSchema.parse(current.office_name),
