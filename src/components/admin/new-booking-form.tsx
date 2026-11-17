@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
-import { ChevronDown, Loader2, MapPin } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { ChevronDown, Loader2, MapPin, X } from "lucide-react";
 import { createAdminReservation, getAdminDaySlots } from "@/app/actions/admin/reservations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +47,21 @@ export function NewBookingForm({ procedures, promotions, defaultOffice, onClose,
   const [isPending, startTransition] = useTransition();
 
   const today = toDateKey(new Date());
+
+  // Dialog behaviour: focus moves in on open, Escape closes, focus returns on close.
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    formRef.current?.focus();
+    return () => opener?.focus();
+  }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isPending) onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isPending, onClose]);
 
   // Promotions that still have their procedures, live ones first (ended ones
   // stay available for the later visits of clients who already paid).
@@ -126,17 +141,35 @@ export function NewBookingForm({ procedures, promotions, defaultOffice, onClose,
   };
 
   const fieldError = (key: string) =>
-    errors[key] ? <p className="mt-1 text-xs text-red-600">{errors[key]}</p> : null;
+    errors[key] ? <p id={`nb-${key}-error`} className="mt-1 text-xs text-red-600">{errors[key]}</p> : null;
+  // aria wiring for an input with a possible error
+  const invalid = (key: string) =>
+    errors[key] ? { "aria-invalid": true as const, "aria-describedby": `nb-${key}-error` } : {};
 
+  // No close on a backdrop click: a stray click would lose what was typed
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => !isPending && onClose()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <form
+        ref={formRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
         onSubmit={submit}
-        onClick={(e) => e.stopPropagation()}
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 focus:outline-none"
         aria-labelledby="new-booking-title"
       >
-        <h3 id="new-booking-title" className="text-xl font-semibold">Нова резервация</h3>
+        <div className="flex items-start justify-between gap-4">
+          <h3 id="new-booking-title" className="text-xl font-semibold">Нова резервация</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            aria-label="Затвори"
+            className="-m-2 rounded-md p-2 text-taupe-500 transition-colors hover:text-cocoa"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
         <p className="mt-1 text-sm text-taupe-500">Записва се като потвърдена. Подходяща за час, уговорен по телефона или в салона.</p>
 
         <div className="mt-6 space-y-5">
@@ -152,7 +185,7 @@ export function NewBookingForm({ procedures, promotions, defaultOffice, onClose,
                   aria-pressed={office === name}
                   className={cn(
                     "flex h-12 items-center justify-center gap-2 rounded-md border text-sm transition-colors",
-                    office === name ? "border-cocoa bg-champagne text-cocoa" : "border-taupe-300 hover:border-cocoa/40"
+                    office === name ? "border-cocoa bg-cocoa text-white" : "border-taupe-300 hover:border-cocoa/40"
                   )}
                 >
                   <MapPin className="h-4 w-4 text-gold" />
@@ -207,7 +240,7 @@ export function NewBookingForm({ procedures, promotions, defaultOffice, onClose,
                     <optgroup key={type} label={type}>
                       {list.map((p) => (
                         <option key={p.id} value={p.id}>
-                          {p.name} ({formatDuration(p.duration_minutes)})
+                          {p.name}
                         </option>
                       ))}
                     </optgroup>
@@ -232,8 +265,8 @@ export function NewBookingForm({ procedures, promotions, defaultOffice, onClose,
               className="mt-1"
             />
           </div>
-          <div>
-            <p className="text-sm font-medium">Час *</p>
+          <fieldset>
+            <legend className="text-sm font-medium">Час *</legend>
             {!procedure ? (
               <p className="mt-1 text-sm text-taupe-500">Изберете процедура, за да видите свободните часове.</p>
             ) : !slotsReady ? (
@@ -262,7 +295,7 @@ export function NewBookingForm({ procedures, promotions, defaultOffice, onClose,
                 ))}
               </div>
             )}
-          </div>
+          </fieldset>
 
           <hr className="border-taupe-200" />
 
@@ -270,28 +303,28 @@ export function NewBookingForm({ procedures, promotions, defaultOffice, onClose,
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <Label htmlFor="nb-first">Име *</Label>
-              <Input id="nb-first" value={firstName} onChange={(e) => setFirstName(e.target.value)} maxLength={50} required className="mt-1" />
+              <Input id="nb-first" {...invalid("firstName")} value={firstName} onChange={(e) => setFirstName(e.target.value)} maxLength={50} required className="mt-1" />
               {fieldError("firstName")}
             </div>
             <div>
               <Label htmlFor="nb-last">Фамилия</Label>
-              <Input id="nb-last" value={lastName} onChange={(e) => setLastName(e.target.value)} maxLength={50} className="mt-1" />
+              <Input id="nb-last" {...invalid("lastName")} value={lastName} onChange={(e) => setLastName(e.target.value)} maxLength={50} className="mt-1" />
               {fieldError("lastName")}
             </div>
           </div>
           <div>
             <Label htmlFor="nb-phone">Телефон *</Label>
-            <Input id="nb-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0888123456" required className="mt-1" />
+            <Input id="nb-phone" {...invalid("phone")} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0888123456" required className="mt-1" />
             {fieldError("phone")}
           </div>
           <div>
             <Label htmlFor="nb-email">Имейл</Label>
-            <Input id="nb-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={254} className="mt-1" />
+            <Input id="nb-email" {...invalid("email")} type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={254} className="mt-1" />
             {fieldError("email")}
             {email && (
               <label className="mt-2 flex items-center gap-2 text-sm text-taupe-700">
                 <input type="checkbox" checked={sendEmail} onChange={(e) => setSendEmail(e.target.checked)} className="h-4 w-4 accent-gold" />
-                Изпрати на клиента имейл за потвърждение
+                Изпращане на имейл за потвърждение до клиента
               </label>
             )}
           </div>
@@ -301,7 +334,7 @@ export function NewBookingForm({ procedures, promotions, defaultOffice, onClose,
           </div>
         </div>
 
-        {error && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+        {error && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row">
           <Button type="button" variant="outline" onClick={onClose} disabled={isPending} className="sm:flex-1">

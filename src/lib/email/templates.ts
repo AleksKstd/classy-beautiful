@@ -273,15 +273,16 @@ export function reservationRescheduledEmail(r: EmailReservation, previousStartAt
 
 /** To the salon, when a new booking request arrives. */
 export function newReservationAdminEmail(r: EmailReservation): EmailContent {
+  const fullName = `${r.customer_first_name} ${r.customer_last_name}`.trim();
   const customer: Rows = [
-    ["Име", `${r.customer_first_name} ${r.customer_last_name}`],
+    ["Име", fullName],
     ["Телефон", r.customer_phone],
-    ["Имейл", r.customer_email],
+    ...(r.customer_email ? ([["Имейл", r.customer_email]] as const) : []),
     ...(r.customer_note ? ([["Бележка", r.customer_note]] as const) : []),
   ];
 
   return build({
-    subject: `Нова резервация - ${r.customer_first_name} ${r.customer_last_name}`,
+    subject: `Нова резервация - ${fullName}`,
     status: "Очаква потвърждение",
     heading: "Нова заявка за час",
     paragraphs: [

@@ -209,7 +209,10 @@ export async function createAdminReservation(
   try {
     const supabase = createAdminClient();
     const { data: procedure } = await supabase.from("procedures").select("*").eq("id", data.procedureId).maybeSingle();
-    if (!procedure) return { success: false, error: "Процедурата не е намерена." };
+    // Without a promotion only active procedures (with one, its procedures may have been hidden since)
+    if (!procedure || (!data.promotionId && !procedure.is_active)) {
+      return { success: false, error: "Процедурата не е намерена." };
+    }
 
     // With a promotion (also an ended one: its later visits are still booked
     // here), the procedure must be part of it.
@@ -246,9 +249,9 @@ export async function createAdminReservation(
         start_at: startAt.toISOString(),
         end_at: endAt.toISOString(),
         customer_first_name: data.firstName,
-        customer_last_name: data.lastName ?? "",
+        customer_last_name: data.lastName || "",
         customer_phone: normalizePhone(data.phone)!,
-        customer_email: data.email ?? "",
+        customer_email: (data.email || "").toLowerCase(),
         customer_note: data.note || null,
         status: "confirmed",
         confirmed_at: now,

@@ -245,7 +245,7 @@ export function BookingsManager({ reservations: initialReservations, procedures,
         ) : (
           <span />
         )}
-        <Button onClick={() => { setNotice(null); setIsAdding(true); }}>
+        <Button onClick={() => { setNotice(null); setIsAdding(true); }} className="w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
           Нова резервация
         </Button>
@@ -553,7 +553,7 @@ export function BookingsManager({ reservations: initialReservations, procedures,
                             className={cn(
                               "py-2 px-3 text-sm rounded-lg transition-colors",
                               rescheduleTime === time
-                                ? "bg-gold text-white"
+                                ? "bg-cocoa text-white"
                                 : "bg-white border hover:border-gold"
                             )}
                           >

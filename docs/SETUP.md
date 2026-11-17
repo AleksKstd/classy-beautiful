@@ -11,12 +11,13 @@
    5. `supabase/migrations/004_gallery_links.sql` (link photos to procedures for the gallery)
    6. `supabase/migrations/005_spelling_fixes.sql` (only needed for a database seeded before this fix)
    7. `supabase/migrations/006_promotions.sql` (special promotions, e.g. 5 procedures for 100 €)
+   8. `supabase/migrations/007_retention_marker.sql` (the nightly clean-up also covers bookings without an email)
 3. For a **new, empty** project only: run `supabase/seed.sql` to load the procedure catalogue.
    Never run it on a database that already has reservations.
 
 ### Existing project (upgrading)
 
-Run `002_security_hardening.sql`, then `003_data_retention.sql`, then `004_gallery_links.sql`, then `005_spelling_fixes.sql`, then `006_promotions.sql`. All are safe to re-run. If it stops with an
+Run `002_security_hardening.sql`, then `003_data_retention.sql`, then `004_gallery_links.sql`, then `005_spelling_fixes.sql`, then `006_promotions.sql`, then `007_retention_marker.sql`. All are safe to re-run. If it stops with an
 error about the `reservations_no_overlap` constraint, two existing active
 bookings overlap: the file contains a query that lists them. Cancel one of each
 pair and run the file again.

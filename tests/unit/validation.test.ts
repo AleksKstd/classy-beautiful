@@ -93,6 +93,10 @@ describe("adminReservationSchema", () => {
     expect(adminReservationSchema.safeParse(base).success).toBe(true);
   });
 
+  it("treats blank last name and email as empty", () => {
+    expect(adminReservationSchema.safeParse({ ...base, lastName: "  ", email: " " }).success).toBe(true);
+  });
+
   it("still checks the phone, the email when given and the time", () => {
     expect(adminReservationSchema.safeParse({ ...base, phone: "123" }).success).toBe(false);
     expect(adminReservationSchema.safeParse({ ...base, email: "not-an-email" }).success).toBe(false);

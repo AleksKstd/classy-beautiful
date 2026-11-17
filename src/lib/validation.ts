@@ -91,9 +91,9 @@ export const adminReservationSchema = z.object({
   date: dateKeySchema,
   time: timeSchema,
   firstName: nameSchema,
-  lastName: z.union([z.literal(""), nameSchema]).optional(),
+  lastName: z.string().trim().pipe(z.union([z.literal(""), nameSchema])).optional(),
   phone: phoneSchema,
-  email: z.union([z.literal(""), emailSchema]).optional(),
+  email: z.string().trim().pipe(z.union([z.literal(""), emailSchema])).optional(),
   note: noteSchema,
   sendEmail: z.boolean().optional(),
 });
