@@ -11,8 +11,8 @@ import type { Procedure, Promotion, PromotionKind } from "@/types/database";
 export const PROMOTION_KINDS: { kind: PromotionKind; label: string; hint: string }[] = [
   {
     kind: "bundle",
-    label: "Брой процедури за цена",
-    hint: "Определен брой процедури на обща цена, напр. 5 процедури за 100 €. Онлайн клиентът запазва само първото посещение",
+    label: "Няколко посещения за цена",
+    hint: "Една процедура няколко пъти на обща цена, напр. 3 × Карбонов пилинг за 100 €. Онлайн се запазва само първото посещение",
   },
   { kind: "package", label: "Пакет", hint: "Няколко процедури в едно посещение на обща цена" },
   { kind: "custom", label: "Друга оферта", hint: "Свой етикет и описание, по желание със своя цена" },
@@ -88,7 +88,7 @@ export function promotionOffer(promotion: Promotion, procedures: Procedure[]): P
       totalPrice: round2(Number(promotion.price)),
       // With a choice, the lowest the procedures could cost without the promotion
       regularPrice: round2(cheapest * count),
-      priceNote: included.length > 1 ? `${count} процедури по избор` : `${count} процедури`,
+      priceNote: included.length > 1 ? `${count} процедури по избор` : `${count} посещения`,
     };
   }
 
@@ -122,6 +122,7 @@ export function offerVisitMinutes(offer: PromotionOffer, procedure: Procedure | 
 /** The procedures line for cards: "A + B" for a package, "По избор: A, B" for a bundle with a choice. */
 export function offerProceduresLabel(offer: PromotionOffer): string {
   const names = offer.procedures.map((p) => p.name);
+  if (offer.promotion.kind === "bundle" && !offer.choice) return `${offer.promotion.procedure_count} × ${names[0]}`;
   if (offer.choice) return `По избор: ${names.join(", ")}`;
   return names.join(" + ");
 }
