@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultBadge, isPromotionLive, liveOffers, promotionOffer, validUntilLabel } from "@/lib/promotions";
+import { canBookWith, defaultBadge, isPromotionLive, liveOffers, offerProceduresLabel, offerVisitMinutes, promotionOffer, validUntilLabel } from "@/lib/promotions";
 import { promotionInputSchema } from "@/lib/validation";
 import type { Procedure, Promotion } from "@/types/database";
 
@@ -11,23 +11,39 @@ const procedures = [proc("a", 10.23, 15), proc("b", 51.13, 60), proc("c", 25.56,
 
 const promo = (over: Partial<Promotion>): Promotion => ({
   id: "p1", kind: "custom", title: "Оферта", badge: "Оферта", description: null, procedure_ids: ["a"],
-  buy_count: null, pay_count: null, price: null, starts_on: null, ends_on: null, is_active: true,
+  procedure_count: null, price: null, starts_on: null, ends_on: null, is_active: true,
   display_order: 0, created_at: "2026-11-01T00:00:00Z", ...over,
 });
 
 describe("promotionOffer", () => {
-  it('prices "3 за 2" as two visits and keeps one visit long', () => {
-    const offer = promotionOffer(promo({ kind: "bundle", buy_count: 3, pay_count: 2, procedure_ids: ["a"] }), procedures)!;
-    expect(offer.totalPrice).toBeCloseTo(20.46);
-    expect(offer.regularPrice).toBeCloseTo(30.69);
-    expect(offer.durationMinutes).toBe(15);
-    expect(offer.priceNote).toBe("3 посещения на цената на 2");
+  it("prices a set number of one procedure for a set price", () => {
+    const offer = promotionOffer(promo({ kind: "bundle", procedure_count: 5, price: 40, procedure_ids: ["a"] }), procedures)!;
+    expect(offer.totalPrice).toBe(40);
+    expect(offer.regularPrice).toBeCloseTo(51.15);
+    expect(offer.choice).toBe(false);
+    expect(offer.priceNote).toBe("5 процедури");
+    expect(offerVisitMinutes(offer, procedures[0])).toBe(15);
+  });
+
+  it("lets the client choose among several procedures, one per visit", () => {
+    const offer = promotionOffer(promo({ kind: "bundle", procedure_count: 3, price: 100, procedure_ids: ["b", "c", "off"] }), procedures)!;
+    expect(offer.choice).toBe(true);
+    expect(offer.procedures.map((p) => p.id)).toEqual(["b", "c"]);
+    // the lowest the three could cost without the promotion
+    expect(offer.regularPrice).toBeCloseTo(76.68);
+    expect(canBookWith(offer, "c")).toBe(true);
+    expect(canBookWith(offer, "a")).toBe(false);
+    expect(offerVisitMinutes(offer, procedures[2])).toBe(60);
+    expect(offerProceduresLabel(offer)).toBe("По избор: Процедура b, Процедура c");
   });
 
   it("prices a package for one visit with all procedures in a row", () => {
     const offer = promotionOffer(promo({ kind: "package", price: 60, procedure_ids: ["b", "c"] }), procedures)!;
     expect(offer.procedures.map((p) => p.id)).toEqual(["b", "c"]);
     expect(offer.durationMinutes).toBe(120);
+    expect(offerVisitMinutes(offer, procedures[1])).toBe(120);
+    expect(canBookWith(offer, "b")).toBe(true);
+    expect(canBookWith(offer, "c")).toBe(false);
     expect(offer.totalPrice).toBe(60);
     expect(offer.regularPrice).toBeCloseTo(76.69);
   });
@@ -66,7 +82,7 @@ describe("live promotions", () => {
 
   it("labels the end date and the default badge", () => {
     expect(validUntilLabel(promo({ ends_on: "2026-11-30" }))).toBe("до 30 ноември");
-    expect(defaultBadge("bundle", 3, 2)).toBe("3 за 2");
+    expect(defaultBadge("bundle", 5, 100)).toBe("5 за 100 €");
   });
 });
 
@@ -75,13 +91,14 @@ describe("promotionInputSchema", () => {
   const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
   it("accepts a valid bundle and package", () => {
-    expect(promotionInputSchema.safeParse({ ...base, kind: "bundle", procedure_ids: [uuid(1)], buy_count: 3, pay_count: 2 }).success).toBe(true);
+    expect(promotionInputSchema.safeParse({ ...base, kind: "bundle", procedure_ids: [uuid(1), uuid(2)], procedure_count: 5, price: 100 }).success).toBe(true);
     expect(promotionInputSchema.safeParse({ ...base, kind: "package", procedure_ids: [uuid(1), uuid(2)], price: 50 }).success).toBe(true);
   });
 
-  it("rejects bundles that do not save anything and packages without a price", () => {
-    expect(promotionInputSchema.safeParse({ ...base, kind: "bundle", procedure_ids: [uuid(1)], buy_count: 2, pay_count: 2 }).success).toBe(false);
-    expect(promotionInputSchema.safeParse({ ...base, kind: "bundle", procedure_ids: [uuid(1), uuid(2)], buy_count: 3, pay_count: 2 }).success).toBe(false);
+  it("rejects bundles without a count or price and packages without a price", () => {
+    expect(promotionInputSchema.safeParse({ ...base, kind: "bundle", procedure_ids: [uuid(1)], price: 100 }).success).toBe(false);
+    expect(promotionInputSchema.safeParse({ ...base, kind: "bundle", procedure_ids: [uuid(1)], procedure_count: 1, price: 100 }).success).toBe(false);
+    expect(promotionInputSchema.safeParse({ ...base, kind: "bundle", procedure_ids: [uuid(1)], procedure_count: 5 }).success).toBe(false);
     expect(promotionInputSchema.safeParse({ ...base, kind: "package", procedure_ids: [uuid(1), uuid(2)] }).success).toBe(false);
     expect(promotionInputSchema.safeParse({ ...base, kind: "package", procedure_ids: [uuid(1)], price: 5 }).success).toBe(false);
   });

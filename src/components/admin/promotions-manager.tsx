@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createPromotion, deletePromotion, setPromotionActive, updatePromotion } from "@/app/actions/admin/promotions";
-import { PROMOTION_KINDS, defaultBadge, isPromotionLive, promotionOffer, validUntilLabel } from "@/lib/promotions";
+import { PROMOTION_KINDS, defaultBadge, isPromotionLive, offerProceduresLabel, promotionOffer, validUntilLabel } from "@/lib/promotions";
 import { toDateKey } from "@/lib/time";
 import { cn, formatDuration, formatPrice } from "@/lib/utils";
 import type { Procedure, Promotion, PromotionKind } from "@/types/database";
@@ -25,8 +25,7 @@ interface FormState {
   badgeEdited: boolean;
   description: string;
   procedureIds: string[];
-  buyCount: string;
-  payCount: string;
+  count: string;
   price: string;
   startsOn: string;
   endsOn: string;
@@ -36,12 +35,11 @@ interface FormState {
 const emptyForm: FormState = {
   kind: "bundle",
   title: "",
-  badge: "3 за 2",
+  badge: "Оферта",
   badgeEdited: false,
   description: "",
   procedureIds: [],
-  buyCount: "3",
-  payCount: "2",
+  count: "5",
   price: "",
   startsOn: "",
   endsOn: "",
@@ -53,11 +51,10 @@ function formFrom(promotion: Promotion): FormState {
     kind: promotion.kind,
     title: promotion.title,
     badge: promotion.badge,
-    badgeEdited: promotion.badge !== defaultBadge(promotion.kind, promotion.buy_count, promotion.pay_count),
+    badgeEdited: promotion.badge !== defaultBadge(promotion.kind, promotion.procedure_count, promotion.price),
     description: promotion.description ?? "",
     procedureIds: promotion.procedure_ids,
-    buyCount: String(promotion.buy_count ?? 3),
-    payCount: String(promotion.pay_count ?? 2),
+    count: String(promotion.procedure_count ?? 5),
     price: promotion.price !== null ? String(promotion.price) : "",
     startsOn: promotion.starts_on ?? "",
     endsOn: promotion.ends_on ?? "",
@@ -86,7 +83,7 @@ export function PromotionsManager({ promotions, procedures }: PromotionsManagerP
 
   // The label follows the kind and counts until the admin writes their own.
   const withBadge = (next: FormState): FormState =>
-    next.badgeEdited ? next : { ...next, badge: defaultBadge(next.kind, Number(next.buyCount), Number(next.payCount)) };
+    next.badgeEdited ? next : { ...next, badge: defaultBadge(next.kind, Number(next.count), next.price === "" ? null : Number(next.price)) };
 
   const openNew = () => {
     setForm(emptyForm);
@@ -110,8 +107,6 @@ export function PromotionsManager({ promotions, procedures }: PromotionsManagerP
   const toggleProcedure = (id: string) => {
     setForm((prev) => {
       const selected = prev.procedureIds.includes(id);
-      // "X за Y" is for one procedure: picking another replaces it.
-      if (prev.kind === "bundle") return { ...prev, procedureIds: selected ? [] : [id] };
       return { ...prev, procedureIds: selected ? prev.procedureIds.filter((x) => x !== id) : [...prev.procedureIds, id] };
     });
   };
@@ -125,9 +120,8 @@ export function PromotionsManager({ promotions, procedures }: PromotionsManagerP
       badge: form.badge,
       description: form.description || null,
       procedure_ids: form.procedureIds,
-      buy_count: form.kind === "bundle" ? Number(form.buyCount) : null,
-      pay_count: form.kind === "bundle" ? Number(form.payCount) : null,
-      price: form.kind !== "bundle" && form.price !== "" ? Number(form.price) : null,
+      procedure_count: form.kind === "bundle" ? Number(form.count) : null,
+      price: form.price !== "" ? Number(form.price) : null,
       starts_on: form.startsOn || null,
       ends_on: form.endsOn || null,
       is_active: form.isActive,
@@ -169,8 +163,7 @@ export function PromotionsManager({ promotions, procedures }: PromotionsManagerP
       badge: form.badge,
       description: form.description || null,
       procedure_ids: form.procedureIds,
-      buy_count: Number(form.buyCount) || null,
-      pay_count: Number(form.payCount) || null,
+      procedure_count: Number(form.count) || null,
       price: form.price !== "" ? Number(form.price) : null,
       starts_on: form.startsOn || null,
       ends_on: form.endsOn || null,
@@ -197,7 +190,7 @@ export function PromotionsManager({ promotions, procedures }: PromotionsManagerP
         <div>
           <h2 className="text-xl font-bold sm:text-2xl">Промоции</h2>
           <p className="mt-1 text-sm text-taupe-600">
-            Специални оферти като „3 за 2“ или пакет от процедури. Показват се на началната страница и в резервациите.
+            Специални оферти: определен брой процедури на обща цена, пакет от процедури или друга оферта. Показват се на началната страница и в резервациите.
           </p>
         </div>
         {editingId === null && (
@@ -230,9 +223,7 @@ export function PromotionsManager({ promotions, procedures }: PromotionsManagerP
                     value={kind}
                     checked={form.kind === kind}
                     onChange={() =>
-                      setForm((prev) =>
-                        withBadge({ ...prev, kind, procedureIds: kind === "bundle" ? prev.procedureIds.slice(0, 1) : prev.procedureIds })
-                      )
+                      setForm((prev) => withBadge({ ...prev, kind }))
                     }
                     className="sr-only"
                   />
@@ -250,7 +241,7 @@ export function PromotionsManager({ promotions, procedures }: PromotionsManagerP
                 id="promo-title"
                 value={form.title}
                 onChange={(e) => update({ title: e.target.value })}
-                placeholder="напр. Лазерна епилация на подмишници"
+                placeholder="напр. 5 процедури лазерна епилация"
                 maxLength={120}
                 required
                 className="mt-1"
@@ -283,53 +274,57 @@ export function PromotionsManager({ promotions, procedures }: PromotionsManagerP
           </div>
 
           {/* Kind-specific fields */}
-          {form.kind === "bundle" ? (
-            <div className="grid grid-cols-2 gap-4 sm:max-w-sm sm:items-end">
+          <div className="grid grid-cols-1 gap-4 sm:max-w-md sm:grid-cols-2 sm:items-end">
+            {form.kind === "bundle" && (
               <div>
-                <Label htmlFor="promo-buy">Брой посещения *</Label>
+                <Label htmlFor="promo-count">Брой процедури *</Label>
                 <Input
-                  id="promo-buy"
+                  id="promo-count"
                   type="number"
                   min={2}
                   max={20}
-                  value={form.buyCount}
-                  onChange={(e) => setForm((prev) => withBadge({ ...prev, buyCount: e.target.value }))}
+                  value={form.count}
+                  onChange={(e) => setForm((prev) => withBadge({ ...prev, count: e.target.value }))}
+                  required
                   className="mt-1"
                 />
               </div>
-              <div>
-                <Label htmlFor="promo-pay">Плащат се *</Label>
-                <Input
-                  id="promo-pay"
-                  type="number"
-                  min={1}
-                  max={19}
-                  value={form.payCount}
-                  onChange={(e) => setForm((prev) => withBadge({ ...prev, payCount: e.target.value }))}
-                  className="mt-1"
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="sm:max-w-xs">
-              <Label htmlFor="promo-price">{form.kind === "package" ? "Цена на пакета (€) *" : "Цена (€), по желание"}</Label>
+            )}
+            <div>
+              <Label htmlFor="promo-price">
+                {form.kind === "bundle"
+                  ? "Обща цена (€) *"
+                  : form.kind === "package"
+                    ? "Цена на пакета (€) *"
+                    : "Цена (€), по желание"}
+              </Label>
               <Input
                 id="promo-price"
                 type="number"
                 min={0}
                 step="0.01"
                 value={form.price}
-                onChange={(e) => update({ price: e.target.value })}
-                required={form.kind === "package"}
+                onChange={(e) => setForm((prev) => withBadge({ ...prev, price: e.target.value }))}
+                required={form.kind !== "custom"}
                 className="mt-1"
               />
             </div>
+          </div>
+          {form.kind === "bundle" && (
+            <p className="-mt-3 text-xs text-taupe-500">
+              Клиентът плаща {form.price || "…"} € за {form.count || "…"} процедури. Ако изберете няколко процедури по-долу,
+              клиентът избира коя да е при всяко посещение.
+            </p>
           )}
 
           {/* Procedures */}
           <div>
             <p className="mb-2 text-sm font-medium">
-              {form.kind === "bundle" ? "Процедура *" : "Процедури * (в реда, в който се правят)"}
+              {form.kind === "bundle"
+                ? "Процедури, от които клиентът избира *"
+                : form.kind === "package"
+                  ? "Процедури в пакета * (в реда, в който се правят)"
+                  : "Процедури *"}
             </p>
             {form.procedureIds.length > 0 && (
               <ol className="mb-3 space-y-1.5">
@@ -339,8 +334,11 @@ export function PromotionsManager({ promotions, procedures }: PromotionsManagerP
                     <li key={id} className="flex items-center gap-3 rounded-md bg-champagne px-3 py-2 text-sm">
                       <span className="text-taupe-500">{index + 1}.</span>
                       <span className="flex-1">
-                        {procedure?.name ?? "Изтрита процедура"}
-                        {procedure && !procedure.is_active && <span className="ml-2 text-xs text-taupe-500">(неактивна)</span>}
+                        <span className="block">
+                          {procedure?.name ?? "Изтрита процедура"}
+                          {procedure && !procedure.is_active && <span className="ml-2 text-xs text-taupe-500">(неактивна)</span>}
+                        </span>
+                        {procedure && <span className="block text-xs text-taupe-500">{procedure.type}</span>}
                       </span>
                       {procedure && <span className="text-taupe-600">{formatPrice(procedure.price)}</span>}
                       <button
@@ -431,7 +429,12 @@ export function PromotionsManager({ promotions, procedures }: PromotionsManagerP
                 )}
                 <strong>{formatPrice(preview.totalPrice)}</strong>
                 {preview.priceNote && <span className="text-taupe-600"> ({preview.priceNote})</span>}
-                <span className="text-taupe-600"> · посещение {formatDuration(preview.durationMinutes)}</span>
+                <span className="text-taupe-600">
+                  {" · "}
+                  {preview.choice ? "по избор: " : ""}
+                  {preview.procedures.map((p) => p.name).join(preview.choice ? ", " : " + ")}
+                  {!preview.choice && ` · посещение ${formatDuration(preview.durationMinutes)}`}
+                </span>
               </p>
             ) : (
               <p className="text-taupe-500">Изберете процедура, за да видите цената.</p>
@@ -472,7 +475,7 @@ export function PromotionsManager({ promotions, procedures }: PromotionsManagerP
                     <span className={cn("rounded px-2 py-0.5 text-xs font-semibold", status.className)}>{status.label}</span>
                   </div>
                   <p className="mt-1 text-sm text-taupe-600">
-                    {offer ? offer.procedures.map((p) => p.name).join(" + ") : "Процедурите вече не са налични"}
+                    {offer ? offerProceduresLabel(offer) : "Процедурите вече не са налични"}
                     {offer && (
                       <>
                         {" · "}

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cn, formatPrice, formatDuration } from "@/lib/utils";
 import { getFinalPrice } from "@/lib/pricing";
-import { validUntilLabel, type PromotionOffer } from "@/lib/promotions";
+import { offerProceduresLabel, validUntilLabel, type PromotionOffer } from "@/lib/promotions";
 import type { Procedure } from "@/types/database";
 
 interface DiscountsSectionProps {
@@ -54,9 +54,7 @@ export function DiscountsSection({ procedures, offers = [] }: DiscountsSectionPr
                   {until && <span className="text-xs text-white/60">{until}</span>}
                 </span>
                 <h3 className="mt-6 font-display text-2xl leading-snug">{offer.promotion.title}</h3>
-                <p className="mt-2 text-sm text-white/70">
-                  {offer.procedures.map((p) => p.name).join(" + ")}
-                </p>
+                <p className="mt-2 text-sm text-white/70">{offerProceduresLabel(offer)}</p>
                 {offer.promotion.description && (
                   <p className="mt-2 text-sm text-white/60">{offer.promotion.description}</p>
                 )}

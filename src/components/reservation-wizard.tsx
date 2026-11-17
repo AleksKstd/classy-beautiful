@@ -48,7 +48,7 @@ import type { DayContentProps } from "react-day-picker";
 import { fieldErrors, reservationFormSchema, type ReservationFormData } from "@/lib/validation";
 import type { Procedure, Promotion } from "@/types/database";
 import { buildCatalog, procedurePath, sectionProcedures, type CatalogGroup, type CatalogSection } from "@/lib/catalog";
-import { liveOffers, validUntilLabel, type PromotionOffer } from "@/lib/promotions";
+import { liveOffers, offerProceduresLabel, offerVisitMinutes, validUntilLabel, type PromotionOffer } from "@/lib/promotions";
 
 interface ReservationWizardProps {
   onComplete: (reservation: CreateReservationResult["reservation"]) => void;
@@ -210,7 +210,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId, preSelec
     [offers, promotionId]
   );
   // How long the visit takes: a promotion package can be several procedures in a row
-  const visitMinutes = chosenOffer ? chosenOffer.durationMinutes : procedureMinutes;
+  const visitMinutes = chosenOffer ? offerVisitMinutes(chosenOffer, state.procedure) : procedureMinutes;
   // Booked ranges tagged with the office/day they were loaded for
   const [booked, setBooked] = useState<{ key: string; ranges: TimeRange[] } | null>(null);
 
@@ -224,7 +224,10 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId, preSelec
           ? liveOffers(loadedPromotions, loaded).find((o) => o.promotion.id === preSelectedPromotionId)
           : undefined;
         const preSelected = preSelectedProcedureId && loaded.find((p) => p.id === preSelectedProcedureId);
-        if (offer) {
+        if (offer && offer.choice) {
+          // The client still picks which procedure: open the promotions list in step 2.
+          setState((prev) => ({ ...prev, selectedCategory: PROMO }));
+        } else if (offer) {
           setState((prev) => ({ ...prev, procedure: offer.procedures[0], promotionId: offer.promotion.id, fromLink: true }));
         } else if (preSelected) {
           setState((prev) => ({ ...prev, procedure: preSelected, fromLink: true }));
@@ -412,10 +415,10 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId, preSelec
   };
 
   /** Books through a promotion: its first procedure, its length and its price. */
-  const selectOffer = (offer: PromotionOffer) => {
+  const selectOffer = (offer: PromotionOffer, procedure: Procedure = offer.procedures[0]) => {
     setState((prev) => ({
       ...prev,
-      procedure: offer.procedures[0],
+      procedure,
       promotionId: offer.promotion.id,
       fromLink: false,
       date: null,
@@ -588,42 +591,83 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId, preSelec
     );
   };
 
-  /** A special promotion: label, what it includes, its price, and how long the visit takes. */
+  /**
+   * A special promotion: label, what it includes and its price. A promotion with
+   * a choice of procedures lists them, and the client picks the first visit's one.
+   */
   const renderOfferCard = (offer: PromotionOffer) => {
     const selected = state.promotionId === offer.promotion.id;
     const until = validUntilLabel(offer.promotion);
-    return (
-      <button
-        key={offer.promotion.id}
-        onClick={() => selectOffer(offer)}
-        aria-pressed={selected}
-        className={cn(
-          "group w-full rounded-2xl border bg-white p-5 text-left transition-colors duration-200",
-          selected ? "border-cocoa" : "border-gold hover:border-cocoa/40"
-        )}
-      >
-        <span className="flex items-start justify-between gap-4">
-          <span className="min-w-0">
+    const body = (
+      <span className="flex items-start justify-between gap-4">
+        <span className="min-w-0">
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="inline-block rounded bg-gold px-2 py-0.5 text-xs font-semibold text-cocoa">{offer.promotion.badge}</span>
-            <span className="mt-2 block font-display text-xl text-cocoa">{offer.promotion.title}</span>
-            <span className="mt-1 block text-sm text-taupe-600">
-              {offer.procedures.map((p) => p.name).join(" + ")}
-            </span>
-            {offer.promotion.description && (
-              <span className="mt-1 block text-sm text-taupe-600">{offer.promotion.description}</span>
-            )}
-            <span className="mt-2 block text-xs text-taupe-500">
-              {[formatDuration(offer.durationMinutes), offer.priceNote, until].filter(Boolean).join(" · ")}
-            </span>
+            {until && <span className="text-xs text-taupe-500">{until}</span>}
           </span>
-          <span className="shrink-0 text-right">
-            {offer.regularPrice > offer.totalPrice && (
-              <span className="block text-sm text-taupe-400 line-through">{formatPrice(offer.regularPrice)}</span>
-            )}
-            <span className="block font-display text-2xl tabular-nums text-cocoa">{formatPrice(offer.totalPrice)}</span>
+          <span className="mt-2 block font-display text-xl text-cocoa">{offer.promotion.title}</span>
+          {!offer.choice && <span className="mt-1 block text-sm text-taupe-600">{offerProceduresLabel(offer)}</span>}
+          {offer.promotion.description && (
+            <span className="mt-1 block text-sm text-taupe-600">{offer.promotion.description}</span>
+          )}
+          <span className="mt-2 block text-xs text-taupe-500">
+            {[offer.choice ? null : formatDuration(offer.durationMinutes), offer.priceNote].filter(Boolean).join(" · ")}
           </span>
         </span>
-      </button>
+        <span className="shrink-0 text-right">
+          {offer.regularPrice > offer.totalPrice && (
+            <span className="block text-sm text-taupe-400 line-through">{formatPrice(offer.regularPrice)}</span>
+          )}
+          <span className="block font-display text-2xl tabular-nums text-cocoa">{formatPrice(offer.totalPrice)}</span>
+        </span>
+      </span>
+    );
+
+    if (!offer.choice) {
+      return (
+        <button
+          key={offer.promotion.id}
+          onClick={() => selectOffer(offer)}
+          aria-pressed={selected}
+          className={cn(
+            "group w-full rounded-2xl border bg-white p-5 text-left transition-colors duration-200",
+            selected ? "border-cocoa" : "border-gold hover:border-cocoa/40"
+          )}
+        >
+          {body}
+        </button>
+      );
+    }
+
+    return (
+      <div
+        key={offer.promotion.id}
+        role="group"
+        aria-label={offer.promotion.title}
+        className={cn("rounded-2xl border bg-white p-5", selected ? "border-cocoa" : "border-gold")}
+      >
+        {body}
+        <p className="mb-2 mt-4 text-sm text-taupe-600">С коя процедура да започнем?</p>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {offer.procedures.map((procedure) => {
+            const chosen = selected && state.procedure?.id === procedure.id;
+            return (
+              <button
+                key={procedure.id}
+                onClick={() => selectOffer(offer, procedure)}
+                aria-pressed={chosen}
+                className={cn(
+                  "flex min-h-12 items-center justify-between gap-3 rounded-md border px-4 py-2.5 text-left text-sm transition-colors duration-200",
+                  chosen ? "border-cocoa bg-champagne" : "border-taupe-200 hover:border-cocoa/40"
+                )}
+              >
+                <span className="text-cocoa">{procedure.name}</span>
+                <span className="shrink-0 text-xs text-taupe-500">{formatDuration(procedure.duration_minutes)}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     );
   };
 

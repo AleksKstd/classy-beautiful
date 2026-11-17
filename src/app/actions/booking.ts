@@ -7,7 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyAdminNewReservation, notifyCustomer } from "@/lib/notifications";
 import { getFinalPrice } from "@/lib/pricing";
 import { getActivePromotions } from "@/lib/data/promotions";
-import { isPromotionLive, promotionOffer, type PromotionOffer } from "@/lib/promotions";
+import { canBookWith, isPromotionLive, offerBookingName, offerVisitMinutes, promotionOffer, type PromotionOffer } from "@/lib/promotions";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { fetchBookedRanges, fetchBookedRangesBetween, validateSlot } from "@/lib/booking";
 import { getBookingWindow, isWithinBookingWindow, type TimeRange } from "@/lib/slots";
@@ -142,7 +142,7 @@ export async function createReservation(input: unknown): Promise<CreateReservati
       return { success: false, error: "Избраната процедура не е налична." };
     }
 
-    // A booking through a promotion: the promotion must be live and start with this
+    // A booking through a promotion: the promotion must be live and include this
     // procedure; the visit then lasts and costs what the promotion says.
     let offer: PromotionOffer | null = null;
     if (data.promotionId) {
@@ -151,12 +151,12 @@ export async function createReservation(input: unknown): Promise<CreateReservati
         const { data: included } = await supabase.from("procedures").select("*").in("id", promotion.procedure_ids);
         offer = promotionOffer(promotion, included ?? []);
       }
-      if (!offer || offer.procedures[0].id !== procedure.id) {
+      if (!offer || !canBookWith(offer, procedure.id)) {
         return { success: false, error: "Промоцията вече не е активна. Моля, изберете процедура отново." };
       }
     }
-    const durationMinutes = offer ? offer.durationMinutes : procedure.duration_minutes;
-    // For "3 за 2" this is the price of the whole offer (all visits), as advertised
+    const durationMinutes = offer ? offerVisitMinutes(offer, procedure) : procedure.duration_minutes;
+    // For "N процедури за X €" this is the price of the whole offer (all visits), as advertised
     const visitPrice = offer ? offer.totalPrice : getFinalPrice(procedure);
 
     const { count: activeCount } = await supabase
@@ -239,7 +239,7 @@ export async function createReservation(input: unknown): Promise<CreateReservati
       reservation: {
         id: reservation.id,
         officeName: data.officeName,
-        procedureName: offer && offer.procedures.length > 1 ? offer.promotion.title : procedure.name,
+        procedureName: offer ? offerBookingName(offer, procedure) : procedure.name,
         startAt: startAt.toISOString(),
         endAt: endAt.toISOString(),
         durationMinutes,
@@ -248,7 +248,7 @@ export async function createReservation(input: unknown): Promise<CreateReservati
           ? {
               badge: offer.promotion.badge,
               title: offer.promotion.title,
-              procedures: offer.procedures.map((p) => p.name),
+              procedures: offer.promotion.kind === "bundle" ? [procedure.name] : offer.procedures.map((p) => p.name),
               priceNote: offer.priceNote,
             }
           : null,

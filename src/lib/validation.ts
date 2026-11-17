@@ -131,8 +131,7 @@ export const promotionInputSchema = z
       .min(1, "Изберете поне една процедура")
       .max(10, "Максимум 10 процедури")
       .refine((ids) => new Set(ids).size === ids.length, "Процедурите се повтарят"),
-    buy_count: z.number().int().min(2).max(20).nullish(),
-    pay_count: z.number().int().min(1).max(19).nullish(),
+    procedure_count: z.number().int().min(2, "Поне 2 процедури").max(20, "Максимум 20 процедури").nullish(),
     price: z.number().min(0, "Невалидна цена").max(100000).nullish(),
     starts_on: optionalDate,
     ends_on: optionalDate,
@@ -140,11 +139,11 @@ export const promotionInputSchema = z
   })
   .superRefine((p, ctx) => {
     if (p.kind === "bundle") {
-      if (!p.buy_count || !p.pay_count || p.pay_count >= p.buy_count) {
-        ctx.addIssue({ code: "custom", path: ["buy_count"], message: "Посещенията за плащане трябва да са по-малко от общия брой" });
+      if (!p.procedure_count) {
+        ctx.addIssue({ code: "custom", path: ["procedure_count"], message: "Въведете брой процедури (поне 2)" });
       }
-      if (p.procedure_ids.length !== 1) {
-        ctx.addIssue({ code: "custom", path: ["procedure_ids"], message: "Изберете точно една процедура" });
+      if (p.price === null || p.price === undefined) {
+        ctx.addIssue({ code: "custom", path: ["price"], message: "Въведете обща цена" });
       }
     }
     if (p.kind === "package") {

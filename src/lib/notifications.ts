@@ -46,7 +46,10 @@ async function loadReservation(reservationId: string): Promise<EmailReservation 
   if (!offer) return { ...base, promotion: `${promotion.badge} · ${promotion.title}` };
   return {
     ...base,
-    procedureName: offer.procedures.length > 1 ? `${promotion.title}: ${offer.procedures.map((p) => p.name).join(", ")}` : base.procedureName,
+    procedureName:
+      promotion.kind !== "bundle" && offer.procedures.length > 1
+        ? `${promotion.title}: ${offer.procedures.map((p) => p.name).join(", ")}`
+        : base.procedureName,
     price: offer.totalPrice,
     promotion: [`${promotion.badge} · ${promotion.title}`, offer.priceNote].filter(Boolean).join(" - "),
   };

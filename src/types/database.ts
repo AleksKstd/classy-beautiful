@@ -201,8 +201,7 @@ export type Database = {
           badge: string;
           description: string | null;
           procedure_ids: string[];
-          buy_count: number | null;
-          pay_count: number | null;
+          procedure_count: number | null;
           price: number | null;
           starts_on: string | null;
           ends_on: string | null;
@@ -217,8 +216,7 @@ export type Database = {
           badge: string;
           description?: string | null;
           procedure_ids: string[];
-          buy_count?: number | null;
-          pay_count?: number | null;
+          procedure_count?: number | null;
           price?: number | null;
           starts_on?: string | null;
           ends_on?: string | null;
@@ -232,8 +230,7 @@ export type Database = {
           badge?: string;
           description?: string | null;
           procedure_ids?: string[];
-          buy_count?: number | null;
-          pay_count?: number | null;
+          procedure_count?: number | null;
           price?: number | null;
           starts_on?: string | null;
           ends_on?: string | null;
