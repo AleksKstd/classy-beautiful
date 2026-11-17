@@ -60,12 +60,20 @@ Go to `/admin` and log in with `ADMIN_USERNAME` and the password you hashed.
 - **Bookings tab:** every online booking starts as "Чакаща". Confirm or decline it
   from the "Чакат потвърждение" list; the customer is emailed each time the
   status changes (confirmed, moved, cancelled).
+  "Нова резервация" adds a booking yourself (taken by phone, or the next visit of a
+  promotion): pick the salon, procedure, optional promotion, day and a free time.
+  Last name and email are optional; it is saved as confirmed, and the client gets the
+  confirmation email only if you enter an email and leave the box ticked. Today can be
+  booked here, unlike online.
 - **Promotions tab (Промоции):** create special offers: a set number of procedures for a
   set price (e.g. 5 procedures for 100 €, chosen by the client from the procedures you
-  list, one per visit), a package (several procedures in one visit for a set price) or
+  list), a package (several procedures in one visit for a set price) or
   a custom offer. Set optional start and end dates and hide or show each one.
   Live promotions appear on the home page and under "Промоции" in the booking wizard;
-  bookings made with one are marked in the Bookings tab and in the emails.
+  bookings made with one are marked in the Bookings tab and in the emails. A client
+  can book each promotion online only once, for the first visit; the remaining visits
+  are arranged in the salon and added with "Нова резервация" (choose the promotion,
+  and the email shows "Включена в промоцията" instead of the price).
 - **Settings tab:** set the email that receives new-booking notifications.
 - **Google Calendar:** scan the QR code or use the link in the Settings tab.
   The link contains the secret `CALENDAR_FEED_TOKEN`; treat it like a password.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
@@ -20,11 +21,13 @@ import {
   Loader2,
   MapPin,
   AlertCircle,
+  Plus,
 } from "lucide-react";
 import { confirmReservation, cancelReservation, rescheduleReservation } from "@/app/actions/admin/reservations";
 import { OFFICES, type OfficeName } from "@/config/site";
 import { getSlotTimes } from "@/lib/slots";
-import type { ReservationStatus } from "@/types/database";
+import type { Procedure, Promotion, ReservationStatus } from "@/types/database";
+import { NewBookingForm } from "./new-booking-form";
 
 export interface ReservationWithProcedure {
   id: string;
@@ -59,6 +62,8 @@ export interface ReservationWithProcedure {
 
 interface BookingsManagerProps {
   reservations: ReservationWithProcedure[];
+  procedures: Procedure[];
+  promotions: Promotion[];
 }
 
 
@@ -74,7 +79,10 @@ const statusColors: Record<ReservationStatus, string> = {
   cancelled: "bg-red-100 text-red-400 border-red-200",
 };
 
-export function BookingsManager({ reservations: initialReservations }: BookingsManagerProps) {
+export function BookingsManager({ reservations: initialReservations, procedures, promotions }: BookingsManagerProps) {
+  const router = useRouter();
+  const [isAdding, setIsAdding] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [reservations, setReservations] = useState(initialReservations);
   const [selectedOffice, setSelectedOffice] = useState<OfficeName>("София");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -218,8 +226,41 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
     setActionError(null);
   };
 
+  // A booking added from the panel: show its day and load the fresh list
+  const handleCreated = (office: OfficeName, startAt: string) => {
+    const date = parseISO(startAt);
+    setIsAdding(false);
+    setSelectedOffice(office);
+    setSelectedDate(date);
+    setCurrentMonth(date);
+    setNotice(`Резервацията за ${format(date, "d MMMM, HH:mm", { locale: bg })} ч. е добавена.`);
+    router.refresh();
+  };
+
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {notice ? (
+          <p role="status" className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{notice}</p>
+        ) : (
+          <span />
+        )}
+        <Button onClick={() => { setNotice(null); setIsAdding(true); }}>
+          <Plus className="w-4 h-4 mr-2" />
+          Нова резервация
+        </Button>
+      </div>
+
+      {isAdding && (
+        <NewBookingForm
+          procedures={procedures}
+          promotions={promotions}
+          defaultOffice={selectedOffice}
+          onClose={() => setIsAdding(false)}
+          onCreated={handleCreated}
+        />
+      )}
+
       {/* Office Tabs */}
       <div className="flex flex-col sm:flex-row gap-4">
         {OFFICES.map((office) => (
@@ -450,12 +491,14 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
                     {selectedReservation.customer_phone}
                   </a>
                 </div>
-                <div className="flex items-center gap-3 text-taupe-700">
-                  <Mail className="w-5 h-5 text-gold" />
-                  <a href={`mailto:${selectedReservation.customer_email}`} className="hover:text-gold">
-                    {selectedReservation.customer_email}
-                  </a>
-                </div>
+                {selectedReservation.customer_email && (
+                  <div className="flex items-center gap-3 text-taupe-700">
+                    <Mail className="w-5 h-5 text-gold" />
+                    <a href={`mailto:${selectedReservation.customer_email}`} className="break-all hover:text-gold">
+                      {selectedReservation.customer_email}
+                    </a>
+                  </div>
+                )}
                 {selectedReservation.customer_note && (
                   <div className="flex items-start gap-3 text-taupe-700">
                     <FileText className="w-5 h-5 text-gold mt-0.5" />

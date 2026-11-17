@@ -20,6 +20,10 @@ export interface EmailReservation {
   price: number;
   /** e.g. "5 за 80 € · Лазерна епилация - 5 процедури по избор", when booked through a promotion */
   promotion: string | null;
+  /** Set on the first visit of an "N процедури за X €" promotion: how the remaining visits are arranged. */
+  followUp?: string | null;
+  /** Shown instead of the price, e.g. for a later visit already paid with a promotion. */
+  priceLabel?: string | null;
 }
 
 type Rows = readonly (readonly [string, string])[];
@@ -68,7 +72,7 @@ function details(r: EmailReservation): Rows {
     ["Час", formatTime(r.start_at)],
     ["Процедура", r.procedureName],
     ["Продължителност", formatDuration(r.durationMinutes)],
-    ["Цена", formatPrice(r.price)],
+    ["Цена", r.priceLabel ?? formatPrice(r.price)],
     ...(r.promotion ? ([["Промоция", r.promotion]] as const) : []),
   ];
 }
@@ -207,6 +211,7 @@ export function reservationReceivedEmail(r: EmailReservation): EmailContent {
     paragraphs: [
       "Получихме заявката ви за час. Тя все още не е потвърдена.",
       "Ще я прегледаме и ще ви изпратим втори имейл, щом часът бъде потвърден.",
+      ...(r.followUp ? [r.followUp] : []),
     ],
     sections: [{ title: "Вашата заявка", rows: details(r) }],
     actions: [directions(r.office_name)],
@@ -220,7 +225,10 @@ export function reservationConfirmedEmail(r: EmailReservation): EmailContent {
     subject: "Часът ви е потвърден - Classy & Beautiful",
     status: "Потвърдена",
     heading: `Очакваме ви, ${oneLine(r.customer_first_name)}.`,
-    paragraphs: ["Вашата резервация е потвърдена. Елате около 5 минути по-рано, за да започнем навреме."],
+    paragraphs: [
+      "Вашата резервация е потвърдена. Елате около 5 минути по-рано, за да започнем навреме.",
+      ...(r.followUp ? [r.followUp] : []),
+    ],
     sections: [{ title: "Вашата резервация", rows: details(r) }],
     actions: [directions(r.office_name), { label: "Добави в Google Календар", url: googleCalendarUrl(appointment(r)) }],
     note: "За Apple, Outlook и други календари отворете приложения файл rezervaciya.ics.",

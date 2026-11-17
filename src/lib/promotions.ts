@@ -12,11 +12,17 @@ export const PROMOTION_KINDS: { kind: PromotionKind; label: string; hint: string
   {
     kind: "bundle",
     label: "Брой процедури за цена",
-    hint: "Определен брой процедури на обща цена, напр. 5 процедури за 100 €. Клиентът избира от посочените процедури",
+    hint: "Определен брой процедури на обща цена, напр. 5 процедури за 100 €. Онлайн клиентът запазва само първото посещение",
   },
   { kind: "package", label: "Пакет", hint: "Няколко процедури в едно посещение на обща цена" },
   { kind: "custom", label: "Друга оферта", hint: "Свой етикет и описание, по желание със своя цена" },
 ];
+
+/**
+ * A client books a promotion online once, for the first visit only; the
+ * remaining visits are arranged in the salon (the admin adds them).
+ */
+export const FIRST_VISIT_NOTE = "Онлайн запазвате първото посещение. Останалите уговаряме заедно в салона, на удобни за вас дати.";
 
 /** "100 €" for whole amounts, "99,90 €" otherwise. */
 const shortPrice = (value: number) => (Number.isInteger(value) ? `${value} €` : formatPrice(value));

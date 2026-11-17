@@ -83,6 +83,23 @@ export function fieldErrors(error: z.ZodError): Record<string, string> {
 // Admin inputs
 // ---------------------------------------------------------------------------
 
+/** A booking the admin adds (e.g. taken by phone): last name and email are optional. */
+export const adminReservationSchema = z.object({
+  officeName: officeSchema,
+  procedureId: z.string().uuid("Изберете процедура"),
+  promotionId: z.string().uuid("Невалидна промоция").nullish(),
+  date: dateKeySchema,
+  time: timeSchema,
+  firstName: nameSchema,
+  lastName: z.union([z.literal(""), nameSchema]).optional(),
+  phone: phoneSchema,
+  email: z.union([z.literal(""), emailSchema]).optional(),
+  note: noteSchema,
+  sendEmail: z.boolean().optional(),
+});
+
+export type AdminReservationInput = z.input<typeof adminReservationSchema>;
+
 export const procedureInputSchema = z.object({
   name: z.string().trim().min(1, "Името е задължително").max(200),
   description: z.string().trim().max(2000).nullish(),

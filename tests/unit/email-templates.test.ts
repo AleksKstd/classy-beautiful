@@ -25,6 +25,19 @@ const reservation: EmailReservation = {
 };
 
 describe("customer emails", () => {
+  it("explains on a promotion's first visit that the rest is arranged in the salon", () => {
+    const followUp = "Останалите уговаряме заедно в салона.";
+    expect(reservationReceivedEmail({ ...reservation, followUp }).text).toContain(followUp);
+    expect(reservationConfirmedEmail({ ...reservation, followUp }).text).toContain(followUp);
+    expect(reservationConfirmedEmail(reservation).text).not.toContain("уговаряме");
+  });
+
+  it("shows a label instead of the price for a visit already paid with a promotion", () => {
+    const email = reservationConfirmedEmail({ ...reservation, priceLabel: "Включена в промоцията" });
+    expect(email.text).toContain("Цена: Включена в промоцията");
+    expect(email.text).not.toContain("36,80");
+  });
+
   it("tells the customer the request still awaits confirmation", () => {
     const email = reservationReceivedEmail(reservation);
     expect(email.subject).toContain("Получихме заявката");

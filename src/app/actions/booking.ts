@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { MAX_ACTIVE_BOOKINGS_PER_PHONE, type OfficeName } from "@/config/site";
+import { BUSINESS, MAX_ACTIVE_BOOKINGS_PER_PHONE, type OfficeName } from "@/config/site";
 import { createPublicClient } from "@/lib/supabase/public";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyAdminNewReservation, notifyCustomer } from "@/lib/notifications";
@@ -44,7 +44,14 @@ export interface CreateReservationResult {
     technician: string;
     email: string;
     /** Set when booked through a special promotion. */
-    promotion: { badge: string; title: string; procedures: string[]; priceNote: string | null } | null;
+    promotion: {
+      badge: string;
+      title: string;
+      procedures: string[];
+      priceNote: string | null;
+      /** True for "N процедури за X €": only the first visit is booked online. */
+      firstVisitOnly: boolean;
+    } | null;
     firstName: string;
     lastName: string;
   };
@@ -172,6 +179,25 @@ export async function createReservation(input: unknown): Promise<CreateReservati
       };
     }
 
+    // A promotion is booked online once per client: the first visit. The
+    // remaining visits are arranged in the salon and added by the admin.
+    if (offer) {
+      const usedBy = (column: "customer_phone" | "customer_email", value: string) =>
+        supabase
+          .from("reservations")
+          .select("id", { count: "exact", head: true })
+          .eq("promotion_id", offer.promotion.id)
+          .eq(column, value)
+          .neq("status", "cancelled");
+      const [byPhone, byEmail] = await Promise.all([usedBy("customer_phone", phone), usedBy("customer_email", data.email)]);
+      if ((byPhone.count ?? 0) > 0 || (byEmail.count ?? 0) > 0) {
+        return {
+          success: false,
+          error: `Вече имате резервация по тази промоция. Следващите посещения уговаряме заедно в салона или на ${BUSINESS.phoneDisplay}.`,
+        };
+      }
+    }
+
     const slotError = await validateSlot({
       officeName: data.officeName,
       dateKey: data.date,
@@ -250,6 +276,7 @@ export async function createReservation(input: unknown): Promise<CreateReservati
               title: offer.promotion.title,
               procedures: offer.promotion.kind === "bundle" ? [procedure.name] : offer.procedures.map((p) => p.name),
               priceNote: offer.priceNote,
+              firstVisitOnly: offer.promotion.kind === "bundle",
             }
           : null,
         technician: procedure.technician,

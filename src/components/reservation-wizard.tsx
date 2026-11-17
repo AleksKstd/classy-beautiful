@@ -48,7 +48,7 @@ import type { DayContentProps } from "react-day-picker";
 import { fieldErrors, reservationFormSchema, type ReservationFormData } from "@/lib/validation";
 import type { Procedure, Promotion } from "@/types/database";
 import { buildCatalog, procedurePath, sectionProcedures, type CatalogGroup, type CatalogSection } from "@/lib/catalog";
-import { liveOffers, offerProceduresLabel, offerVisitMinutes, validUntilLabel, type PromotionOffer } from "@/lib/promotions";
+import { FIRST_VISIT_NOTE, liveOffers, offerProceduresLabel, offerVisitMinutes, validUntilLabel, type PromotionOffer } from "@/lib/promotions";
 
 interface ReservationWizardProps {
   onComplete: (reservation: CreateReservationResult["reservation"]) => void;
@@ -649,8 +649,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId, preSelec
       >
         {body}
         <p className="mt-3 text-sm text-taupe-600">
-          Плащате {formatPrice(offer.totalPrice)} за {offer.promotion.procedure_count} процедури. При всяко посещение избирате
-          процедура от списъка.
+          Плащате {formatPrice(offer.totalPrice)} за {offer.promotion.procedure_count} процедури. {FIRST_VISIT_NOTE}
         </p>
         <p className="mb-2 mt-4 text-sm font-medium text-cocoa">С коя процедура да започнем?</p>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fieldErrors, nameSchema, normalizePhone, reservationFormSchema, reservationRequestSchema } from "@/lib/validation";
+import { adminReservationSchema, fieldErrors, nameSchema, normalizePhone, reservationFormSchema, reservationRequestSchema } from "@/lib/validation";
 
 describe("normalizePhone", () => {
   it.each([
@@ -75,5 +75,27 @@ describe("nameSchema abuse", () => {
     for (const good of ["Мария", "Ана-Мария", "Jean Luc", "O'Brien"]) {
       expect(nameSchema.safeParse(good).success).toBe(true);
     }
+  });
+});
+
+describe("adminReservationSchema", () => {
+  const base = {
+    officeName: "Лом",
+    procedureId: "8b0c7a52-3d1e-4f3a-9a77-1c2f3e4d5a6b",
+    date: "2026-12-01",
+    time: "10:00",
+    firstName: "Мария",
+    phone: "0888123456",
+  };
+
+  it("accepts a phone booking without last name or email", () => {
+    expect(adminReservationSchema.safeParse({ ...base, lastName: "", email: "" }).success).toBe(true);
+    expect(adminReservationSchema.safeParse(base).success).toBe(true);
+  });
+
+  it("still checks the phone, the email when given and the time", () => {
+    expect(adminReservationSchema.safeParse({ ...base, phone: "123" }).success).toBe(false);
+    expect(adminReservationSchema.safeParse({ ...base, email: "not-an-email" }).success).toBe(false);
+    expect(adminReservationSchema.safeParse({ ...base, time: "25:00" }).success).toBe(false);
   });
 });

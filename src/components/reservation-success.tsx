@@ -113,6 +113,12 @@ export function ReservationSuccess({
         <div className="mt-10">
           <h2 className="mb-4 text-2xl">Преди посещението</h2>
           <ul className="space-y-3 text-taupe-600">
+            {reservation.promotion?.firstVisitOnly && (
+              <li className="flex gap-3">
+                <span className="mt-3 h-px w-4 shrink-0 bg-gold" aria-hidden="true" />
+                Това е първото посещение от промоцията. Останалите уговаряме заедно в салона, на удобни за вас дати.
+              </li>
+            )}
             <li className="flex gap-3">
               <span className="mt-3 h-px w-4 shrink-0 bg-gold" aria-hidden="true" />
               Елате около 5 минути по-рано, за да започнем навреме.

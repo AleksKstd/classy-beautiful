@@ -44,8 +44,27 @@ async function loadReservation(reservationId: string): Promise<EmailReservation 
   const { data: included } = await supabase.from("procedures").select("*").in("id", promotion.procedure_ids);
   const offer = promotionOffer({ ...promotion, is_active: true }, included ?? []);
   if (!offer) return { ...base, promotion: `${promotion.badge} · ${promotion.title}` };
+  // The first visit of "N процедури за X €" (booked online or by the admin) explains the rest.
+  let followUp: string | null = null;
+  let priceLabel: string | null = null;
+  if (promotion.kind === "bundle") {
+    const { count: earlier } = await supabase
+      .from("reservations")
+      .select("id", { count: "exact", head: true })
+      .eq("promotion_id", promotion.id)
+      .eq("customer_phone", data.customer_phone)
+      .neq("status", "cancelled")
+      .lt("start_at", data.start_at);
+    if ((earlier ?? 0) === 0) {
+      followUp = `Това е първото посещение от промоцията „${promotion.title}“. Останалите уговаряме заедно в салона, на удобни за вас дати.`;
+    } else {
+      priceLabel = "Включена в промоцията";
+    }
+  }
   return {
     ...base,
+    followUp,
+    priceLabel,
     procedureName:
       promotion.kind !== "bundle" && offer.procedures.length > 1
         ? `${promotion.title}: ${offer.procedures.map((p) => p.name).join(", ")}`
