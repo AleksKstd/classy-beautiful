@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,7 +46,7 @@ import { GlassFill, GlassSample, loadLabel } from "@/components/day-load";
 import type { DayContentProps } from "react-day-picker";
 import { fieldErrors, reservationFormSchema, type ReservationFormData } from "@/lib/validation";
 import type { Procedure } from "@/types/database";
-import { buildCatalog, isSingle, lowestPrice, procedurePath, sectionProcedures, type CatalogGroup } from "@/lib/catalog";
+import { buildCatalog, procedurePath, sectionProcedures, type CatalogGroup, type CatalogSection } from "@/lib/catalog";
 
 interface ReservationWizardProps {
   onComplete: (reservation: CreateReservationResult["reservation"]) => void;
@@ -56,7 +56,8 @@ interface ReservationWizardProps {
 interface WizardState {
   office: OfficeName | null;
   selectedCategory: string | null;
-  selectedSubCategory: string | null;
+  /** Names of the sub-categories opened below the category, e.g. ["Лазерно премахване", "на капиляри"]. */
+  path: string[];
   procedure: Procedure | null;
   date: Date | null;
   timeSlot: string | null;
@@ -79,6 +80,36 @@ const steps = [
 ];
 
 const PROMO = "Промоции";
+
+/** One level of the procedure menu in the wizard: a category, Жени / Мъже, a treatment or a sub-group. */
+interface NavNode {
+  name: string;
+  children: NavNode[];
+  procedures: Procedure[];
+}
+
+const groupNode = (group: CatalogGroup): NavNode => ({
+  name: group.name,
+  procedures: group.procedures,
+  children: group.children.map(groupNode),
+});
+
+/** A section as a tree; Епилация gets a Жени / Мъже level first. */
+function sectionNode(section: CatalogSection): NavNode {
+  if (section.parts.length > 1) {
+    return {
+      name: section.name,
+      procedures: [],
+      children: section.parts.map((part) => ({ name: part.label ?? section.name, procedures: [], children: part.groups.map(groupNode) })),
+    };
+  }
+  return { name: section.name, procedures: [], children: (section.parts[0]?.groups ?? []).map(groupNode) };
+}
+
+/** "на капиляри" -> "На капиляри" for titles (the names stay as they are for matching). */
+const titleCase = (name: string) => name.charAt(0).toLocaleUpperCase("bg") + name.slice(1);
+
+const nodeProcedures = (node: NavNode): Procedure[] => [...node.procedures, ...node.children.flatMap(nodeProcedures)];
 
 const officeTaglines: Record<OfficeName, string> = {
   "София": "Салонът в столицата",
@@ -146,7 +177,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
   const [state, setState] = useState<WizardState>(() => ({
     office: null,
     selectedCategory: null,
-    selectedSubCategory: null,
+    path: [],
     procedure: null,
     date: null,
     timeSlot: null,
@@ -317,14 +348,34 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
   const selectCategory = (category: string) => {
     setState((prev) => ({ 
       ...prev, 
-      selectedCategory: category, 
-      selectedSubCategory: null,
-      procedure: null 
+      selectedCategory: category,
+      path: [],
+      procedure: null,
     }));
+    scrollToStepTop();
   };
 
-  const selectSubCategory = (subCategory: string) => {
-    setState((prev) => ({ ...prev, selectedSubCategory: subCategory, procedure: null }));
+  /** Opens a sub-category (one level deeper). */
+  const openNode = (name: string) => {
+    setState((prev) => ({ ...prev, path: [...prev.path, name], procedure: null }));
+    scrollToStepTop();
+  };
+
+  /** One level up: closes the last sub-category, or returns to all categories. */
+  const goUp = () => {
+    setState((prev) =>
+      prev.path.length > 0 ? { ...prev, path: prev.path.slice(0, -1) } : { ...prev, selectedCategory: null }
+    );
+    scrollToStepTop();
+  };
+
+  // After moving between levels, bring the top of the step back into view if it scrolled away.
+  const stepTopRef = useRef<HTMLHeadingElement>(null);
+  const scrollToStepTop = () => {
+    requestAnimationFrame(() => {
+      const el = stepTopRef.current;
+      if (el && el.getBoundingClientRect().top < 80) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   const selectProcedure = (procedure: Procedure) => {
@@ -416,12 +467,19 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
   // Get discounted procedures
   const getDiscountedProcedures = () => procedures.filter(procedureHasDiscount);
 
-  // Selected section (by id) and, for Епилация, the chosen part (Жени / Мъже)
+  // The chosen category as a tree, and the level currently open (following state.path)
   const currentSection = catalog.find((section) => section.id === state.selectedCategory) ?? null;
-  const needsPart = currentSection !== null && currentSection.parts.length > 1 && !state.selectedSubCategory;
-  const currentParts = currentSection
-    ? currentSection.parts.filter((part) => currentSection.parts.length === 1 || part.label === state.selectedSubCategory)
-    : [];
+  const trail: NavNode[] = [];
+  if (currentSection) {
+    let node: NavNode | undefined = sectionNode(currentSection);
+    trail.push(node);
+    for (const name of state.path) {
+      node = node.children.find((child) => child.name === name);
+      if (!node) break;
+      trail.push(node);
+    }
+  }
+  const currentNode = trail.at(-1) ?? null;
 
   const getStepStatus = (stepId: number) => {
     if (stepId < currentStep) return "completed";
@@ -480,30 +538,56 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
     );
   };
 
-  /** A treatment with its variants; a single-procedure treatment is just its button. */
-  const renderGroup = (group: CatalogGroup, nested = false): React.ReactNode => {
-    if (!nested && isSingle(group)) {
-      return <div key={group.name}>{renderProcedureButton(group.procedures[0])}</div>;
-    }
-    const from = lowestPrice(group);
+  /**
+   * A sub-category card. A sub-category with only one procedure books that
+   * procedure straight away; the others open the next level.
+   */
+  const renderNodeCard = (node: NavNode) => {
+    const all = nodeProcedures(node);
+    const single = node.children.length === 0 && node.procedures.length === 1 ? node.procedures[0] : null;
+    const prices = all.map(getFinalPrice);
+    const hasDiscount = all.some(procedureHasDiscount);
     return (
-      <div key={`group-${group.name}`} role="group" aria-label={group.name}>
-        <p
-          className={cn(
-            "flex items-baseline justify-between gap-4 py-2",
-            nested
-              ? "eyebrow"
-              : "sticky top-20 z-10 -mx-4 border-b border-blush bg-white/95 px-4 backdrop-blur font-display text-lg text-cocoa sm:mx-0 sm:px-0"
+      <button
+        key={node.name}
+        onClick={() => (single ? selectProcedure(single) : openNode(node.name))}
+        aria-pressed={single ? state.procedure?.id === single.id : undefined}
+        className={cn(
+          "group flex min-h-14 w-full items-center gap-4 rounded-2xl border bg-white p-5 text-left transition-colors duration-200",
+          single && state.procedure?.id === single.id
+            ? "border-cocoa"
+            : hasDiscount
+              ? "border-gold hover:border-cocoa/40"
+              : "border-taupe-200 hover:border-cocoa/40"
+        )}
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block font-display text-xl text-cocoa">{titleCase(node.name)}</span>
+          <span className="mt-1 block text-sm text-taupe-600">
+            {single
+              ? `${formatDuration(single.duration_minutes)} · ${single.technician}`
+              : `${all.length} ${all.length === 1 ? "процедура" : "процедури"}`}
+          </span>
+        </span>
+        <span className="shrink-0 text-right">
+          {single && procedureHasDiscount(single) && (
+            <span className="mb-0.5 block text-xs">
+              <span className="mr-1.5 rounded bg-rose-dark px-1.5 py-0.5 font-semibold text-white">−{single.discount_percentage}%</span>
+              <span className="text-taupe-400 line-through">{formatPrice(single.price)}</span>
+            </span>
           )}
-        >
-          <span>{group.name}</span>
-          {!nested && from !== null && <span className="shrink-0 font-sans text-xs text-taupe-500">от {formatPrice(from)}</span>}
-        </p>
-        <div className="mt-2 space-y-2">
-          {group.procedures.map((procedure) => renderProcedureButton(procedure))}
-          {group.children.map((child) => renderGroup(child, true))}
-        </div>
-      </div>
+          {!single && (
+            <span className="block text-[0.65rem] uppercase tracking-[0.14em] text-taupe-500">
+              {hasDiscount && (
+                <span className="mr-1.5 rounded bg-rose-dark px-1.5 py-0.5 font-semibold normal-case tracking-normal text-white">отстъпка</span>
+              )}
+              от
+            </span>
+          )}
+          <span className="block font-display text-xl tabular-nums text-cocoa">{formatPrice(Math.min(...prices))}</span>
+        </span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-taupe-300 transition-colors group-hover:text-cocoa" aria-hidden="true" />
+      </button>
     );
   };
 
@@ -617,7 +701,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
         {currentStep === 2 && (
           <div key="step-2" className="animate-fade-in-up">
             <p className="eyebrow mb-2">Стъпка 2 от 4</p>
-            <h2 className="mb-6 text-3xl">Каква процедура желаете?</h2>
+            <h2 ref={stepTopRef} className="mb-6 scroll-mt-28 text-3xl">Каква процедура желаете?</h2>
 
             {/* Search */}
             <div className="relative mb-6">
@@ -689,58 +773,38 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                   </div>
                 )}
 
-                {/* Parts (Епилация: Жени / Мъже) */}
-                {currentSection && needsPart && (
+                {/* Promotions: every discounted procedure */}
+                {state.selectedCategory === PROMO && (
                   <div className="space-y-4">
-                    <button
-                      onClick={() => setState((prev) => ({ ...prev, selectedCategory: null }))}
-                      className="flex min-h-11 items-center gap-1 text-sm text-taupe-600 hover:text-cocoa"
-                    >
+                    <button onClick={goUp} className="flex min-h-11 items-center gap-1 text-sm text-taupe-600 hover:text-cocoa">
                       <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Всички категории
                     </button>
-                    <h3 className="font-display text-2xl text-cocoa">{currentSection.name}</h3>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      {currentSection.parts.map((part) => (
-                        <button
-                          key={part.label}
-                          onClick={() => selectSubCategory(part.label ?? "")}
-                          className="group flex items-center justify-between rounded-2xl border border-taupe-200 bg-white p-5 text-left transition-colors duration-200 hover:border-cocoa/40"
-                        >
-                          <span className="font-display text-xl text-cocoa">{part.label}</span>
-                          <ChevronRight className="h-5 w-5 text-taupe-300 group-hover:text-cocoa" aria-hidden="true" />
-                        </button>
-                      ))}
+                    <h3 className="font-display text-2xl text-cocoa">{PROMO}</h3>
+                    <div className="space-y-2">
+                      {getDiscountedProcedures().map((proc) => renderProcedureButton(proc, procedurePath(catalog, proc.id)))}
                     </div>
                   </div>
                 )}
 
-                {/* Procedures of the chosen category, grouped by treatment */}
-                {state.selectedCategory && (state.selectedCategory === PROMO || (currentSection && !needsPart)) && (
-                  <div className="space-y-4">
-                    <button
-                      onClick={() =>
-                        setState((prev) => ({
-                          ...prev,
-                          selectedSubCategory: null,
-                          selectedCategory: prev.selectedSubCategory ? prev.selectedCategory : null,
-                        }))
-                      }
-                      className="flex min-h-11 items-center gap-1 text-sm text-taupe-600 hover:text-cocoa"
-                    >
+                {/* Category → sub-categories → procedures, one level at a time */}
+                {currentNode && (
+                  <div key={state.path.join("/")} className="animate-fade-in space-y-4">
+                    <button onClick={goUp} className="flex min-h-11 items-center gap-1 text-sm text-taupe-600 hover:text-cocoa">
                       <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                      {state.selectedSubCategory ? currentSection?.name : "Всички категории"}
+                      {trail.length > 1 ? titleCase(trail[trail.length - 2].name) : "Всички категории"}
                     </button>
-                    <h3 className="font-display text-2xl text-cocoa">
-                      {state.selectedCategory === PROMO
-                        ? PROMO
-                        : [currentSection?.name, state.selectedSubCategory].filter(Boolean).join(" · ")}
-                    </h3>
-                    {state.selectedCategory === PROMO ? (
-                      <div className="space-y-2">{getDiscountedProcedures().map((proc) => renderProcedureButton(proc, procedurePath(catalog, proc.id)))}</div>
-                    ) : (
-                      <div className="space-y-6">
-                        {currentParts.flatMap((part) => part.groups).map((group) => renderGroup(group))}
-                      </div>
+                    <div>
+                      {/* Trail only from two levels down; one level up is already the back link */}
+                      {trail.length > 2 && (
+                        <p className="eyebrow mb-1">{trail.slice(0, -1).map((node) => node.name).join(" · ")}</p>
+                      )}
+                      <h3 className="font-display text-2xl text-cocoa">{titleCase(currentNode.name)}</h3>
+                    </div>
+                    {currentNode.children.length > 0 && (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{currentNode.children.map(renderNodeCard)}</div>
+                    )}
+                    {currentNode.procedures.length > 0 && (
+                      <div className="space-y-2">{currentNode.procedures.map((proc) => renderProcedureButton(proc))}</div>
                     )}
                   </div>
                 )}
