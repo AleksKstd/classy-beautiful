@@ -44,8 +44,33 @@ async function loadReservation(reservationId: string): Promise<EmailReservation 
   const { data: included } = await supabase.from("procedures").select("*").in("id", promotion.procedure_ids);
   const offer = promotionOffer({ ...promotion, is_active: true }, included ?? []);
   if (!offer) return { ...base, promotion: `${promotion.badge} · ${promotion.title}` };
+  // The first visit of "N процедури за X €" (booked online or by the admin) explains the rest.
+  let followUp: string | null = null;
+  let priceLabel: string | null = null;
+  if (promotion.kind === "bundle") {
+    // Same client = same phone or email, as in the online check; "earlier" = booked before this one
+    const bookedBefore = (column: "customer_phone" | "customer_email", value: string) =>
+      supabase
+        .from("reservations")
+        .select("id", { count: "exact", head: true })
+        .eq("promotion_id", promotion.id)
+        .eq(column, value)
+        .neq("status", "cancelled")
+        .lt("created_at", data.created_at);
+    const [byPhone, byEmail] = await Promise.all([
+      bookedBefore("customer_phone", data.customer_phone),
+      data.customer_email ? bookedBefore("customer_email", data.customer_email) : Promise.resolve({ count: 0 }),
+    ]);
+    if ((byPhone.count ?? 0) + (byEmail.count ?? 0) === 0) {
+      followUp = `Това е първото посещение от промоцията „${promotion.title}“. Останалите уговаряме заедно в салона, на удобни за вас дати.`;
+    } else {
+      priceLabel = "Включена в промоцията";
+    }
+  }
   return {
     ...base,
+    followUp,
+    priceLabel,
     procedureName:
       promotion.kind !== "bundle" && offer.procedures.length > 1
         ? `${promotion.title}: ${offer.procedures.map((p) => p.name).join(", ")}`

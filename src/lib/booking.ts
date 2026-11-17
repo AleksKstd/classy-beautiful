@@ -1,7 +1,7 @@
 import "server-only";
 import type { OfficeName } from "@/config/site";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { buildDaySlots, type TimeRange } from "@/lib/slots";
+import { buildDaySlots, type DaySlot, type TimeRange } from "@/lib/slots";
 import { dayRangeUtc } from "@/lib/time";
 
 /** Active bookings overlapping [start, end) for an office (times only, no personal data). */
@@ -31,18 +31,13 @@ export async function fetchBookedRanges(officeName: OfficeName, dateKey: string,
   return fetchBookedRangesBetween(officeName, start, end, excludeId);
 }
 
-/**
- * Server-side check that a start time is bookable: inside opening hours,
- * not in the past, not in a closure and not overlapping another booking.
- * Shared with the admin reschedule action.
- */
-export async function validateSlot(params: {
+/** A day's slots for an office, with its closures and bookings taken into account. */
+export async function getDaySlots(params: {
   officeName: OfficeName;
   dateKey: string;
-  time: string;
   durationMinutes: number;
   excludeReservationId?: string;
-}): Promise<string | null> {
+}): Promise<DaySlot[]> {
   const { start, end } = dayRangeUtc(params.dateKey);
   const { data: closures, error } = await createAdminClient()
     .from("schedules")
@@ -53,12 +48,27 @@ export async function validateSlot(params: {
   if (error) throw error;
 
   const booked = await fetchBookedRanges(params.officeName, params.dateKey, params.excludeReservationId);
-  const slot = buildDaySlots({
+  return buildDaySlots({
     dateKey: params.dateKey,
     durationMinutes: params.durationMinutes,
     closures: (closures ?? []).map((c) => ({ start: c.closed_date_start, end: c.closed_date_end })),
     booked,
-  }).find((s) => s.time === params.time);
+  });
+}
+
+/**
+ * Server-side check that a start time is bookable: inside opening hours,
+ * not in the past, not in a closure and not overlapping another booking.
+ * Shared with the admin reschedule and new-booking actions.
+ */
+export async function validateSlot(params: {
+  officeName: OfficeName;
+  dateKey: string;
+  time: string;
+  durationMinutes: number;
+  excludeReservationId?: string;
+}): Promise<string | null> {
+  const slot = (await getDaySlots(params)).find((s) => s.time === params.time);
 
   if (!slot) return "Избраният час е извън работното време.";
   if (slot.booked) return "Избраният час вече е зает. Моля, изберете друг час.";

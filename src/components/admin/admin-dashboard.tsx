@@ -113,7 +113,7 @@ export function AdminDashboard({
       {/* Content */}
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === "bookings" && (
-          <BookingsManager reservations={reservations} />
+          <BookingsManager reservations={reservations} procedures={procedures} promotions={promotions} />
         )}
         {activeTab === "procedures" && (
           <ProceduresManager procedures={procedures} />

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { MAX_ACTIVE_BOOKINGS_PER_PHONE, type OfficeName } from "@/config/site";
+import { BUSINESS, MAX_ACTIVE_BOOKINGS_PER_PHONE, type OfficeName } from "@/config/site";
 import { createPublicClient } from "@/lib/supabase/public";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyAdminNewReservation, notifyCustomer } from "@/lib/notifications";
@@ -44,7 +44,14 @@ export interface CreateReservationResult {
     technician: string;
     email: string;
     /** Set when booked through a special promotion. */
-    promotion: { badge: string; title: string; procedures: string[]; priceNote: string | null } | null;
+    promotion: {
+      badge: string;
+      title: string;
+      procedures: string[];
+      priceNote: string | null;
+      /** True for "N процедури за X €": only the first visit is booked online. */
+      firstVisitOnly: boolean;
+    } | null;
     firstName: string;
     lastName: string;
   };
@@ -120,6 +127,8 @@ export async function createReservation(input: unknown): Promise<CreateReservati
   }
   const data = parsed.data;
   const phone = normalizePhone(data.phone)!;
+  // Stored in lower case so the once-per-promotion check is not fooled by capitals
+  const email = data.email.toLowerCase();
 
   if (!isWithinBookingWindow(data.date)) {
     return { success: false, error: "Избраната дата не е в периода за резервации." };
@@ -172,6 +181,29 @@ export async function createReservation(input: unknown): Promise<CreateReservati
       };
     }
 
+    // A promotion is booked online once per client: the first visit. The
+    // remaining visits are arranged in the salon and added by the admin.
+    if (offer) {
+      const usedBy = (column: "customer_phone" | "customer_email", value: string) =>
+        supabase
+          .from("reservations")
+          .select("id", { count: "exact", head: true })
+          .eq("promotion_id", offer.promotion.id)
+          .eq(column, value)
+          .neq("status", "cancelled");
+      const [byPhone, byEmail] = await Promise.all([usedBy("customer_phone", phone), usedBy("customer_email", email)]);
+      if (byPhone.error || byEmail.error) {
+        console.error("Error checking promotion use:", byPhone.error ?? byEmail.error);
+        return { success: false, error: "Възникна грешка при създаване на резервацията. Моля, опитайте отново." };
+      }
+      if ((byPhone.count ?? 0) > 0 || (byEmail.count ?? 0) > 0) {
+        return {
+          success: false,
+          error: `Вече имате резервация по тази промоция. Следващите посещения уговаряме заедно в салона или на ${BUSINESS.phoneDisplay}.`,
+        };
+      }
+    }
+
     const slotError = await validateSlot({
       officeName: data.officeName,
       dateKey: data.date,
@@ -184,7 +216,7 @@ export async function createReservation(input: unknown): Promise<CreateReservati
     // (e.g. the time was just taken) does not use up the customer's allowance.
     // The email address is limited because every request sends it an email.
     const allowedPhone = await rateLimit(`reserve:phone:${phone}`, 5, 24 * 60 * 60);
-    const allowedEmail = await rateLimit(`reserve:email:${data.email.toLowerCase()}`, 5, 24 * 60 * 60);
+    const allowedEmail = await rateLimit(`reserve:email:${email}`, 5, 24 * 60 * 60);
     if (!allowedPhone || !allowedEmail) return { success: false, error: TOO_MANY_ATTEMPTS };
 
     const startAt = zonedToUtc(data.date, data.time);
@@ -200,7 +232,7 @@ export async function createReservation(input: unknown): Promise<CreateReservati
         customer_first_name: data.firstName,
         customer_last_name: data.lastName,
         customer_phone: phone,
-        customer_email: data.email,
+        customer_email: email,
         customer_note: data.note || null,
         status: "pending",
         // Only sent with a promotion, so bookings keep working before migration 006
@@ -250,10 +282,11 @@ export async function createReservation(input: unknown): Promise<CreateReservati
               title: offer.promotion.title,
               procedures: offer.promotion.kind === "bundle" ? [procedure.name] : offer.procedures.map((p) => p.name),
               priceNote: offer.priceNote,
+              firstVisitOnly: offer.promotion.kind === "bundle",
             }
           : null,
         technician: procedure.technician,
-        email: data.email,
+        email,
         firstName: data.firstName,
         lastName: data.lastName,
       },
