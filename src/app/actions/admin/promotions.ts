@@ -16,6 +16,21 @@ function revalidatePublicPages() {
   revalidatePath("/rezervacii");
 }
 
+/**
+ * Turns a database error into a message the admin can act on. The usual cause
+ * is that migration 006 has not been run (or an older copy of it was).
+ */
+function saveError(error: { code?: string; message?: string }, fallback: string): string {
+  const code = error.code ?? "";
+  if (["42P01", "PGRST205"].includes(code)) {
+    return "Таблицата за промоции липсва. Изпълнете supabase/migrations/006_promotions.sql в Supabase → SQL Editor и опитайте отново.";
+  }
+  if (["42703", "PGRST204", "23514", "23502"].includes(code)) {
+    return "Таблицата за промоции е от стара версия. Изпълнете отново supabase/migrations/006_promotions.sql в Supabase → SQL Editor и опитайте отново.";
+  }
+  return `${fallback}${code ? ` (код ${code})` : ""}`;
+}
+
 /** Validates the input and keeps only the fields that apply to its kind. */
 function toRow(input: PromotionInput) {
   const parsed = promotionInputSchema.safeParse(input);
@@ -65,7 +80,7 @@ export async function createPromotion(input: PromotionInput): Promise<Result> {
   const { error } = await supabase.from("promotions").insert({ ...result.row, display_order });
   if (error) {
     console.error("Error creating promotion:", error);
-    return { success: false, error: "Грешка при създаване на промоцията" };
+    return { success: false, error: saveError(error, "Грешка при създаване на промоцията") };
   }
   revalidatePublicPages();
   return { success: true };
@@ -81,7 +96,7 @@ export async function updatePromotion(id: string, input: PromotionInput): Promis
   const { error } = await createAdminClient().from("promotions").update(result.row).eq("id", id);
   if (error) {
     console.error("Error updating promotion:", error);
-    return { success: false, error: "Грешка при запазване на промоцията" };
+    return { success: false, error: saveError(error, "Грешка при запазване на промоцията") };
   }
   revalidatePublicPages();
   return { success: true };

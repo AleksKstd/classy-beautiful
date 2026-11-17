@@ -40,3 +40,31 @@ CREATE POLICY "Public can read active promotions"
 ALTER TABLE reservations
   ADD COLUMN IF NOT EXISTS promotion_id UUID REFERENCES promotions (id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_reservations_promotion ON reservations (promotion_id);
+
+-- ---------------------------------------------------------------------------
+-- Repair: bring a table created by an earlier draft of this file (with
+-- buy_count / pay_count instead of procedure_count) up to date. Does nothing
+-- on a table created by the current version.
+-- ---------------------------------------------------------------------------
+ALTER TABLE promotions ADD COLUMN IF NOT EXISTS procedure_count INT;
+ALTER TABLE promotions DROP COLUMN IF EXISTS buy_count;  -- also drops its old checks
+ALTER TABLE promotions DROP COLUMN IF EXISTS pay_count;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'promotions_procedure_count_check') THEN
+    ALTER TABLE promotions ADD CONSTRAINT promotions_procedure_count_check
+      CHECK (procedure_count IS NULL OR procedure_count BETWEEN 2 AND 20) NOT VALID;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conrelid = 'promotions'::regclass
+       AND pg_get_constraintdef(oid) LIKE '%procedure_count IS NOT NULL%'
+  ) THEN
+    ALTER TABLE promotions ADD CONSTRAINT promotions_bundle_check
+      CHECK (kind <> 'bundle' OR (procedure_count IS NOT NULL AND price IS NOT NULL)) NOT VALID;
+  END IF;
+END $$;
+
+-- Let the Supabase API see the new table and columns straight away
+NOTIFY pgrst, 'reload schema';

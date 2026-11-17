@@ -91,8 +91,12 @@ describe("promotionInputSchema", () => {
   const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
   it("accepts a valid bundle and package", () => {
-    expect(promotionInputSchema.safeParse({ ...base, kind: "bundle", procedure_ids: [uuid(1), uuid(2)], procedure_count: 5, price: 100 }).success).toBe(true);
+    expect(promotionInputSchema.safeParse({ ...base, kind: "bundle", procedure_ids: [uuid(1)], procedure_count: 3, price: 100 }).success).toBe(true);
     expect(promotionInputSchema.safeParse({ ...base, kind: "package", procedure_ids: [uuid(1), uuid(2)], price: 50 }).success).toBe(true);
+  });
+
+  it("allows only one procedure in a bundle", () => {
+    expect(promotionInputSchema.safeParse({ ...base, kind: "bundle", procedure_ids: [uuid(1), uuid(2)], procedure_count: 3, price: 100 }).success).toBe(false);
   });
 
   it("rejects bundles without a count or price and packages without a price", () => {

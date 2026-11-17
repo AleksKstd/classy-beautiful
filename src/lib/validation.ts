@@ -159,6 +159,9 @@ export const promotionInputSchema = z
       if (!p.procedure_count) {
         ctx.addIssue({ code: "custom", path: ["procedure_count"], message: "Въведете брой процедури (поне 2)" });
       }
+      if (p.procedure_ids.length !== 1) {
+        ctx.addIssue({ code: "custom", path: ["procedure_ids"], message: "Изберете една процедура" });
+      }
       if (p.price === null || p.price === undefined) {
         ctx.addIssue({ code: "custom", path: ["price"], message: "Въведете обща цена" });
       }

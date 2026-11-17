@@ -614,6 +614,11 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId, preSelec
           <span className="mt-2 block text-xs text-taupe-500">
             {[offer.choice ? null : formatDuration(offer.durationMinutes), offer.priceNote].filter(Boolean).join(" · ")}
           </span>
+          {offer.promotion.kind === "bundle" && (
+            <span className="mt-3 block text-sm text-taupe-600">
+              Плащате {formatPrice(offer.totalPrice)} за {offer.promotion.procedure_count} процедури. {FIRST_VISIT_NOTE}
+            </span>
+          )}
         </span>
         <span className="shrink-0 text-right">
           {offer.regularPrice > offer.totalPrice && (
@@ -648,9 +653,6 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId, preSelec
         className={cn("rounded-2xl border bg-white p-5", selected ? "border-cocoa" : "border-gold")}
       >
         {body}
-        <p className="mt-3 text-sm text-taupe-600">
-          Плащате {formatPrice(offer.totalPrice)} за {offer.promotion.procedure_count} процедури. {FIRST_VISIT_NOTE}
-        </p>
         <p className="mb-2 mt-4 text-sm font-medium text-cocoa">С коя процедура да започнем?</p>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {offer.procedures.map((procedure) => {

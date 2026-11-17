@@ -107,6 +107,8 @@ export function PromotionsManager({ promotions, procedures }: PromotionsManagerP
   const toggleProcedure = (id: string) => {
     setForm((prev) => {
       const selected = prev.procedureIds.includes(id);
+      // "Брой процедури за цена" is for one procedure: picking another replaces it
+      if (prev.kind === "bundle") return { ...prev, procedureIds: selected ? [] : [id] };
       return { ...prev, procedureIds: selected ? prev.procedureIds.filter((x) => x !== id) : [...prev.procedureIds, id] };
     });
   };
@@ -223,7 +225,9 @@ export function PromotionsManager({ promotions, procedures }: PromotionsManagerP
                     value={kind}
                     checked={form.kind === kind}
                     onChange={() =>
-                      setForm((prev) => withBadge({ ...prev, kind }))
+                      setForm((prev) =>
+                        withBadge({ ...prev, kind, procedureIds: kind === "bundle" ? prev.procedureIds.slice(0, 1) : prev.procedureIds })
+                      )
                     }
                     className="sr-only"
                   />
@@ -312,8 +316,8 @@ export function PromotionsManager({ promotions, procedures }: PromotionsManagerP
           </div>
           {form.kind === "bundle" && (
             <p className="-mt-3 text-xs text-taupe-500">
-              Клиентът плаща {form.price || "…"} € за {form.count || "…"} процедури. Онлайн запазва само първото посещение
-              (ако изберете няколко процедури, избира с коя да започне). Останалите посещения добавяте от Резервации → Нова резервация.
+              Клиентът плаща {form.price || "…"} € за {form.count || "…"} пъти избраната процедура. Онлайн запазва само първото
+              посещение; останалите добавяте от Резервации → Нова резервация.
             </p>
           )}
 
@@ -321,7 +325,7 @@ export function PromotionsManager({ promotions, procedures }: PromotionsManagerP
           <div>
             <p className="mb-2 text-sm font-medium">
               {form.kind === "bundle"
-                ? "Процедури, от които клиентът избира *"
+                ? "Процедура *"
                 : form.kind === "package"
                   ? "Процедури в пакета * (в реда, в който се правят)"
                   : "Процедури *"}
