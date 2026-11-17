@@ -63,6 +63,8 @@ export const reservationRequestSchema = reservationFormSchema.extend({
   procedureId: z.string().uuid("Невалидна процедура"),
   date: dateKeySchema,
   time: timeSchema,
+  /** Set when the client books through a special promotion. */
+  promotionId: z.string().uuid("Невалидна промоция").nullish(),
 });
 
 export type ReservationRequest = z.input<typeof reservationRequestSchema>;
@@ -110,3 +112,52 @@ export const adminSettingsSchema = z.object({
 });
 
 export type AdminSettingsData = z.infer<typeof adminSettingsSchema>;
+
+const optionalDate = z
+  .string()
+  .trim()
+  .transform((v) => v || null)
+  .pipe(dateKeySchema.nullable())
+  .nullish();
+
+export const promotionInputSchema = z
+  .object({
+    kind: z.enum(["bundle", "package", "custom"], { error: "Изберете вид промоция" }),
+    title: z.string().trim().min(1, "Заглавието е задължително").max(120, "Максимум 120 символа"),
+    badge: z.string().trim().min(1, "Етикетът е задължителен").max(30, "Максимум 30 символа"),
+    description: z.string().trim().max(600, "Максимум 600 символа").nullish(),
+    procedure_ids: z
+      .array(z.string().uuid())
+      .min(1, "Изберете поне една процедура")
+      .max(10, "Максимум 10 процедури")
+      .refine((ids) => new Set(ids).size === ids.length, "Процедурите се повтарят"),
+    buy_count: z.number().int().min(2).max(20).nullish(),
+    pay_count: z.number().int().min(1).max(19).nullish(),
+    price: z.number().min(0, "Невалидна цена").max(100000).nullish(),
+    starts_on: optionalDate,
+    ends_on: optionalDate,
+    is_active: z.boolean(),
+  })
+  .superRefine((p, ctx) => {
+    if (p.kind === "bundle") {
+      if (!p.buy_count || !p.pay_count || p.pay_count >= p.buy_count) {
+        ctx.addIssue({ code: "custom", path: ["buy_count"], message: "Посещенията за плащане трябва да са по-малко от общия брой" });
+      }
+      if (p.procedure_ids.length !== 1) {
+        ctx.addIssue({ code: "custom", path: ["procedure_ids"], message: "Изберете точно една процедура" });
+      }
+    }
+    if (p.kind === "package") {
+      if (p.procedure_ids.length < 2) {
+        ctx.addIssue({ code: "custom", path: ["procedure_ids"], message: "Пакетът трябва да има поне две процедури" });
+      }
+      if (p.price === null || p.price === undefined) {
+        ctx.addIssue({ code: "custom", path: ["price"], message: "Въведете цена на пакета" });
+      }
+    }
+    if (p.starts_on && p.ends_on && p.starts_on > p.ends_on) {
+      ctx.addIssue({ code: "custom", path: ["ends_on"], message: "Крайната дата е преди началната" });
+    }
+  });
+
+export type PromotionInput = z.input<typeof promotionInputSchema>;

@@ -10,6 +10,7 @@ import type { CreateReservationResult } from "@/app/actions/booking";
 function ReservationContent() {
   const searchParams = useSearchParams();
   const procedureId = searchParams.get("procedureId");
+  const promotionId = searchParams.get("promotionId");
   
   const [completedReservation, setCompletedReservation] =
     useState<CreateReservationResult["reservation"] | null>(null);
@@ -46,7 +47,11 @@ function ReservationContent() {
           </p>
         </div>
 
-        <ReservationWizard onComplete={handleComplete} preSelectedProcedureId={procedureId} />
+        <ReservationWizard
+          onComplete={handleComplete}
+          preSelectedProcedureId={procedureId}
+          preSelectedPromotionId={promotionId}
+        />
       </div>
     </section>
   );

@@ -25,15 +25,16 @@ export async function getCalendarFeedInfo(): Promise<{ feedUrl: string; googleUr
 
 export async function getDashboardData() {
   const supabase = createAdminClient();
-  const [procedures, schedules, carouselImages, reservationLogs, reservations] = await Promise.all([
+  const [procedures, schedules, carouselImages, reservationLogs, reservations, promotions] = await Promise.all([
     supabase.from("procedures").select("*").order("type", { ascending: true }),
     supabase.from("schedules").select("*").order("closed_date_start", { ascending: true }),
     supabase.from("carousel_images").select("*").order("display_order", { ascending: true }),
     supabase.from("reservation_logs").select("*").order("booked_at", { ascending: false }),
     supabase
       .from("reservations")
-      .select("*, procedure:procedures(id, name, duration_minutes, price, technician)")
+      .select("*, procedure:procedures(id, name, duration_minutes, price, technician), promotion:promotions(badge, title)")
       .order("start_at", { ascending: true }),
+    supabase.from("promotions").select("*").order("display_order", { ascending: true }),
   ]);
 
   return {
@@ -42,5 +43,6 @@ export async function getDashboardData() {
     carouselImages: carouselImages.data ?? [],
     reservationLogs: reservationLogs.data ?? [],
     reservations: reservations.data ?? [],
+    promotions: promotions.data ?? [],
   };
 }

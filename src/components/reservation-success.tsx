@@ -45,7 +45,22 @@ export function ReservationSuccess({
 
   const rows = [
     { label: "Салон", value: address ? `${reservation.officeName}, ${address}` : reservation.officeName },
-    { label: "Процедура", value: reservation.procedureName, sub: `Специалист: ${reservation.technician}` },
+    {
+      label: "Процедура",
+      value: reservation.procedureName,
+      sub: reservation.promotion && reservation.promotion.procedures.length > 1
+        ? reservation.promotion.procedures.join(" + ")
+        : `Специалист: ${reservation.technician}`,
+    },
+    ...(reservation.promotion
+      ? [
+          {
+            label: "Промоция",
+            value: `${reservation.promotion.badge} · ${reservation.promotion.title}`,
+            sub: reservation.promotion.priceNote ?? undefined,
+          },
+        ]
+      : []),
     { label: "Дата", value: formatInSalonTz(startDate, { weekday: "long", day: "numeric", month: "long", year: "numeric" }) },
     {
       label: "Час",

@@ -53,6 +53,8 @@ export interface ReservationWithProcedure {
     price: number;
     technician: string;
   };
+  /** Set when the client booked through a promotion */
+  promotion: { badge: string; title: string } | null;
 }
 
 interface BookingsManagerProps {
@@ -267,7 +269,7 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
                   className="min-w-0 flex-1 text-left hover:text-gold"
                 >
                   <span className="block font-medium">
-                    {format(parseISO(reservation.start_at), "d MMM, HH:mm", { locale: bg })} • {reservation.procedure.name}
+                    {format(parseISO(reservation.start_at), "d MMM, HH:mm", { locale: bg })} • {reservation.procedure.name}{reservation.promotion && <span className="ml-2 rounded bg-gold px-1.5 py-0.5 text-xs font-semibold text-cocoa">{reservation.promotion.badge}</span>}
                   </span>
                   <span className="block text-sm text-taupe-500">
                     {reservation.customer_first_name} {reservation.customer_last_name} • {reservation.customer_phone}
@@ -378,7 +380,7 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
                               {statusLabels[reservation.status]}
                             </span>
                           </div>
-                          <p className="font-medium text-cocoa">{reservation.procedure.name}</p>
+                          <p className="font-medium text-cocoa">{reservation.procedure.name}{reservation.promotion && <span className="ml-2 rounded bg-gold px-1.5 py-0.5 text-xs font-semibold text-cocoa">{reservation.promotion.badge}</span>}</p>
                           <p className="text-sm text-taupe-500">
                             {reservation.customer_first_name} {reservation.customer_last_name}
                           </p>
@@ -404,6 +406,12 @@ export function BookingsManager({ reservations: initialReservations }: BookingsM
               <div className="flex items-start justify-between mb-6">
                 <div>
                   <h3 className="text-xl font-semibold">{selectedReservation.procedure.name}</h3>
+                  {selectedReservation.promotion && (
+                    <p className="mt-1 text-sm text-taupe-600">
+                      <span className="mr-2 rounded bg-gold px-1.5 py-0.5 text-xs font-semibold text-cocoa">{selectedReservation.promotion.badge}</span>
+                      Промоция: {selectedReservation.promotion.title}
+                    </p>
+                  )}
                   <p className="text-taupe-500">{selectedReservation.procedure.technician}</p>
                 </div>
                 <span className={cn("text-sm px-3 py-1 rounded-full border", statusColors[selectedReservation.status])}>

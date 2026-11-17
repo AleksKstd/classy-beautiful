@@ -1,4 +1,5 @@
 export type ReservationStatus = 'pending' | 'confirmed' | 'cancelled';
+export type PromotionKind = 'bundle' | 'package' | 'custom';
 
 export type Database = {
   public: {
@@ -142,6 +143,7 @@ export type Database = {
           cancellation_reason: string | null;
           confirmed_at: string | null;
           confirmation_email_sent: boolean;
+          promotion_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -163,6 +165,7 @@ export type Database = {
           cancellation_reason?: string | null;
           confirmed_at?: string | null;
           confirmation_email_sent?: boolean;
+          promotion_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -184,8 +187,58 @@ export type Database = {
           cancellation_reason?: string | null;
           confirmed_at?: string | null;
           confirmation_email_sent?: boolean;
+          promotion_id?: string | null;
           created_at?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      promotions: {
+        Row: {
+          id: string;
+          kind: PromotionKind;
+          title: string;
+          badge: string;
+          description: string | null;
+          procedure_ids: string[];
+          buy_count: number | null;
+          pay_count: number | null;
+          price: number | null;
+          starts_on: string | null;
+          ends_on: string | null;
+          is_active: boolean;
+          display_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          kind: PromotionKind;
+          title: string;
+          badge: string;
+          description?: string | null;
+          procedure_ids: string[];
+          buy_count?: number | null;
+          pay_count?: number | null;
+          price?: number | null;
+          starts_on?: string | null;
+          ends_on?: string | null;
+          is_active?: boolean;
+          display_order?: number;
+          created_at?: string;
+        };
+        Update: {
+          kind?: PromotionKind;
+          title?: string;
+          badge?: string;
+          description?: string | null;
+          procedure_ids?: string[];
+          buy_count?: number | null;
+          pay_count?: number | null;
+          price?: number | null;
+          starts_on?: string | null;
+          ends_on?: string | null;
+          is_active?: boolean;
+          display_order?: number;
         };
         Relationships: [];
       };
@@ -236,6 +289,7 @@ export type Procedure = Database["public"]["Tables"]["procedures"]["Row"];
 export type Schedule = Database["public"]["Tables"]["schedules"]["Row"];
 export type ReservationLog = Database["public"]["Tables"]["reservation_logs"]["Row"];
 export type ReservationLogInsert = Database["public"]["Tables"]["reservation_logs"]["Insert"];
+export type Promotion = Database["public"]["Tables"]["promotions"]["Row"];
 export type CarouselImage = Database["public"]["Tables"]["carousel_images"]["Row"];
 export type CarouselImageInsert = Database["public"]["Tables"]["carousel_images"]["Insert"];
 

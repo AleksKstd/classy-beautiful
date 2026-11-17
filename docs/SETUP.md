@@ -10,12 +10,13 @@
    4. `supabase/migrations/003_data_retention.sql` (nightly clean-up promised in the privacy policy)
    5. `supabase/migrations/004_gallery_links.sql` (link photos to procedures for the gallery)
    6. `supabase/migrations/005_spelling_fixes.sql` (only needed for a database seeded before this fix)
+   7. `supabase/migrations/006_promotions.sql` (special promotions such as "3 за 2")
 3. For a **new, empty** project only: run `supabase/seed.sql` to load the procedure catalogue.
    Never run it on a database that already has reservations.
 
 ### Existing project (upgrading)
 
-Run `002_security_hardening.sql`, then `003_data_retention.sql`, then `004_gallery_links.sql`, then `005_spelling_fixes.sql`. All are safe to re-run. If it stops with an
+Run `002_security_hardening.sql`, then `003_data_retention.sql`, then `004_gallery_links.sql`, then `005_spelling_fixes.sql`, then `006_promotions.sql`. All are safe to re-run. If it stops with an
 error about the `reservations_no_overlap` constraint, two existing active
 bookings overlap: the file contains a query that lists them. Cancel one of each
 pair and run the file again.
@@ -59,6 +60,11 @@ Go to `/admin` and log in with `ADMIN_USERNAME` and the password you hashed.
 - **Bookings tab:** every online booking starts as "Чакаща". Confirm or decline it
   from the "Чакат потвърждение" list; the customer is emailed each time the
   status changes (confirmed, moved, cancelled).
+- **Promotions tab (Промоции):** create special offers: "X за Y" (e.g. 3 visits of one
+  procedure for the price of 2), a package (several procedures in one visit for a set
+  price) or a custom offer. Set optional start and end dates and hide or show each one.
+  Live promotions appear on the home page and under "Промоции" in the booking wizard;
+  bookings made with one are marked in the Bookings tab and in the emails.
 - **Settings tab:** set the email that receives new-booking notifications.
 - **Google Calendar:** scan the QR code or use the link in the Settings tab.
   The link contains the secret `CALENDAR_FEED_TOKEN`; treat it like a password.

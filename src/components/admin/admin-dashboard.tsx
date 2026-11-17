@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { adminLogout } from "@/app/actions/admin/auth";
 import { Button } from "@/components/ui/button";
-import { LogOut, Settings, Image, Calendar, Scissors, BarChart3, CalendarCheck, Cog } from "lucide-react";
+import { LogOut, Settings, Image, Calendar, Scissors, BarChart3, CalendarCheck, Cog, Tag } from "lucide-react";
 import { ProceduresManager } from "./procedures-manager";
+import { PromotionsManager } from "./promotions-manager";
 import { CarouselManager } from "./carousel-manager";
 import { ScheduleManager } from "./schedule-manager";
 import { StatisticsManager } from "./statistics-manager";
@@ -12,7 +13,7 @@ import { BookingsManager, type ReservationWithProcedure } from "./bookings-manag
 import { AdminSettings, type CalendarFeedInfo } from "./admin-settings";
 import { saveAdminSettings } from "@/app/actions/admin/settings";
 import type { AdminSettingsData } from "@/lib/validation";
-import type { CarouselImage, Procedure, ReservationLog, Schedule } from "@/types/database";
+import type { CarouselImage, Procedure, Promotion, ReservationLog, Schedule } from "@/types/database";
 
 interface AdminDashboardProps {
   procedures: Procedure[];
@@ -20,11 +21,12 @@ interface AdminDashboardProps {
   carouselImages: CarouselImage[];
   reservationLogs: ReservationLog[];
   reservations: ReservationWithProcedure[];
+  promotions: Promotion[];
   adminSettings: AdminSettingsData;
   calendarFeed: CalendarFeedInfo | null;
 }
 
-type Tab = "bookings" | "procedures" | "carousel" | "schedule" | "statistics" | "settings";
+type Tab = "bookings" | "procedures" | "promotions" | "carousel" | "schedule" | "statistics" | "settings";
 
 export function AdminDashboard({
   procedures,
@@ -32,6 +34,7 @@ export function AdminDashboard({
   carouselImages,
   reservationLogs,
   reservations,
+  promotions,
   adminSettings,
   calendarFeed,
 }: AdminDashboardProps) {
@@ -43,6 +46,7 @@ export function AdminDashboard({
   const tabs: { id: Tab; label: string; icon: typeof CalendarCheck; badge?: number }[] = [
     { id: "bookings" as Tab, label: "Резервации", icon: CalendarCheck, badge: pendingCount },
     { id: "procedures" as Tab, label: "Процедури", icon: Scissors },
+    { id: "promotions" as Tab, label: "Промоции", icon: Tag },
     { id: "carousel" as Tab, label: "Снимки", icon: Image },
     { id: "schedule" as Tab, label: "График", icon: Calendar },
     { id: "statistics" as Tab, label: "Статистика", icon: BarChart3 },
@@ -113,6 +117,9 @@ export function AdminDashboard({
         )}
         {activeTab === "procedures" && (
           <ProceduresManager procedures={procedures} />
+        )}
+        {activeTab === "promotions" && (
+          <PromotionsManager promotions={promotions} procedures={procedures} />
         )}
         {activeTab === "carousel" && (
           <CarouselManager images={carouselImages} procedures={procedures} />

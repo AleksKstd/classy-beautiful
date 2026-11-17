@@ -18,6 +18,8 @@ export interface EmailReservation {
   procedureName: string;
   durationMinutes: number;
   price: number;
+  /** e.g. "3 за 2 · Лазерна епилация - 3 посещения на цената на 2", when booked through a promotion */
+  promotion: string | null;
 }
 
 type Rows = readonly (readonly [string, string])[];
@@ -67,6 +69,7 @@ function details(r: EmailReservation): Rows {
     ["Процедура", r.procedureName],
     ["Продължителност", formatDuration(r.durationMinutes)],
     ["Цена", formatPrice(r.price)],
+    ...(r.promotion ? ([["Промоция", r.promotion]] as const) : []),
   ];
 }
 

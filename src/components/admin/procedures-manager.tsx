@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Edit, Trash2, Loader2, ChevronDown } from "lucide-react";
+import { Plus, Edit, Trash2, Loader2, ChevronDown, Search, X } from "lucide-react";
 import {
   createProcedure,
   deleteProcedure,
@@ -139,7 +139,17 @@ export function ProceduresManager({ procedures: initialProcedures }: ProceduresM
     }
   };
 
-  const groupedProcedures = initialProcedures.reduce((acc, proc) => {
+  // Search by name, category or specialist (any order of words, case-insensitive)
+  const [query, setQuery] = useState("");
+  const words = query.trim().toLocaleLowerCase("bg").split(/\s+/).filter(Boolean);
+  const visibleProcedures = words.length
+    ? initialProcedures.filter((p) => {
+        const text = `${p.name} ${p.type} ${p.technician}`.toLocaleLowerCase("bg");
+        return words.every((word) => text.includes(word));
+      })
+    : initialProcedures;
+
+  const groupedProcedures = visibleProcedures.reduce((acc, proc) => {
     if (!acc[proc.type]) acc[proc.type] = [];
     acc[proc.type].push(proc);
     return acc;
@@ -318,6 +328,36 @@ export function ProceduresManager({ procedures: initialProcedures }: ProceduresM
             </div>
           </form>
         </div>
+      )}
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-taupe-400" aria-hidden="true" />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Търсете по име, категория или специалист…"
+          aria-label="Търсене на процедура"
+          className="[&::-webkit-search-cancel-button]:appearance-none h-12 w-full rounded-md border border-taupe-200 bg-white pl-11 pr-10 text-sm placeholder:text-taupe-400 focus:border-cocoa focus:outline-none focus:ring-2 focus:ring-gold/30"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-taupe-400 hover:text-cocoa"
+            aria-label="Изчисти търсенето"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        )}
+      </div>
+      {words.length > 0 && (
+        <p className="text-sm text-taupe-600" aria-live="polite">
+          {visibleProcedures.length > 0
+            ? `Намерени: ${visibleProcedures.length} от ${initialProcedures.length}`
+            : "Няма процедури, които да отговарят на търсенето."}
+        </p>
       )}
 
       {/* Procedures List */}

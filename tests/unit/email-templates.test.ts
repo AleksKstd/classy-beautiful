@@ -21,6 +21,7 @@ const reservation: EmailReservation = {
   procedureName: "Педикюр",
   durationMinutes: 90,
   price: 36.8,
+  promotion: null,
 };
 
 describe("customer emails", () => {

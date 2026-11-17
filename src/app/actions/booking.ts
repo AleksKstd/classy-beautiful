@@ -6,6 +6,8 @@ import { createPublicClient } from "@/lib/supabase/public";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyAdminNewReservation, notifyCustomer } from "@/lib/notifications";
 import { getFinalPrice } from "@/lib/pricing";
+import { getActivePromotions } from "@/lib/data/promotions";
+import { isPromotionLive, promotionOffer, type PromotionOffer } from "@/lib/promotions";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { fetchBookedRanges, fetchBookedRangesBetween, validateSlot } from "@/lib/booking";
 import { getBookingWindow, isWithinBookingWindow, type TimeRange } from "@/lib/slots";
@@ -17,7 +19,7 @@ import {
   officeSchema,
   reservationRequestSchema,
 } from "@/lib/validation";
-import type { Procedure } from "@/types/database";
+import type { Procedure, Promotion } from "@/types/database";
 
 /*
  * Public server actions used by the booking wizard. Everything exported from
@@ -41,6 +43,8 @@ export interface CreateReservationResult {
     price: number;
     technician: string;
     email: string;
+    /** Set when booked through a special promotion. */
+    promotion: { badge: string; title: string; procedures: string[]; priceNote: string | null } | null;
     firstName: string;
     lastName: string;
   };
@@ -58,6 +62,12 @@ export async function getBookingProcedures(): Promise<Procedure[]> {
     throw new Error("Процедурите не могат да бъдат заредени.");
   }
   return data ?? [];
+}
+
+/** Promotions that are on now (the wizard works out prices from the procedures it has). */
+export async function getBookingPromotions(): Promise<Promotion[]> {
+  const promotions = await getActivePromotions();
+  return promotions.filter((promotion) => isPromotionLive(promotion));
 }
 
 /** Upcoming closures of an office (start/end only). */
@@ -132,6 +142,23 @@ export async function createReservation(input: unknown): Promise<CreateReservati
       return { success: false, error: "Избраната процедура не е налична." };
     }
 
+    // A booking through a promotion: the promotion must be live and start with this
+    // procedure; the visit then lasts and costs what the promotion says.
+    let offer: PromotionOffer | null = null;
+    if (data.promotionId) {
+      const { data: promotion } = await supabase.from("promotions").select("*").eq("id", data.promotionId).maybeSingle();
+      if (promotion && isPromotionLive(promotion)) {
+        const { data: included } = await supabase.from("procedures").select("*").in("id", promotion.procedure_ids);
+        offer = promotionOffer(promotion, included ?? []);
+      }
+      if (!offer || offer.procedures[0].id !== procedure.id) {
+        return { success: false, error: "Промоцията вече не е активна. Моля, изберете процедура отново." };
+      }
+    }
+    const durationMinutes = offer ? offer.durationMinutes : procedure.duration_minutes;
+    // For "3 за 2" this is the price of the whole offer (all visits), as advertised
+    const visitPrice = offer ? offer.totalPrice : getFinalPrice(procedure);
+
     const { count: activeCount } = await supabase
       .from("reservations")
       .select("id", { count: "exact", head: true })
@@ -149,7 +176,7 @@ export async function createReservation(input: unknown): Promise<CreateReservati
       officeName: data.officeName,
       dateKey: data.date,
       time: data.time,
-      durationMinutes: procedure.duration_minutes,
+      durationMinutes,
     });
     if (slotError) return { success: false, error: slotError };
 
@@ -161,7 +188,7 @@ export async function createReservation(input: unknown): Promise<CreateReservati
     if (!allowedPhone || !allowedEmail) return { success: false, error: TOO_MANY_ATTEMPTS };
 
     const startAt = zonedToUtc(data.date, data.time);
-    const endAt = new Date(startAt.getTime() + procedure.duration_minutes * 60000);
+    const endAt = new Date(startAt.getTime() + durationMinutes * 60000);
 
     const { data: reservation, error: insertError } = await supabase
       .from("reservations")
@@ -176,6 +203,7 @@ export async function createReservation(input: unknown): Promise<CreateReservati
         customer_email: data.email,
         customer_note: data.note || null,
         status: "pending",
+        promotion_id: offer ? offer.promotion.id : null,
       })
       .select("id")
       .single();
@@ -210,11 +238,19 @@ export async function createReservation(input: unknown): Promise<CreateReservati
       reservation: {
         id: reservation.id,
         officeName: data.officeName,
-        procedureName: procedure.name,
+        procedureName: offer && offer.procedures.length > 1 ? offer.promotion.title : procedure.name,
         startAt: startAt.toISOString(),
         endAt: endAt.toISOString(),
-        durationMinutes: procedure.duration_minutes,
-        price: getFinalPrice(procedure),
+        durationMinutes,
+        price: visitPrice,
+        promotion: offer
+          ? {
+              badge: offer.promotion.badge,
+              title: offer.promotion.title,
+              procedures: offer.procedures.map((p) => p.name),
+              priceNote: offer.priceNote,
+            }
+          : null,
         technician: procedure.technician,
         email: data.email,
         firstName: data.firstName,
