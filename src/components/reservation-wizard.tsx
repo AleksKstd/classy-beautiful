@@ -46,6 +46,7 @@ import { GlassFill, GlassSample, loadLabel } from "@/components/day-load";
 import type { DayContentProps } from "react-day-picker";
 import { fieldErrors, reservationFormSchema, type ReservationFormData } from "@/lib/validation";
 import type { Procedure } from "@/types/database";
+import { buildCatalog, isSingle, lowestPrice, procedurePath, sectionProcedures, type CatalogGroup } from "@/lib/catalog";
 
 interface ReservationWizardProps {
   onComplete: (reservation: CreateReservationResult["reservation"]) => void;
@@ -77,23 +78,7 @@ const steps = [
   { id: 4, title: "Данни", icon: User },
 ];
 
-// Category hierarchy for better organization
-const categoryHierarchy: Record<string, string[]> = {
-  "Промоции": [], // Special category for discounted procedures
-  "Нокти": ["Нокти"],
-  "Лице": ["Вежди", "Мигли", "Терапии за лице", "Естетични процедури - лице"],
-  "Епилация": ["Епилация жени", "Епилация мъже"],
-  "Тяло": ["Естетични процедури - тяло", "Пилинг на тяло", "Пресотерапия и лимфодренаж"],
-};
-
-// One-line description for each category card
-const categoryDescriptions: Record<string, string> = {
-  "Промоции": "Процедури с отстъпка в момента",
-  "Нокти": "Педикюр и грижа за ноктите",
-  "Лице": "Мигли, вежди, терапии и естетика",
-  "Епилация": "Лазер и кола маска за жени и мъже",
-  "Тяло": "Пилинг, лимфодренаж и оформяне",
-};
+const PROMO = "Промоции";
 
 const officeTaglines: Record<OfficeName, string> = {
   "София": "Салонът в столицата",
@@ -121,12 +106,6 @@ function dateFromKey(key: string): Date {
   const [y, m, d] = key.split("-").map(Number);
   return new Date(y, m - 1, d);
 }
-
-// Sub-categories for epilation
-const subCategoryMap: Record<string, string[]> = {
-  "Епилация жени": ["Лазерна епилация - жени", "Кола маска - жени"],
-  "Епилация мъже": ["Лазерна епилация - мъже", "Кола маска - мъже"],
-};
 
 // "Запомни ме": customer details kept only in this browser (localStorage), never in a cookie.
 const REMEMBER_KEY = "cb_customer_details";
@@ -315,6 +294,8 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
 
   // Search across all procedures (step 2)
   const [query, setQuery] = useState("");
+  const catalog = useMemo(() => buildCatalog(procedures), [procedures]);
+
   const searchResults = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("bg");
     if (q.length < 2) return [];
@@ -386,7 +367,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
 
   const goBack = () => {
     // A procedure pre-selected from a link skips step 2, so go straight back to the office.
-    if (currentStep === 3 && !state.selectedCategory) {
+    if (currentStep === 3 && preSelectedProcedureId && state.procedure?.id === preSelectedProcedureId) {
       setCurrentStep(1);
     } else if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
@@ -433,44 +414,14 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
   };
 
   // Get discounted procedures
-  const getDiscountedProcedures = () => {
-    return procedures.filter(procedureHasDiscount);
-  };
+  const getDiscountedProcedures = () => procedures.filter(procedureHasDiscount);
 
-  // Get procedures for current selection
-  const getFilteredProcedures = () => {
-    if (!state.selectedCategory) return [];
-    
-    // Special handling for Промоции category
-    if (state.selectedCategory === "Промоции") {
-      return getDiscountedProcedures();
-    }
-    
-    const subCategories = categoryHierarchy[state.selectedCategory] || [];
-    let typesToShow: string[] = [];
-    
-    if (state.selectedSubCategory) {
-      // Check if it's a sub-category that needs further drilling
-      const subSubCategories = subCategoryMap[state.selectedSubCategory];
-      if (subSubCategories) {
-        typesToShow = subSubCategories;
-      } else {
-        typesToShow = [state.selectedSubCategory];
-      }
-    } else {
-      // Show all types under this category
-      subCategories.forEach(sub => {
-        const subSub = subCategoryMap[sub];
-        if (subSub) {
-          typesToShow.push(...subSub);
-        } else {
-          typesToShow.push(sub);
-        }
-      });
-    }
-    
-    return procedures.filter(p => typesToShow.includes(p.type));
-  };
+  // Selected section (by id) and, for Епилация, the chosen part (Жени / Мъже)
+  const currentSection = catalog.find((section) => section.id === state.selectedCategory) ?? null;
+  const needsPart = currentSection !== null && currentSection.parts.length > 1 && !state.selectedSubCategory;
+  const currentParts = currentSection
+    ? currentSection.parts.filter((part) => currentSection.parts.length === 1 || part.label === state.selectedSubCategory)
+    : [];
 
   const getStepStatus = (stepId: number) => {
     if (stepId < currentStep) return "completed";
@@ -491,19 +442,21 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
     },
   ];
 
-  const renderProcedureButton = (proc: Procedure) => {
+  const renderProcedureButton = (proc: Procedure, path?: string | null) => {
     const hasDiscount = procedureHasDiscount(proc);
     return (
       <button
         key={proc.id}
         onClick={() => selectProcedure(proc)}
+        aria-pressed={state.procedure?.id === proc.id}
         className={cn(
-          "group w-full rounded-md border bg-white p-4 text-left transition-colors duration-200",
+          "group min-h-14 w-full rounded-md border bg-white p-4 text-left transition-colors duration-200",
           state.procedure?.id === proc.id ? "border-cocoa" : hasDiscount ? "border-gold" : "border-taupe-200 hover:border-cocoa/40"
         )}
       >
         <div className="flex items-start justify-between gap-4">
           <div>
+            {path && <p className="mb-0.5 text-xs text-taupe-500">{path}</p>}
             <p className="font-medium text-cocoa">{proc.name}</p>
             <p className="mt-1 flex items-center gap-3 text-sm text-taupe-600">
               <span className="inline-flex items-center gap-1">
@@ -524,6 +477,33 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
           </div>
         </div>
       </button>
+    );
+  };
+
+  /** A treatment with its variants; a single-procedure treatment is just its button. */
+  const renderGroup = (group: CatalogGroup, nested = false): React.ReactNode => {
+    if (!nested && isSingle(group)) {
+      return <div key={group.name}>{renderProcedureButton(group.procedures[0])}</div>;
+    }
+    const from = lowestPrice(group);
+    return (
+      <div key={`group-${group.name}`} role="group" aria-label={group.name}>
+        <p
+          className={cn(
+            "flex items-baseline justify-between gap-4 py-2",
+            nested
+              ? "eyebrow"
+              : "sticky top-20 z-10 -mx-4 border-b border-blush bg-white/95 px-4 backdrop-blur font-display text-lg text-cocoa sm:mx-0 sm:px-0"
+          )}
+        >
+          <span>{group.name}</span>
+          {!nested && from !== null && <span className="shrink-0 font-sans text-xs text-taupe-500">от {formatPrice(from)}</span>}
+        </p>
+        <div className="mt-2 space-y-2">
+          {group.procedures.map((procedure) => renderProcedureButton(procedure))}
+          {group.children.map((child) => renderGroup(child, true))}
+        </div>
+      </div>
     );
   };
 
@@ -667,62 +647,66 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                 <p className="text-sm text-taupe-600" aria-live="polite">
                   {searchResults.length > 0 ? `Намерени: ${searchResults.length}` : "Няма намерени процедури. Опитайте с друга дума."}
                 </p>
-                {searchResults.map(renderProcedureButton)}
+                {searchResults.map((proc) => renderProcedureButton(proc, procedurePath(catalog, proc.id)))}
               </div>
             ) : (
               <>
                 {/* Main categories */}
                 {!state.selectedCategory && (
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {Object.keys(categoryHierarchy).map((category) => {
-                      const isPromo = category === "Промоции";
-                      const count = isPromo
-                        ? getDiscountedProcedures().length
-                        : procedures.filter((p) =>
-                            (categoryHierarchy[category] ?? []).flatMap((sub) => subCategoryMap[sub] ?? [sub]).includes(p.type)
-                          ).length;
+                    {[
+                      { id: PROMO, name: PROMO, description: "Процедури с отстъпка в момента", count: getDiscountedProcedures().length },
+                      ...catalog.map((section) => ({
+                        id: section.id,
+                        name: section.name,
+                        description: section.description,
+                        count: sectionProcedures(section).length,
+                      })),
+                    ].map(({ id, name, description, count }) => {
+                      const isPromo = id === PROMO;
                       if (isPromo && count === 0) return null;
                       return (
                         <button
-                          key={category}
-                          onClick={() => selectCategory(category)}
+                          key={id}
+                          onClick={() => selectCategory(id)}
                           className={cn(
                             "group flex items-center gap-4 rounded-2xl border p-5 text-left transition-colors duration-200",
                             isPromo ? "border-gold bg-champagne sm:col-span-2" : "border-taupe-200 bg-white hover:border-cocoa/40"
                           )}
                         >
                           <span className="min-w-0 flex-1">
-                            <span className="block font-display text-xl text-cocoa">{category}</span>
-                            <span className="block text-sm text-taupe-600">{categoryDescriptions[category]}</span>
+                            <span className="block font-display text-xl text-cocoa">{name}</span>
+                            <span className="block text-sm text-taupe-600">{description}</span>
                           </span>
                           <span className="shrink-0 text-right">
-                            <span className="block font-display text-3xl italic leading-none text-gold-dark">{count}</span>
+                            <span className="block font-display text-3xl leading-none text-gold-dark">{count}</span>
                             <span className="block text-[0.65rem] uppercase tracking-[0.14em] text-taupe-500">{count === 1 ? "процедура" : "процедури"}</span>
                           </span>
-                          <ChevronRight className="h-5 w-5 shrink-0 text-taupe-300 transition-all group-hover:translate-x-0.5 group-hover:text-cocoa" aria-hidden="true" />
+                          <ChevronRight className="h-5 w-5 shrink-0 text-taupe-300 transition-colors group-hover:text-cocoa" aria-hidden="true" />
                         </button>
                       );
                     })}
                   </div>
                 )}
 
-                {/* Sub categories (Епилация) */}
-                {state.selectedCategory && state.selectedCategory !== "Промоции" && !state.selectedSubCategory && categoryHierarchy[state.selectedCategory]?.some((sub) => subCategoryMap[sub]) && (
+                {/* Parts (Епилация: Жени / Мъже) */}
+                {currentSection && needsPart && (
                   <div className="space-y-4">
                     <button
                       onClick={() => setState((prev) => ({ ...prev, selectedCategory: null }))}
-                      className="flex items-center gap-1 text-sm text-taupe-600 hover:text-cocoa"
+                      className="flex min-h-11 items-center gap-1 text-sm text-taupe-600 hover:text-cocoa"
                     >
-                      <ArrowLeft className="h-4 w-4" aria-hidden="true" /> {state.selectedCategory}
+                      <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Всички категории
                     </button>
+                    <h3 className="font-display text-2xl text-cocoa">{currentSection.name}</h3>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      {categoryHierarchy[state.selectedCategory].map((subCat) => (
+                      {currentSection.parts.map((part) => (
                         <button
-                          key={subCat}
-                          onClick={() => selectSubCategory(subCat)}
+                          key={part.label}
+                          onClick={() => selectSubCategory(part.label ?? "")}
                           className="group flex items-center justify-between rounded-2xl border border-taupe-200 bg-white p-5 text-left transition-colors duration-200 hover:border-cocoa/40"
                         >
-                          <span className="font-display text-xl text-cocoa">{subCat}</span>
+                          <span className="font-display text-xl text-cocoa">{part.label}</span>
                           <ChevronRight className="h-5 w-5 text-taupe-300 group-hover:text-cocoa" aria-hidden="true" />
                         </button>
                       ))}
@@ -730,8 +714,8 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                   </div>
                 )}
 
-                {/* Procedure list */}
-                {state.selectedCategory && (state.selectedCategory === "Промоции" || state.selectedSubCategory || !categoryHierarchy[state.selectedCategory]?.some((sub) => subCategoryMap[sub])) && (
+                {/* Procedures of the chosen category, grouped by treatment */}
+                {state.selectedCategory && (state.selectedCategory === PROMO || (currentSection && !needsPart)) && (
                   <div className="space-y-4">
                     <button
                       onClick={() =>
@@ -741,11 +725,23 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                           selectedCategory: prev.selectedSubCategory ? prev.selectedCategory : null,
                         }))
                       }
-                      className="flex items-center gap-1 text-sm text-taupe-600 hover:text-cocoa"
+                      className="flex min-h-11 items-center gap-1 text-sm text-taupe-600 hover:text-cocoa"
                     >
-                      <ArrowLeft className="h-4 w-4" aria-hidden="true" /> {state.selectedSubCategory || state.selectedCategory}
+                      <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                      {state.selectedSubCategory ? currentSection?.name : "Всички категории"}
                     </button>
-                    <div className="max-h-[28rem] space-y-2 overflow-y-auto pr-1">{getFilteredProcedures().map(renderProcedureButton)}</div>
+                    <h3 className="font-display text-2xl text-cocoa">
+                      {state.selectedCategory === PROMO
+                        ? PROMO
+                        : [currentSection?.name, state.selectedSubCategory].filter(Boolean).join(" · ")}
+                    </h3>
+                    {state.selectedCategory === PROMO ? (
+                      <div className="space-y-2">{getDiscountedProcedures().map((proc) => renderProcedureButton(proc, procedurePath(catalog, proc.id)))}</div>
+                    ) : (
+                      <div className="space-y-6">
+                        {currentParts.flatMap((part) => part.groups).map((group) => renderGroup(group))}
+                      </div>
+                    )}
                   </div>
                 )}
               </>

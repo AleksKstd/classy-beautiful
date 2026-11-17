@@ -13,8 +13,15 @@ export function DiscountsSection({ procedures }: DiscountsSectionProps) {
   }
 
   return (
-    <section className="py-20 md:py-28 bg-cocoa-light text-white">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="relative overflow-hidden py-20 md:py-28 bg-cocoa-light text-white">
+      {/* Warm glows with gold rings and light dots, tuned for the dark ground */}
+      <div aria-hidden="true" className="drops-layer drops-layer-mid">
+        <div className="absolute -top-32 -right-24 h-[30rem] w-[30rem] rounded-full bg-rose-dark/35 blur-3xl" />
+        <div className="absolute top-1/4 -left-40 h-[26rem] w-[26rem] rounded-full bg-gold/15 blur-3xl" />
+        <div className="drop-pattern-gold absolute -top-32 -right-24 h-[30rem] w-[30rem]" />
+        <div className="drop-dots-light absolute top-1/4 -left-40 h-[26rem] w-[26rem]" />
+      </div>
+      <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-12 max-w-2xl">
           <p className="mb-4 text-xs font-semibold uppercase tracking-[0.25em] text-gold">Оферти</p>
           <h2 className="text-4xl sm:text-5xl leading-tight">Текущи отстъпки</h2>

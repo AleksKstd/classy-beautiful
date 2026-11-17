@@ -1,10 +1,18 @@
 import "server-only";
 
+export interface EmailAttachment {
+  filename: string;
+  /** File contents; sent base64-encoded. */
+  content: string;
+  contentType: string;
+}
+
 interface EmailMessage {
   to: string;
   subject: string;
   text: string;
   html: string;
+  attachments?: EmailAttachment[];
 }
 
 /**
@@ -31,6 +39,15 @@ export async function sendEmail(message: EmailMessage): Promise<boolean> {
         subject: message.subject,
         text: message.text,
         html: message.html,
+        ...(message.attachments?.length
+          ? {
+              attachments: message.attachments.map((a) => ({
+                filename: a.filename,
+                content: Buffer.from(a.content, "utf-8").toString("base64"),
+                content_type: a.contentType,
+              })),
+            }
+          : {}),
       }),
     });
 

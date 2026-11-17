@@ -38,7 +38,7 @@ export type OfficeName = (typeof OFFICES)[number];
 export const OFFICE_DETAILS: Record<OfficeName, { address: string | null; mapsLink?: string }> = {
   "София": {
     address: "кв. Борово, ул. „Борово“ 52, 1680 София",
-    mapsLink: "https://maps.app.goo.gl/Lir7Xuhm3xhUFL597",
+    mapsLink: "https://maps.app.goo.gl/VgF5ajsS6gDJw28i7",
   },
   "Лом": { address: "Център, ул. „Дунавска“ 29, 3600 Лом" },
 };
@@ -49,6 +49,12 @@ export function mapsUrl(office: OfficeName): string | null {
   return address
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`Classy & Beautiful, ${address}`)}`
     : null;
+}
+
+/** "Classy & Beautiful, София, кв. Борово, ..." for calendar events and maps. */
+export function salonLocation(office: string): string {
+  const details = (OFFICE_DETAILS as Record<string, { address: string | null } | undefined>)[office];
+  return details?.address ? `Classy & Beautiful, ${details.address}` : `Classy & Beautiful, ${office}`;
 }
 
 /** All booking times are interpreted in the salon's time zone. */

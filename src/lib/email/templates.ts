@@ -1,11 +1,15 @@
-import { BUSINESS, OFFICES, OFFICE_DETAILS, SITE_URL, mapsUrl, type OfficeName } from "@/config/site";
+import { BUSINESS, OFFICES, OFFICE_DETAILS, SITE_URL, mapsUrl, salonLocation, type OfficeName } from "@/config/site";
+import type { EmailAttachment } from "@/lib/email/send";
 import { escapeHtml } from "@/lib/html";
+import { appointmentIcs, googleCalendarUrl, type Appointment } from "@/lib/ics";
 import { formatInSalonTz } from "@/lib/time";
 import { formatDuration, formatPrice } from "@/lib/utils";
 
 export interface EmailReservation {
+  id: string;
   office_name: string;
   start_at: string;
+  end_at: string;
   customer_first_name: string;
   customer_last_name: string;
   customer_phone: string;
@@ -22,6 +26,7 @@ interface EmailContent {
   subject: string;
   text: string;
   html: string;
+  attachments?: EmailAttachment[];
 }
 
 /* Brand colours (see tailwind.config.ts); emails cannot use the site's CSS. */
@@ -91,6 +96,17 @@ interface Action {
   url: string;
 }
 
+function appointment(r: EmailReservation): Appointment {
+  return {
+    id: r.id,
+    start: new Date(r.start_at),
+    end: new Date(r.end_at),
+    title: `${r.procedureName} - Classy & Beautiful`,
+    location: salonLocation(r.office_name),
+    description: `Телефон за връзка: ${BUSINESS.phoneDisplay}`,
+  };
+}
+
 interface Layout {
   subject: string;
   status: string;
@@ -98,25 +114,39 @@ interface Layout {
   /** Plain-text paragraphs; escaped for the HTML version. */
   paragraphs: string[];
   sections: { title: string; rows: Rows }[];
-  /** Optional button under the details, e.g. directions to the salon. */
-  action?: Action;
+  /** Buttons under the details; the first is the main (gold) one. */
+  actions?: (Action | undefined)[];
+  /** Optional small note under the buttons. */
+  note?: string;
+  attachments?: EmailAttachment[];
   footer: string;
 }
 
-function build({ subject, status, heading, paragraphs, sections, action, footer }: Layout): EmailContent {
+function build({ subject, status, heading, paragraphs, sections, actions = [], note, attachments, footer }: Layout): EmailContent {
+  const buttons = actions.filter((a): a is Action => Boolean(a));
   const text = [
     heading,
     ...paragraphs,
     ...sections.map((s) => `${s.title}\n${plainRows(s.rows)}`),
-    ...(action ? [`${action.label}: ${action.url}`] : []),
+    ...buttons.map((a) => `${a.label}: ${a.url}`),
+    ...(note ? [note] : []),
     footer,
     "Classy & Beautiful",
   ].join("\n\n");
 
-  const button = action
+  // Stacked full-width buttons: easy to tap on a phone, never side by side.
+  const buttonHtml = buttons.length
     ? `
-        <div style="padding: 20px 20px 0; text-align: center;">
-          <a href="${escapeHtml(action.url)}" target="_blank" rel="noopener" style="display: inline-block; padding: 14px 24px; background: ${GOLD}; border-radius: 10px; color: ${COCOA}; font-size: 13px; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; text-decoration: none;">${escapeHtml(action.label)}</a>
+        <div style="padding: 20px 12px 0;">
+          ${buttons
+            .map(
+              (a, i) =>
+                `<a href="${escapeHtml(a.url)}" target="_blank" rel="noopener" style="display: block; margin-top: ${i ? 10 : 0}px; padding: 14px 16px; border-radius: 10px; text-align: center; font-size: 13px; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; text-decoration: none; ${
+                  i === 0 ? `background: ${GOLD}; color: ${COCOA};` : `border: 1px solid ${COCOA}; color: ${COCOA};`
+                }">${escapeHtml(a.label)}</a>`
+            )
+            .join("")}
+          ${note ? `<p style="margin: 10px 4px 0; font-size: 12px; line-height: 1.5; color: ${TAUPE}; text-align: center;">${escapeHtml(note)}</p>` : ""}
         </div>`
     : "";
 
@@ -151,7 +181,7 @@ function build({ subject, status, heading, paragraphs, sections, action, footer 
         </div>`
           )
           .join("")}
-        ${button}
+        ${buttonHtml}
         <div style="padding: 24px 20px;">
           <p style="margin: 0; font-size: 13px; line-height: 1.6; color: ${TAUPE};">${escapeHtml(footer)}</p>
         </div>
@@ -160,7 +190,7 @@ function build({ subject, status, heading, paragraphs, sections, action, footer 
   </body>
 </html>`;
 
-  return { subject: oneLine(subject), text, html };
+  return { subject: oneLine(subject), text, html, ...(attachments?.length ? { attachments } : {}) };
 }
 
 const CONTACT_FOOTER = `Ако имате въпроси или нещо се промени, обадете ни се на ${BUSINESS.phoneDisplay}. Този имейл е изпратен автоматично, моля, не отговаряйте на него.`;
@@ -176,7 +206,7 @@ export function reservationReceivedEmail(r: EmailReservation): EmailContent {
       "Ще я прегледаме и ще ви изпратим втори имейл, щом часът бъде потвърден.",
     ],
     sections: [{ title: "Вашата заявка", rows: details(r) }],
-    action: directions(r.office_name),
+    actions: [directions(r.office_name)],
     footer: CONTACT_FOOTER,
   });
 }
@@ -189,7 +219,11 @@ export function reservationConfirmedEmail(r: EmailReservation): EmailContent {
     heading: `Очакваме ви, ${oneLine(r.customer_first_name)}.`,
     paragraphs: ["Вашата резервация е потвърдена. Елате около 5 минути по-рано, за да започнем навреме."],
     sections: [{ title: "Вашата резервация", rows: details(r) }],
-    action: directions(r.office_name),
+    actions: [directions(r.office_name), { label: "Добави в Google Календар", url: googleCalendarUrl(appointment(r)) }],
+    note: "За Apple, Outlook и други календари отворете приложения файл rezervaciya.ics.",
+    attachments: [
+      { filename: "rezervaciya.ics", content: appointmentIcs(appointment(r)), contentType: "text/calendar; charset=utf-8" },
+    ],
     footer: CONTACT_FOOTER,
   });
 }
@@ -221,7 +255,7 @@ export function reservationRescheduledEmail(r: EmailReservation, previousStartAt
       "Ако новият час не ви е удобен, обадете ни се и ще намерим друг.",
     ],
     sections: [{ title: "Новият ви час", rows: details(r) }],
-    action: directions(r.office_name),
+    actions: [directions(r.office_name)],
     footer: CONTACT_FOOTER,
   });
 }
@@ -247,7 +281,7 @@ export function newReservationAdminEmail(r: EmailReservation): EmailContent {
       { title: "Резервация", rows: details(r) },
       { title: "Клиент", rows: customer },
     ],
-    action: { label: "Към админ панела", url: `${SITE_URL}/admin` },
+    actions: [{ label: "Към админ панела", url: `${SITE_URL}/admin` }],
     footer: "Това съобщение е изпратено автоматично от сайта.",
   });
 }

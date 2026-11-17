@@ -9,8 +9,10 @@ import {
 } from "@/lib/email/templates";
 
 const reservation: EmailReservation = {
+  id: "8b0c7a52-3d1e-4f3a-9a77-1c2f3e4d5a6b",
   office_name: "София",
   start_at: "2026-12-01T08:00:00.000Z",
+  end_at: "2026-12-01T09:30:00.000Z",
   customer_first_name: "Мария",
   customer_last_name: "Иванова",
   customer_phone: "+359888123456",
@@ -42,6 +44,17 @@ describe("customer emails", () => {
     expect(email.text).toContain("Как да стигнете: https://");
     expect(email.html).toContain('name="viewport"');
     expect(reservationCancelledEmail(reservation, null).text).not.toContain("Как да стигнете");
+  });
+
+  it("lets the customer add a confirmed visit to their calendar", () => {
+    const email = reservationConfirmedEmail(reservation);
+    expect(email.text).toContain("Добави в Google Календар: https://calendar.google.com/calendar/render?");
+    expect(email.text).toContain("dates=20261201T080000Z%2F20261201T093000Z");
+    const ics = email.attachments?.[0];
+    expect(ics?.filename).toBe("rezervaciya.ics");
+    expect(ics?.content).toContain("DTSTART:20261201T080000Z");
+    expect(ics?.content).toContain("UID:8b0c7a52-3d1e-4f3a-9a77-1c2f3e4d5a6b@cbclassyandbeautiful.com");
+    expect(reservationReceivedEmail(reservation).attachments).toBeUndefined();
   });
 
   it("includes the cancellation reason only when given", () => {

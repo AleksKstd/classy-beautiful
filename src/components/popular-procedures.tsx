@@ -15,13 +15,16 @@ export function PopularProcedures({ procedures }: PopularProceduresProps) {
   }
 
   return (
-    <section className="py-20 md:py-28 bg-white">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <SectionHeading
-          eyebrow="Най-търсени"
-          title="Любими процедури"
-          description="Най-често резервираните процедури през последния месец."
-        />
+    <section className="relative overflow-hidden py-20 md:py-28 bg-white">
+      {/* Soft colour shapes with the brand patterns, as in the hero */}
+      <div aria-hidden="true" className="drops-layer drops-layer-mid">
+        <div className="absolute -top-24 -left-32 h-[28rem] w-[28rem] rounded-full bg-blush/70 blur-3xl" />
+        <div className="absolute -top-10 -right-28 h-[22rem] w-[22rem] rounded-full bg-champagne blur-3xl" />
+        <div className="drop-pattern absolute -top-24 -left-32 h-[28rem] w-[28rem]" />
+        <div className="drop-dots absolute -top-10 -right-28 h-[22rem] w-[22rem]" />
+      </div>
+      <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
+        <SectionHeading eyebrow="Най-търсени" title="Любими процедури" />
 
         <ol className="overflow-hidden rounded-2xl bg-blush-light">
           {procedures.map((procedure, index) => (

@@ -46,3 +46,43 @@ export function buildIcsCalendar(headerLines: string[], events: string[][]): str
   ];
   return lines.map(foldIcsLine).join("\r\n") + "\r\n";
 }
+
+export interface Appointment {
+  /** Stable id, used as the event UID so re-importing updates the same event. */
+  id: string;
+  start: Date;
+  end: Date;
+  title: string;
+  location: string;
+  description?: string;
+}
+
+/** A one-event .ics file for the customer's own calendar app. */
+export function appointmentIcs(appointment: Appointment, now: Date = new Date()): string {
+  return buildIcsCalendar(
+    ["VERSION:2.0", "PRODID:-//Classy & Beautiful//Booking//BG", "CALSCALE:GREGORIAN", "METHOD:PUBLISH"],
+    [
+      [
+        `UID:${appointment.id}@cbclassyandbeautiful.com`,
+        `DTSTAMP:${formatIcsDate(now)}`,
+        `DTSTART:${formatIcsDate(appointment.start)}`,
+        `DTEND:${formatIcsDate(appointment.end)}`,
+        `SUMMARY:${escapeIcsText(appointment.title)}`,
+        `LOCATION:${escapeIcsText(appointment.location)}`,
+        ...(appointment.description ? [`DESCRIPTION:${escapeIcsText(appointment.description)}`] : []),
+      ],
+    ]
+  );
+}
+
+/** "Add to Google Calendar" link with the event pre-filled. */
+export function googleCalendarUrl(appointment: Appointment): string {
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: appointment.title,
+    dates: `${formatIcsDate(appointment.start)}/${formatIcsDate(appointment.end)}`,
+    location: appointment.location,
+    ...(appointment.description ? { details: appointment.description } : {}),
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
