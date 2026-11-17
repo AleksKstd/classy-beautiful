@@ -11,8 +11,8 @@ import type { Procedure, Promotion, PromotionKind } from "@/types/database";
 export const PROMOTION_KINDS: { kind: PromotionKind; label: string; hint: string }[] = [
   {
     kind: "bundle",
-    label: "Брой процедури за цена",
-    hint: "Една процедура няколко пъти на обща цена, напр. 3 × Карбонов пилинг за 100 €. Онлайн се запазва първото посещение",
+    label: "Няколко посещения за цена",
+    hint: "Една процедура няколко пъти на обща цена, напр. 3 × Карбонов пилинг за 100 €. Онлайн се запазва само първото посещение",
   },
   { kind: "package", label: "Пакет", hint: "Няколко процедури в едно посещение на обща цена" },
   { kind: "custom", label: "Друга оферта", hint: "Свой етикет и описание, по желание със своя цена" },

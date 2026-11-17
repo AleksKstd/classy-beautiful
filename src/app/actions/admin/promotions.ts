@@ -26,9 +26,9 @@ function saveError(error: { code?: string; message?: string }, fallback: string)
     return "Таблицата за промоции липсва. Изпълнете supabase/migrations/006_promotions.sql в Supabase → SQL Editor и опитайте отново.";
   }
   if (["42703", "PGRST204", "23514", "23502"].includes(code)) {
-    return "Таблицата за промоции е от стара версия. Изпълнете отново supabase/migrations/006_promotions.sql в Supabase → SQL Editor и опитайте отново.";
+    return "Таблицата за промоции е от стара версия. Изпълнете повторно supabase/migrations/006_promotions.sql в Supabase → SQL Editor и опитайте отново.";
   }
-  return `${fallback}${code ? ` (код ${code})` : ""}`;
+  return `${fallback}${code ? ` (код ${code})` : ""}.`;
 }
 
 /** Validates the input and keeps only the fields that apply to its kind. */

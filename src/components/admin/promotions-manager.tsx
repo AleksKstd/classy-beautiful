@@ -107,7 +107,7 @@ export function PromotionsManager({ promotions, procedures }: PromotionsManagerP
   const toggleProcedure = (id: string) => {
     setForm((prev) => {
       const selected = prev.procedureIds.includes(id);
-      // "Брой процедури за цена" is for one procedure: picking another replaces it
+      // "Няколко посещения за цена" is for one procedure: picking another replaces it
       if (prev.kind === "bundle") return { ...prev, procedureIds: selected ? [] : [id] };
       return { ...prev, procedureIds: selected ? prev.procedureIds.filter((x) => x !== id) : [...prev.procedureIds, id] };
     });
@@ -192,7 +192,7 @@ export function PromotionsManager({ promotions, procedures }: PromotionsManagerP
         <div>
           <h2 className="text-xl font-bold sm:text-2xl">Промоции</h2>
           <p className="mt-1 text-sm text-taupe-600">
-            Специални оферти: определен брой процедури на обща цена, пакет от процедури или друга оферта. Показват се на началната страница и в резервациите.
+            Специални оферти: няколко посещения за една процедура на обща цена, пакет от процедури или друга оферта. Показват се на началната страница и в резервациите.
           </p>
         </div>
         {editingId === null && (
@@ -281,7 +281,7 @@ export function PromotionsManager({ promotions, procedures }: PromotionsManagerP
           <div className="grid grid-cols-1 gap-4 sm:max-w-md sm:grid-cols-2 sm:items-end">
             {form.kind === "bundle" && (
               <div>
-                <Label htmlFor="promo-count">Брой процедури *</Label>
+                <Label htmlFor="promo-count">Брой посещения *</Label>
                 <Input
                   id="promo-count"
                   type="number"
@@ -316,8 +316,8 @@ export function PromotionsManager({ promotions, procedures }: PromotionsManagerP
           </div>
           {form.kind === "bundle" && (
             <p className="-mt-3 text-xs text-taupe-500">
-              Клиентът плаща {form.price || "…"} € за {form.count || "…"} пъти избраната процедура. Онлайн запазва само първото
-              посещение; останалите добавяте от Резервации → Нова резервация.
+              Клиентът плаща {form.price || "…"} € за {form.count || "…"} посещения за избраната процедура. Онлайн запазва само
+              първото посещение; останалите добавяте от Резервации → Нова резервация.
             </p>
           )}
 

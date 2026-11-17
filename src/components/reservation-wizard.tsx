@@ -616,7 +616,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId, preSelec
           </span>
           {offer.promotion.kind === "bundle" && (
             <span className="mt-3 block text-sm text-taupe-600">
-              Плащате {formatPrice(offer.totalPrice)} за {offer.promotion.procedure_count} процедури. {FIRST_VISIT_NOTE}
+              Плащате {formatPrice(offer.totalPrice)} за {offer.promotion.procedure_count} посещения. {FIRST_VISIT_NOTE}
             </span>
           )}
         </span>
