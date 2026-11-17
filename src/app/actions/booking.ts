@@ -203,7 +203,8 @@ export async function createReservation(input: unknown): Promise<CreateReservati
         customer_email: data.email,
         customer_note: data.note || null,
         status: "pending",
-        promotion_id: offer ? offer.promotion.id : null,
+        // Only sent with a promotion, so bookings keep working before migration 006
+        ...(offer ? { promotion_id: offer.promotion.id } : {}),
       })
       .select("id")
       .single();
