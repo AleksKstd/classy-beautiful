@@ -106,6 +106,9 @@ function sectionNode(section: CatalogSection): NavNode {
   return { name: section.name, procedures: [], children: (section.parts[0]?.groups ?? []).map(groupNode) };
 }
 
+/** "на капиляри" -> "На капиляри" for titles (the names stay as they are for matching). */
+const titleCase = (name: string) => name.charAt(0).toLocaleUpperCase("bg") + name.slice(1);
+
 const nodeProcedures = (node: NavNode): Procedure[] => [...node.procedures, ...node.children.flatMap(nodeProcedures)];
 
 const officeTaglines: Record<OfficeName, string> = {
@@ -559,7 +562,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
         )}
       >
         <span className="min-w-0 flex-1">
-          <span className="block font-display text-xl text-cocoa">{node.name}</span>
+          <span className="block font-display text-xl text-cocoa">{titleCase(node.name)}</span>
           <span className="mt-1 block text-sm text-taupe-600">
             {single
               ? `${formatDuration(single.duration_minutes)} · ${single.technician}`
@@ -573,7 +576,14 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
               <span className="text-taupe-400 line-through">{formatPrice(single.price)}</span>
             </span>
           )}
-          {!single && <span className="block text-[0.65rem] uppercase tracking-[0.14em] text-taupe-500">от</span>}
+          {!single && (
+            <span className="block text-[0.65rem] uppercase tracking-[0.14em] text-taupe-500">
+              {hasDiscount && (
+                <span className="mr-1.5 rounded bg-rose-dark px-1.5 py-0.5 font-semibold normal-case tracking-normal text-white">отстъпка</span>
+              )}
+              от
+            </span>
+          )}
           <span className="block font-display text-xl tabular-nums text-cocoa">{formatPrice(Math.min(...prices))}</span>
         </span>
         <ChevronRight className="h-5 w-5 shrink-0 text-taupe-300 transition-colors group-hover:text-cocoa" aria-hidden="true" />
@@ -781,13 +791,14 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                   <div key={state.path.join("/")} className="animate-fade-in space-y-4">
                     <button onClick={goUp} className="flex min-h-11 items-center gap-1 text-sm text-taupe-600 hover:text-cocoa">
                       <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                      {trail.length > 1 ? trail[trail.length - 2].name : "Всички категории"}
+                      {trail.length > 1 ? titleCase(trail[trail.length - 2].name) : "Всички категории"}
                     </button>
                     <div>
-                      {trail.length > 1 && (
+                      {/* Trail only from two levels down; one level up is already the back link */}
+                      {trail.length > 2 && (
                         <p className="eyebrow mb-1">{trail.slice(0, -1).map((node) => node.name).join(" · ")}</p>
                       )}
-                      <h3 className="font-display text-2xl text-cocoa">{currentNode.name}</h3>
+                      <h3 className="font-display text-2xl text-cocoa">{titleCase(currentNode.name)}</h3>
                     </div>
                     {currentNode.children.length > 0 && (
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{currentNode.children.map(renderNodeCard)}</div>
