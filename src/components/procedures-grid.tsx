@@ -191,7 +191,7 @@ export function ProceduresGrid({ procedures }: ProceduresGridProps) {
                             )}
                             <span className="font-display text-xl text-cocoa">{formatPrice(discountedPrice)}</span>
                           </span>
-                          <span className="hidden sm:inline-flex items-center justify-end gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-rose-dark opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                          <span className="hidden sm:inline-flex items-center justify-end gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-rose-dark opacity-0 transition-[opacity,color] group-hover:text-cocoa group-hover:opacity-100 group-focus-visible:opacity-100">
                             Запази
                             <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                           </span>

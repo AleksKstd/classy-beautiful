@@ -241,7 +241,7 @@ export function newReservationAdminEmail(r: EmailReservation): EmailContent {
     heading: "Нова заявка за час",
     paragraphs: [
       "Клиентът ще получи потвърждение едва след като потвърдите резервацията.",
-      "Потвърдете или откажете от админ панела.",
+      "Потвърдете или откажете резервацията от админ панела.",
     ],
     sections: [
       { title: "Резервация", rows: details(r) },

@@ -30,7 +30,7 @@ export function PopularProcedures({ procedures }: PopularProceduresProps) {
                 href={`/rezervacii?procedureId=${procedure.id}`}
                 className="group grid grid-cols-[2.5rem_1fr_auto] sm:grid-cols-[3.5rem_1fr_auto_auto] items-baseline gap-x-4 px-5 py-5 sm:px-9 transition-colors hover:bg-blush focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-dark"
               >
-                <span className="font-display text-lg text-rose-dark">{String(index + 1).padStart(2, "0")}</span>
+                <span className="font-display text-lg text-rose-dark transition-colors group-hover:text-cocoa">{String(index + 1).padStart(2, "0")}</span>
                 <span>
                   <span className="block font-medium text-brand-black">{procedure.name}</span>
                   <span className="block text-sm text-taupe-600">
