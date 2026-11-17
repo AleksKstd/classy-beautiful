@@ -6,9 +6,9 @@ import { CalendarPlus } from "lucide-react";
 import { parseISO } from "date-fns";
 import { formatPrice, formatDuration } from "@/lib/utils";
 import { formatInSalonTz, toTimeOfDay } from "@/lib/time";
-import { buildIcsCalendar, escapeIcsText, formatIcsDate } from "@/lib/ics";
+import { appointmentIcs } from "@/lib/ics";
 import type { CreateReservationResult } from "@/app/actions/booking";
-import { BUSINESS, OFFICE_DETAILS, mapsUrl, type OfficeName } from "@/config/site";
+import { BUSINESS, OFFICE_DETAILS, mapsUrl, salonLocation, type OfficeName } from "@/config/site";
 
 interface ReservationSuccessProps {
   reservation: NonNullable<CreateReservationResult["reservation"]>;
@@ -23,20 +23,14 @@ export function ReservationSuccess({
 
   // Download an .ics file so the customer can add the visit to their own calendar
   const addToCalendar = () => {
-    const ics = buildIcsCalendar(
-      ["VERSION:2.0", "PRODID:-//Classy & Beautiful//Booking//BG", "CALSCALE:GREGORIAN", "METHOD:PUBLISH"],
-      [
-        [
-          `UID:${reservation.id}@cbclassyandbeautiful.com`,
-          `DTSTAMP:${formatIcsDate(new Date())}`,
-          `DTSTART:${formatIcsDate(new Date(reservation.startAt))}`,
-          `DTEND:${formatIcsDate(new Date(reservation.endAt))}`,
-          `SUMMARY:${escapeIcsText(`${reservation.procedureName} - Classy & Beautiful`)}`,
-          `LOCATION:${escapeIcsText(`Classy & Beautiful - ${reservation.officeName}`)}`,
-          `DESCRIPTION:${escapeIcsText(`Специалист: ${reservation.technician}`)}`,
-        ],
-      ]
-    );
+    const ics = appointmentIcs({
+      id: reservation.id,
+      start: new Date(reservation.startAt),
+      end: new Date(reservation.endAt),
+      title: `${reservation.procedureName} - Classy & Beautiful`,
+      location: salonLocation(reservation.officeName),
+      description: `Специалист: ${reservation.technician}`,
+    });
     const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
     const link = document.createElement("a");
     link.href = url;
