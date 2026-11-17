@@ -367,7 +367,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
 
   const goBack = () => {
     // A procedure pre-selected from a link skips step 2, so go straight back to the office.
-    if (currentStep === 3 && !state.selectedCategory) {
+    if (currentStep === 3 && preSelectedProcedureId && state.procedure?.id === preSelectedProcedureId) {
       setCurrentStep(1);
     } else if (currentStep > 1) {
       setCurrentStep(currentStep - 1);

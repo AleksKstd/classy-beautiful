@@ -331,7 +331,7 @@ export function buildCatalog(procedures: Procedure[]): CatalogSection[] {
   // Anything not listed above goes to the end of its section, grouped by category.
   const leftovers = procedures.filter((p) => !used.has(p.id));
   for (const procedure of leftovers) {
-    const index = SECTIONS.findIndex((s) => procedure.type in s.types);
+    const index = SECTIONS.findIndex((s) => Object.hasOwn(s.types, procedure.type));
     const section = sections[index === -1 ? sections.length - 1 : index];
     const label = index === -1 ? null : SECTIONS[index].types[procedure.type];
     let part = section.parts.find((p) => p.label === label);
