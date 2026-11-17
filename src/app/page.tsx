@@ -58,8 +58,8 @@ export default async function HomePage() {
       </section>
 
       <ServicesSection />
-      <PopularProcedures procedures={popularProcedures} />
       <DiscountsSection procedures={discountedProcedures} />
+      <PopularProcedures procedures={popularProcedures} />
     </>
   );
 }
