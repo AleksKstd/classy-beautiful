@@ -487,13 +487,13 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
     }
     const from = lowestPrice(group);
     return (
-      <div key={group.name} role="group" aria-label={group.name}>
+      <div key={`group-${group.name}`} role="group" aria-label={group.name}>
         <p
           className={cn(
             "flex items-baseline justify-between gap-4 py-2",
             nested
-              ? "text-xs font-semibold uppercase tracking-[0.14em] text-taupe-600"
-              : "sticky top-20 z-10 border-b border-blush bg-ivory/95 backdrop-blur font-display text-lg text-cocoa"
+              ? "eyebrow"
+              : "sticky top-20 z-10 -mx-4 border-b border-blush bg-white/95 px-4 backdrop-blur font-display text-lg text-cocoa sm:mx-0 sm:px-0"
           )}
         >
           <span>{group.name}</span>
@@ -679,7 +679,7 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId }: Reserv
                             <span className="block text-sm text-taupe-600">{description}</span>
                           </span>
                           <span className="shrink-0 text-right">
-                            <span className="block font-display text-3xl italic leading-none text-gold-dark">{count}</span>
+                            <span className="block font-display text-3xl leading-none text-gold-dark">{count}</span>
                             <span className="block text-[0.65rem] uppercase tracking-[0.14em] text-taupe-500">{count === 1 ? "процедура" : "процедури"}</span>
                           </span>
                           <ChevronRight className="h-5 w-5 shrink-0 text-taupe-300 transition-colors group-hover:text-cocoa" aria-hidden="true" />

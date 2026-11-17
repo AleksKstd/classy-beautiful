@@ -15,7 +15,7 @@ export function DiscountsSection({ procedures }: DiscountsSectionProps) {
   return (
     <section className="relative overflow-hidden py-20 md:py-28 bg-cocoa-light text-white">
       {/* Warm glows with gold rings and light dots, tuned for the dark ground */}
-      <div aria-hidden="true" className="drops-layer">
+      <div aria-hidden="true" className="drops-layer drops-layer-mid">
         <div className="absolute -top-32 -right-24 h-[30rem] w-[30rem] rounded-full bg-rose-dark/35 blur-3xl" />
         <div className="absolute top-1/4 -left-40 h-[26rem] w-[26rem] rounded-full bg-gold/15 blur-3xl" />
         <div className="drop-pattern-gold absolute -top-32 -right-24 h-[30rem] w-[30rem]" />

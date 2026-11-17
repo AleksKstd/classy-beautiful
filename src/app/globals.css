@@ -74,7 +74,7 @@
 
   .drop-dots-light {
     border-radius: 9999px;
-    background-image: radial-gradient(rgb(233 221 193 / 0.28) 1.2px, transparent 1.6px);
+    background-image: radial-gradient(rgb(233 221 193 / 0.18) 1.2px, transparent 1.6px);
     background-size: 16px 16px;
     -webkit-mask-image: radial-gradient(circle at center, #000 20%, transparent 68%);
     mask-image: radial-gradient(circle at center, #000 20%, transparent 68%);
@@ -99,6 +99,13 @@
     pointer-events: none;
     -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
     mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+  }
+
+  /* For sections in the middle of a page: also fade towards the top edge, so
+     drops anchored above the section are not cut off where it starts. */
+  .drops-layer-mid {
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22%, #000 55%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 22%, #000 55%, transparent 100%);
   }
 }
 

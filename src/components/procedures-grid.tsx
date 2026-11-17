@@ -69,7 +69,8 @@ function Group({ group, as: Tag, nested = false }: { group: CatalogGroup; as: He
       <Tag
         className={cn(
           "mb-3 flex items-baseline justify-between gap-4",
-          nested ? "eyebrow" : "border-b border-cocoa/10 pb-2"
+          // pr lines "от X €" up with the row prices (row padding + the "Запази" column)
+          nested ? "eyebrow" : "border-b border-cocoa/10 pb-2 pr-5 sm:pr-[9.25rem]"
         )}
       >
         <span className={nested ? undefined : "font-display text-2xl text-cocoa"}>{group.name}</span>
@@ -89,6 +90,17 @@ function Group({ group, as: Tag, nested = false }: { group: CatalogGroup; as: He
       ))}
     </div>
   );
+}
+
+/** Splits groups into runs: consecutive single-procedure groups are bundled together. */
+function runs(groups: CatalogGroup[]): (CatalogGroup | CatalogGroup[])[] {
+  const out: (CatalogGroup | CatalogGroup[])[] = [];
+  for (const group of groups) {
+    const last = out[out.length - 1];
+    if (isSingle(group) && Array.isArray(last)) last.push(group);
+    else out.push(isSingle(group) ? [group] : group);
+  }
+  return out;
 }
 
 /**
@@ -135,20 +147,22 @@ export function ProceduresGrid({ procedures }: ProceduresGridProps) {
                 return (
                   <div key={part.label ?? "all"} className="[&>h3+div]:mt-0">
                     {part.label && (
-                      <h3 className="mb-6 flex items-center gap-4 text-xs font-semibold uppercase tracking-[0.25em] text-rose-dark">
+                      <h3 className="eyebrow mb-6">
                         {part.label}
-                        <span className="h-px flex-1 bg-rose-dark/20" aria-hidden="true" />
                       </h3>
                     )}
-                    {part.groups.map((group) =>
-                      isSingle(group) ? (
-                        <div key={group.name} className="mt-10 first:mt-0">
+                    {runs(part.groups).map((run, i) =>
+                      Array.isArray(run) ? (
+                        // Consecutive single-procedure treatments share one box
+                        <div key={`singles-${i}`} className="mt-10 first:mt-0">
                           <RowList>
-                            <ProcedureRow procedure={group.procedures[0]} title={group.name} />
+                            {run.map((group) => (
+                              <ProcedureRow key={group.name} procedure={group.procedures[0]} title={group.name} />
+                            ))}
                           </RowList>
                         </div>
                       ) : (
-                        <Group key={group.name} group={group} as={groupHeading} />
+                        <Group key={`${i}-${run.name}`} group={run} as={groupHeading} />
                       )
                     )}
                   </div>

@@ -17,7 +17,7 @@ export function PopularProcedures({ procedures }: PopularProceduresProps) {
   return (
     <section className="relative overflow-hidden py-20 md:py-28 bg-white">
       {/* Soft colour shapes with the brand patterns, as in the hero */}
-      <div aria-hidden="true" className="drops-layer">
+      <div aria-hidden="true" className="drops-layer drops-layer-mid">
         <div className="absolute -top-24 -left-32 h-[28rem] w-[28rem] rounded-full bg-blush/70 blur-3xl" />
         <div className="absolute -top-10 -right-28 h-[22rem] w-[22rem] rounded-full bg-champagne blur-3xl" />
         <div className="drop-pattern absolute -top-24 -left-32 h-[28rem] w-[28rem]" />
