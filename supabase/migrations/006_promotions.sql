@@ -47,6 +47,9 @@ CREATE INDEX IF NOT EXISTS idx_reservations_promotion ON reservations (promotion
 -- on a table created by the current version.
 -- ---------------------------------------------------------------------------
 ALTER TABLE promotions ADD COLUMN IF NOT EXISTS procedure_count INT;
+-- Old-draft bundles ("3 за 2") have no count or total price: hide them so they
+-- are not shown at a wrong price. Re-create them in the admin panel.
+UPDATE promotions SET is_active = false WHERE kind = 'bundle' AND procedure_count IS NULL;
 ALTER TABLE promotions DROP COLUMN IF EXISTS buy_count;  -- also drops its old checks
 ALTER TABLE promotions DROP COLUMN IF EXISTS pay_count;
 
