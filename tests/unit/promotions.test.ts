@@ -21,7 +21,7 @@ describe("promotionOffer", () => {
     expect(offer.totalPrice).toBe(40);
     expect(offer.regularPrice).toBeCloseTo(51.15);
     expect(offer.choice).toBe(false);
-    expect(offer.priceNote).toBe("5 процедури");
+    expect(offer.priceNote).toBe("5 посещения");
     expect(offerVisitMinutes(offer, procedures[0])).toBe(15);
   });
 

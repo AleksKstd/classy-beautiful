@@ -88,7 +88,7 @@ export function promotionOffer(promotion: Promotion, procedures: Procedure[]): P
       totalPrice: round2(Number(promotion.price)),
       // With a choice, the lowest the procedures could cost without the promotion
       regularPrice: round2(cheapest * count),
-      priceNote: included.length > 1 ? `${count} процедури по избор` : `${count} процедури`,
+      priceNote: included.length > 1 ? `${count} процедури по избор` : `${count} посещения`,
     };
   }
 
