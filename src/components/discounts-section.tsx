@@ -6,7 +6,7 @@ import type { Procedure } from "@/types/database";
 
 interface DiscountsSectionProps {
   procedures: Procedure[];
-  /** Special promotions ("3 за 2", packages, ...), shown before the discounts */
+  /** Special promotions (N procedures for a price, packages, ...), shown before the discounts */
   offers?: PromotionOffer[];
 }
 

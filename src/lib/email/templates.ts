@@ -18,7 +18,7 @@ export interface EmailReservation {
   procedureName: string;
   durationMinutes: number;
   price: number;
-  /** e.g. "3 за 2 · Лазерна епилация - 3 посещения на цената на 2", when booked through a promotion */
+  /** e.g. "5 за 80 € · Лазерна епилация - 5 процедури по избор", when booked through a promotion */
   promotion: string | null;
 }
 

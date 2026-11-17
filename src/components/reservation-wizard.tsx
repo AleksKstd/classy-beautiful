@@ -225,8 +225,9 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId, preSelec
           : undefined;
         const preSelected = preSelectedProcedureId && loaded.find((p) => p.id === preSelectedProcedureId);
         if (offer && offer.choice) {
-          // The client still picks which procedure: open the promotions list in step 2.
-          setState((prev) => ({ ...prev, selectedCategory: PROMO }));
+          // The client still picks which procedure: open the promotions list in step 2,
+          // with this promotion marked.
+          setState((prev) => ({ ...prev, selectedCategory: PROMO, promotionId: offer.promotion.id }));
         } else if (offer) {
           setState((prev) => ({ ...prev, procedure: offer.procedures[0], promotionId: offer.promotion.id, fromLink: true }));
         } else if (preSelected) {
@@ -647,7 +648,11 @@ export function ReservationWizard({ onComplete, preSelectedProcedureId, preSelec
         className={cn("rounded-2xl border bg-white p-5", selected ? "border-cocoa" : "border-gold")}
       >
         {body}
-        <p className="mb-2 mt-4 text-sm text-taupe-600">С коя процедура да започнем?</p>
+        <p className="mt-3 text-sm text-taupe-600">
+          Плащате {formatPrice(offer.totalPrice)} за {offer.promotion.procedure_count} процедури. При всяко посещение избирате
+          процедура от списъка.
+        </p>
+        <p className="mb-2 mt-4 text-sm font-medium text-cocoa">С коя процедура да започнем?</p>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {offer.procedures.map((procedure) => {
             const chosen = selected && state.procedure?.id === procedure.id;

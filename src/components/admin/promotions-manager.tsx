@@ -458,7 +458,7 @@ export function PromotionsManager({ promotions, procedures }: PromotionsManagerP
       {/* List */}
       {promotions.length === 0 && editingId === null ? (
         <div className="rounded-2xl border border-dashed border-taupe-300 bg-white p-10 text-center text-taupe-600">
-          Още няма промоции. Създайте първата, например „3 за 2“ на лазерна епилация.
+          Още няма промоции. Създайте първата, например „5 процедури за 80 €“ на лазерна епилация.
         </div>
       ) : (
         <ul className="space-y-3">
